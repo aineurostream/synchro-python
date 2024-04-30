@@ -61,6 +61,11 @@
   - Выполнение 5 этапа: 200$
   - Выполнение 6 этапа: 50$
   - Выполнение 7 этапа: 20$
+- _Способы оплаты_:
+  - VISA: `4400 4302 1567 4638` (KZT)
+  - VISA: `4899 9399 7290 4762` (KZT)
+  - Telegram wallet USDT (TON): `UQBI5Wnwe9lCDrjQOPcDQsrSAqrEfXI6aaSRVunY1ahe9eWf` (USDT)
+  - ByBit USDT (TRC-20): `TWxjRFG5CjNGbo4qcao38fa1wa3ytBx949` (USDT)
 
 ### Технологический стек и библиотеки
 
