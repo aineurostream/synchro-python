@@ -1,75 +1,70 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 import pyaudio
-import wave
-from src.modules.audio_stream_output import output_audio_stream
-from src.models.audio_device import AudioDevice
+
+from src.input_output.audio_stream_output import AudioStreamOutput
+
 
 class TestAudioStreamOutput(unittest.TestCase):
 
     @patch('pyaudio.PyAudio')
-    def test_output_audio_stream(self, mock_pyaudio):
-        mock_audio = mock_pyaudio.return_value
+    def test_start_output(self, mock_pyaudio):
+        mock_device = MagicMock()
+        mock_device.device_index = 1
+        mock_device.name = 'Test Device'
         mock_stream = MagicMock()
-        mock_audio.open.return_value = mock_stream
-        device = AudioDevice(1, {'name': 'Output Device', 'maxInputChannels': 0, 'maxOutputChannels': 2})
-        input_file = 'test_input.wav'
-        chunk = 1024
+        mock_pyaudio.return_value.open.return_value = mock_stream
 
-        output_audio_stream(device, input_file, chunk=chunk)
+        audio_output = AudioStreamOutput(mock_device)
+        audio_output.start_output()
 
-        mock_audio.open.assert_called_once_with(
+        mock_pyaudio.return_value.open.assert_called_once_with(
             format=pyaudio.paInt16,
             channels=1,
             rate=44100,
             output=True,
             output_device_index=1
         )
-        mock_stream.stop_stream.assert_called_once()
-        mock_stream.close.assert_called_once()
-        mock_audio.terminate.assert_called_once()
+        self.assertIsNotNone(audio_output.stream)
 
     @patch('pyaudio.PyAudio')
-    def test_output_audio_stream_with_custom_format_and_channels(self, mock_pyaudio):
-        mock_audio = mock_pyaudio.return_value
+    def test_write_audio_frames(self, mock_pyaudio):
+        mock_device = MagicMock()
         mock_stream = MagicMock()
-        mock_audio.open.return_value = mock_stream
-        device = AudioDevice(1, {'name': 'Output Device', 'maxInputChannels': 0, 'maxOutputChannels': 2})
-        input_file = 'test_input.wav'
-        chunk = 1024
-        format = pyaudio.paFloat32
-        channels = 2
+        mock_pyaudio.return_value.open.return_value = mock_stream
 
-        output_audio_stream(device, input_file, chunk=chunk, format=format, channels=channels)
+        audio_output = AudioStreamOutput(mock_device)
+        audio_output.stream = mock_stream
+        audio_frames = b'audio_data'
 
-        mock_audio.open.assert_called_once_with(
-            format=format,
-            channels=channels,
-            rate=44100,
-            output=True,
-            output_device_index=1
-        )
+        audio_output.write_audio_frames(audio_frames)
+
+        mock_stream.write.assert_called_once_with(audio_frames)
 
     @patch('pyaudio.PyAudio')
-    @patch('wave.open')
-    def test_output_audio_stream_with_wave_file_error(self, mock_wave_open, mock_pyaudio):
-        mock_audio = mock_pyaudio.return_value
+    def test_stop_output(self, mock_pyaudio):
+        mock_device = MagicMock()
         mock_stream = MagicMock()
-        mock_audio.open.return_value = mock_stream
-        mock_wave_open.side_effect = Exception('Wave file error')
-        device = AudioDevice(1, {'name': 'Output Device', 'maxInputChannels': 0, 'maxOutputChannels': 2})
-        input_file = 'test_input.wav'
-        chunk = 1024
+        mock_pyaudio.return_value.open.return_value = mock_stream
 
-        output_audio_stream(device, input_file, chunk=chunk)
+        audio_output = AudioStreamOutput(mock_device)
+        audio_output.stream = mock_stream
 
-        mock_audio.open.assert_called_once_with(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=44100,
-            output=True,
-            output_device_index=1
-        )
+        audio_output.stop_output()
+
         mock_stream.stop_stream.assert_called_once()
         mock_stream.close.assert_called_once()
-        mock_audio.terminate.assert_called_once()
+        mock_pyaudio.return_value.terminate.assert_called_once()
+
+    @patch('pyaudio.PyAudio')
+    def test_start_output_error(self, mock_pyaudio):
+        mock_device = MagicMock()
+        mock_pyaudio.return_value.open.side_effect = Exception('Test Error')
+
+        with self.assertLogs('utils.logger', level='ERROR') as cm:
+            audio_output = AudioStreamOutput(mock_device)
+            audio_output.start_output()
+
+        self.assertIn(
+            f'Error when outputting an audio stream to the {mock_device.name}: Test Error', cm.output[0])
+        self.assertIsNone(audio_output.stream)

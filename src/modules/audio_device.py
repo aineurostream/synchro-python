@@ -24,5 +24,5 @@ class AudioDevice:
     self.name = device_info["name"]
   
   def __str__(self):
-    log(f"Аудио-устройство: {self.name} (Вход: {self.is_input}, Выход: {self.is_output})")
+    log(f"Audio device: {self.name} (Input: {self.is_input}, Output: {self.is_output})")
     return f"Audio device: {self.name} (Input: {self.is_input}, Output: {self.is_output})"

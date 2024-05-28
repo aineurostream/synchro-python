@@ -1,55 +1,67 @@
 import unittest
-from src.models.audio_device import AudioDevice
+from unittest.mock import patch, MagicMock
+from src.modules.audio_device import AudioDevice
+
 
 class TestAudioDevice(unittest.TestCase):
 
-    def test_audio_device_init(self):
+    def test_input_output_device(self):
+        device_info = {
+            "maxInputChannels": 2,
+            "maxOutputChannels": 2,
+            "name": "Test Audio Device"
+        }
+        device_index = 0
+        audio_device = AudioDevice(device_index, device_info)
+        self.assertTrue(audio_device.is_input)
+        self.assertTrue(audio_device.is_output)
+        self.assertEqual(audio_device.name, "Test Audio Device")
+
+    def test_input_only_device(self):
+        device_info = {
+            "maxInputChannels": 1,
+            "maxOutputChannels": 0,
+            "name": "Input Only Device"
+        }
         device_index = 1
+        audio_device = AudioDevice(device_index, device_info)
+        self.assertTrue(audio_device.is_input)
+        self.assertFalse(audio_device.is_output)
+        self.assertEqual(audio_device.name, "Input Only Device")
+
+    def test_output_only_device(self):
         device_info = {
-            'name': 'Test Device',
-            'maxInputChannels': 2,
-            'maxOutputChannels': 4
+            "maxInputChannels": 0,
+            "maxOutputChannels": 2,
+            "name": "Output Only Device"
         }
-        device = AudioDevice(device_index, device_info)
-
-        self.assertEqual(device.device_index, device_index)
-        self.assertEqual(device.device_info, device_info)
-        self.assertTrue(device.is_input)
-        self.assertTrue(device.is_output)
-        self.assertEqual(device.name, 'Test Device')
-
-    def test_audio_device_no_input(self):
         device_index = 2
+        audio_device = AudioDevice(device_index, device_info)
+        self.assertFalse(audio_device.is_input)
+        self.assertTrue(audio_device.is_output)
+        self.assertEqual(audio_device.name, "Output Only Device")
+
+    def test_no_input_output_device(self):
         device_info = {
-            'name': 'Output Device',
-            'maxInputChannels': 0,
-            'maxOutputChannels': 2
+            "maxInputChannels": 0,
+            "maxOutputChannels": 0,
+            "name": "No I/O Device"
         }
-        device = AudioDevice(device_index, device_info)
-
-        self.assertFalse(device.is_input)
-        self.assertTrue(device.is_output)
-
-    def test_audio_device_no_output(self):
         device_index = 3
+        audio_device = AudioDevice(device_index, device_info)
+        self.assertFalse(audio_device.is_input)
+        self.assertFalse(audio_device.is_output)
+        self.assertEqual(audio_device.name, "No I/O Device")
+
+    @patch('src.modules.audio_device.log')
+    def test_str_representation(self, mock_log):
         device_info = {
-            'name': 'Input Device',
-            'maxInputChannels': 1,
-            'maxOutputChannels': 0
+            "maxInputChannels": 1,
+            "maxOutputChannels": 1,
+            "name": "Test Device"
         }
-        device = AudioDevice(device_index, device_info)
-
-        self.assertTrue(device.is_input)
-        self.assertFalse(device.is_output)
-
-    def test_audio_device_str_representation(self):
         device_index = 4
-        device_info = {
-            'name': 'Test Device 2',
-            'maxInputChannels': 1,
-            'maxOutputChannels': 2
-        }
-        device = AudioDevice(device_index, device_info)
-
-        expected_str = 'Audio device: Test Device 2 (Input: True, Output: True)'
-        self.assertEqual(str(device), expected_str)
+        audio_device = AudioDevice(device_index, device_info)
+        expected_str = "Audio device: Test Device (Input: True, Output: True)"
+        self.assertEqual(str(audio_device), expected_str)
+        mock_log.assert_called_with(expected_str)

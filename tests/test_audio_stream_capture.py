@@ -1,58 +1,72 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 import pyaudio
-import wave
-from src.modules.audio_stream_capture import capture_audio_stream
-from src.models.audio_device import AudioDevice
+
+from src.input_output.audio_stream_capture import AudioStreamCapture
+
 
 class TestAudioStreamCapture(unittest.TestCase):
 
     @patch('pyaudio.PyAudio')
-    def test_capture_audio_stream(self, mock_pyaudio):
-        mock_audio = mock_pyaudio.return_value
+    def test_start_capture(self, mock_pyaudio):
+        mock_device = MagicMock()
+        mock_device.device_index = 1
+        mock_device.name = 'Test Device'
         mock_stream = MagicMock()
-        mock_audio.open.return_value = mock_stream
-        mock_stream.read.side_effect = [b'data1', b'data2', b'data3']
-        device = AudioDevice(0, {'name': 'Test Device', 'maxInputChannels': 1, 'maxOutputChannels': 0})
-        output_file = 'test_output.wav'
+        mock_pyaudio.return_value.open.return_value = mock_stream
 
-        capture_audio_stream(device, output_file, duration=1, chunk=1024, format=pyaudio.paInt16, channels=1, rate=44100)
+        audio_capture = AudioStreamCapture(mock_device)
+        audio_capture.start_capture()
 
-        mock_audio.open.assert_called_once_with(
+        mock_pyaudio.return_value.open.assert_called_once_with(
             format=pyaudio.paInt16,
             channels=1,
             rate=44100,
             input=True,
-            input_device_index=0,
-            frames_per_buffer=None
+            input_device_index=1,
+            frames_per_buffer=1024
         )
-        mock_stream.stop_stream.assert_called_once()
-        mock_stream.close.assert_called_once()
-        mock_audio.terminate.assert_called_once()
-
-        with wave.open(output_file, 'rb') as wave_file:
-            self.assertEqual(wave_file.getnchannels(), 1)
-            self.assertEqual(wave_file.getsampwidth(), mock_audio.get_sample_size(pyaudio.paInt16))
-            self.assertEqual(wave_file.getframerate(), 44100)
-            self.assertEqual(wave_file.readframes(wave_file.getnframes()), b'data1data2data3')
+        self.assertIsNotNone(audio_capture.stream)
 
     @patch('pyaudio.PyAudio')
-    def test_capture_audio_stream_with_frames_per_buffer(self, mock_pyaudio):
-        mock_audio = mock_pyaudio.return_value
+    def test_get_audio_frames(self, mock_pyaudio):
+        mock_device = MagicMock()
         mock_stream = MagicMock()
-        mock_audio.open.return_value = mock_stream
-        mock_stream.read.side_effect = [b'data1', b'data2', b'data3']
-        device = AudioDevice(0, {'name': 'Test Device', 'maxInputChannels': 1, 'maxOutputChannels': 0})
-        output_file = 'test_output.wav'
-        frames_per_buffer = 512
+        mock_stream.read.return_value = b'audio_data'
+        mock_pyaudio.return_value.open.return_value = mock_stream
 
-        capture_audio_stream(device, output_file, duration=1, chunk=1024, format=pyaudio.paInt16, channels=1, rate=44100, frames_per_buffer=frames_per_buffer)
+        audio_capture = AudioStreamCapture(mock_device)
+        audio_capture.stream = mock_stream
 
-        mock_audio.open.assert_called_once_with(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=44100,
-            input=True,
-            input_device_index=0,
-            frames_per_buffer=frames_per_buffer
-        )
+        audio_frames = audio_capture.get_audio_frames()
+
+        self.assertEqual(audio_frames, b'audio_data')
+
+    @patch('pyaudio.PyAudio')
+    def test_stop_capture(self, mock_pyaudio):
+        mock_device = MagicMock()
+        mock_stream = MagicMock()
+        mock_pyaudio.return_value.open.return_value = mock_stream
+
+        audio_capture = AudioStreamCapture(mock_device)
+        audio_capture.stream = mock_stream
+
+        audio_capture.stop_capture()
+
+        mock_stream.stop_stream.assert_called_once()
+        mock_stream.close.assert_called_once()
+        mock_pyaudio.return_value.terminate.assert_called_once()
+
+    @patch('pyaudio.PyAudio')
+    def test_start_capture_error(self, mock_pyaudio):
+        mock_device = MagicMock()
+        mock_device.name = 'Test Device'
+        mock_pyaudio.return_value.open.side_effect = Exception('Test Error')
+
+        with self.assertLogs('utils.logger', level='ERROR') as cm:
+            audio_capture = AudioStreamCapture(mock_device)
+            audio_capture.start_capture()
+
+        self.assertIn(
+            f'Error when capturing an audio stream from the {mock_device.name}: Test Error', cm.output[0])
+        self.assertIsNone(audio_capture.stream)
