@@ -1,40 +1,75 @@
 import unittest
-from unittest.mock import patch, MagicMock
-import wave
-from src.modules.audio_stream_processor import process_audio_stream
+from unittest.mock import MagicMock, patch
+from src.data_processing.audio_stream_processor import AudioStreamProcessor
+from src.data_processing.speech_to_text import SpeechToText
+from src.data_processing.speech_translation import SpeechTranslation
+from src.data_processing.machine_translation import MachineTranslation
+from src.data_processing.text_to_speech import TextToSpeech
+
 
 class TestAudioStreamProcessor(unittest.TestCase):
 
-    @patch('wave.open')
-    def test_process_audio_stream_with_format_channels_rate(self, mock_wave_open):
-        mock_wave_file = MagicMock()
-        mock_wave_open.return_value.__enter__.return_value = mock_wave_file
-        data = b'audio_data'
-        format = wave.WAVE_FORMAT_PCM
-        channels = 2
-        rate = 44100
+    @patch('src.data_processing.audio_stream_processor.SpeechToText')
+    @patch('src.data_processing.audio_stream_processor.SpeechTranslation')
+    @patch('src.data_processing.audio_stream_processor.MachineTranslation')
+    @patch('src.data_processing.audio_stream_processor.TextToSpeech')
+    def test_init(self, mock_tts, mock_mt, mock_translation, mock_stt):
+        audio_capture = MagicMock()
+        source_language = 'en'
+        target_language = 'fr'
+        processor = AudioStreamProcessor(
+            audio_capture, source_language, target_language)
 
-        result = process_audio_stream(data, format, channels, rate)
+        self.assertEqual(processor.audio_capture, audio_capture)
+        mock_stt.assert_called_once_with(source_language)
+        mock_translation.assert_called_once_with(
+            source_language, target_language)
+        mock_mt.assert_called_once_with(source_language, target_language)
+        mock_tts.assert_called_once_with(target_language)
 
-        mock_wave_file.setparams.assert_called_once_with((channels, format, rate, 0, 'NONE', 'not compressed'))
-        mock_wave_file.writeframes.assert_called_once_with(data)
-        self.assertEqual(result, data)
+    @patch('src.data_processing.audio_stream_processor.Thread')
+    @patch('src.data_processing.audio_stream_processor.SpeechToText')
+    @patch('src.data_processing.audio_stream_processor.SpeechTranslation')
+    @patch('src.data_processing.audio_stream_processor.MachineTranslation')
+    @patch('src.data_processing.audio_stream_processor.TextToSpeech')
+    def test_process_and_output(self, mock_tts, mock_mt, mock_translation, mock_stt, mock_thread):
+        audio_capture = MagicMock()
+        audio_output = MagicMock()
+        source_language = 'en'
+        target_language = 'fr'
+        processor = AudioStreamProcessor(
+            audio_capture, source_language, target_language)
 
-    def test_process_audio_stream_without_format_channels_rate(self):
-        data = b'audio_data'
+        processor.process_and_output(audio_output)
 
-        result = process_audio_stream(data)
+        audio_capture.start_capture.assert_called_once()
+        audio_output.start_output.assert_called_once()
+        audio_capture.stop_capture.assert_called_once()
+        audio_output.stop_output.assert_called_once()
 
-        self.assertEqual(result, data)
+    @patch('src.data_processing.audio_stream_processor.SpeechToText')
+    @patch('src.data_processing.audio_stream_processor.SpeechTranslation')
+    @patch('src.data_processing.audio_stream_processor.MachineTranslation')
+    @patch('src.data_processing.audio_stream_processor.TextToSpeech')
+    def test_process_stream(self, mock_tts, mock_mt, mock_translation, mock_stt):
+        audio_capture = MagicMock()
+        audio_output = MagicMock()
+        source_language = 'en'
+        target_language = 'fr'
+        processor = AudioStreamProcessor(
+            audio_capture, source_language, target_language)
 
-    @patch('wave.open')
-    def test_process_audio_stream_with_wave_file_error(self, mock_wave_open):
-        mock_wave_open.side_effect = Exception('Wave file error')
-        data = b'audio_data'
-        format = wave.WAVE_FORMAT_PCM
-        channels = 2
-        rate = 44100
+        mock_stt.return_value.speech_to_text.return_value = 'Hello'
+        mock_translation.return_value.translate_speech.return_value = 'Bonjour'
+        mock_tts.return_value.text_to_speech.return_value = b'audio_data'
 
-        result = process_audio_stream(data, format, channels, rate)
+        audio_frames = b'audio_frames'
+        processor.processing_queue.put(audio_frames)
+        processor._process_stream(audio_output)
 
-        self.assertEqual(result, data)
+        mock_stt.return_value.speech_to_text.assert_called_once_with(
+            audio_frames)
+        mock_translation.return_value.translate_speech.assert_called_once_with(
+            'Hello')
+        mock_tts.return_value.text_to_speech.assert_called_once_with('Bonjour')
+        audio_output.write_audio_frames.assert_called_once_with(b'audio_data')

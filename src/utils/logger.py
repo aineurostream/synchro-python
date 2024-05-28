@@ -61,8 +61,8 @@ def log(message: str, log_type: Union[str, logging.Logger] = 'app') -> None:
         elif log_type == 'context':
             context_logger.info(message)
         else:
-            app_logger.info(f"Неизвестный тип лога: {log_type}")
+            app_logger.info(f"Unknown log type: {log_type}")
     elif isinstance(log_type, logging.Logger):
         log_type.info(message)
     else:
-        raise TypeError("log_type должен быть строкой или экземпляром logging.Logger")
+        raise TypeError("log_type must be a string or an instance of logging.Logger")
