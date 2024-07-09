@@ -1,0 +1,83 @@
+[tool.poetry]
+name = "Synchro Backend"
+version = "0.1.0"
+description = ""
+authors = ["Stanislav Gonorovsky <drmozg@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+click = "8.1.7"
+PyAudio = "0.2.14"
+
+[tool.poetry.group.test.dependencies]
+pytest = "7.4.0"
+pytest-asyncio = "0.21.0"
+pytest-mock = "3.11.1"
+pytest-cov = "4.1.0"
+pytest-env = "0.8.2"
+pre-commit = "3.3.3"
+coverage = "^7.4.4"
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+log_cli = true
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)s %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+env = [
+    'D:SP_ENVIRONMENT_MODE=development',
+    'D:SP_TRANSLATION_MODE=ru-en'
+]
+testpaths = [
+    "pytests",
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.ruff]
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+# Assume Python 3.8
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D",
+    "S311",
+    "ANN101",
+    "ANN102",
+    "PGH003",
+    "PTH123",
+    "PTH118",
+    "TRY003",
+    "EM101",
+    "EM102",
+    "FBT003",
+    "FBT001",
+    "TCH001",
+    "TCH002",
+]
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/{pytests,docs,tools}/*" = ["S101", "ANN", "ARG", "PTH", "PERF", "PLR2004"]
