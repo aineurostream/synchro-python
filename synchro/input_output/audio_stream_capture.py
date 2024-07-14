@@ -1,13 +1,13 @@
 from types import TracebackType
-from typing import Literal
+from typing import Literal, Self
 
 import pyaudio
 
 from synchro.input_output.audio_device_manager import AudioDeviceManager
-from synchro.input_output.configs import InputAudioStreamConfig
+from synchro.input_output.schemas import InputAudioStreamConfig
 
 
-class AudioStreamCapture:
+class AudioStreamInput:
     def __init__(
         self,
         manager: AudioDeviceManager,
@@ -17,7 +17,7 @@ class AudioStreamCapture:
         self._manager = manager
         self._stream: pyaudio.Stream | None = None
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> Self:
         self._stream = self._manager.context.open(
             format=self._config.audio_format,
             channels=self._config.channels,
@@ -26,6 +26,8 @@ class AudioStreamCapture:
             input_device_index=self._config.device,
             frames_per_buffer=self._config.chunk_size,
         )
+
+        return self
 
     def __exit__(
         self,
