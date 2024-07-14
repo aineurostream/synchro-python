@@ -1,14 +1,15 @@
 from dataclasses import dataclass
 from typing import Self
 
-ChannelLocaleRaw = tuple[int, str]
+ChannelLocaleRaw = tuple[int, int, str]
 
 
 @dataclass
 class ChannelLocale:
     @classmethod
     def from_raw(cls, raw: ChannelLocaleRaw) -> Self:
-        return cls(channel=raw[0], locale=raw[1])
+        return cls(device=raw[0], channel=raw[1], language=raw[2])
 
+    device: int
     channel: int
-    locale: str
+    language: str
