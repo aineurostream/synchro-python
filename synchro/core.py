@@ -1,3 +1,7 @@
+import logging
+import time
+from contextlib import suppress
+from queue import Empty
 from threading import Thread
 
 import pyaudio
@@ -13,6 +17,8 @@ from synchro.input_output.schemas import (
     OutputAudioStreamConfig,
     OutputStreamEntity,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CoreManager:
@@ -34,7 +40,7 @@ class CoreManager:
             device=conf_base.device,
             language=conf_base.language,
             audio_format=getattr(pyaudio, f"pa{self._audio_format}"),
-            channels=conf_base.channel,
+            channels=1,
             rate=self._rate,
             chunk_size=self._chunk_size,
         )
@@ -44,6 +50,7 @@ class CoreManager:
                 config=config,
             ),
         )
+        logger.info(f"Created input stream conf for {conf_base}")
 
     def create_output_stream(self, conf_base: ChannelLocale) -> None:
         if self._is_running:
@@ -53,7 +60,7 @@ class CoreManager:
             device=conf_base.device,
             language=conf_base.language,
             audio_format=getattr(pyaudio, f"pa{self._audio_format}"),
-            channels=conf_base.channel,
+            channels=1,
             rate=self._rate,
         )
 
@@ -63,32 +70,48 @@ class CoreManager:
                 config=config,
             ),
         )
+        logger.info(f"Created output stream conf for {conf_base}")
 
     def _thread_input_stream(
         self,
         manager: AudioDeviceManager,
         entity: InputStreamEntity,
     ) -> None:
+        logger.info(f"Starting input stream for {entity.id}/{entity.config.language}")
         with AudioStreamInput(manager, entity.config) as stream:
             while self._is_running:
+                logger.debug(f"Reading audio frames for {entity.config.language}")
                 frames = stream.get_audio_frames()
                 entity.queue.put(frames)
+        logger.info(f"Finished input stream for {entity.id}/{entity.config.language}")
 
     def _thread_output_stream(
         self,
         manager: AudioDeviceManager,
         entity: OutputStreamEntity,
     ) -> None:
+        logger.info(f"Starting output stream for {entity.id}/{entity.config.language}")
         with AudioStreamOutput(manager, entity.config) as stream:
             while self._is_running:
-                frames = entity.queue.get()
-                stream.write_audio_frames(frames)
+                logger.debug(f"Writing audio frames for {entity.config.language}")
+                with suppress(Empty):
+                    frames = entity.queue.get(timeout=0.1)
+                    stream.write_audio_frames(frames)
+        logger.info(f"Finished output stream for {entity.id}/{entity.config.language}")
 
     def _thread_dispatcher(self) -> None:
+        logger.info("Starting audio dispatcher")
         while self._is_running:
             self._audio_dispatcher.process_batch()
+            time.sleep(0.01)
+        logger.info("Finished audio dispatcher")
+
+    def stop(self) -> None:
+        logger.info("Stopping Synchro instance")
+        self._is_running = False
 
     def run(self) -> None:
+        logger.info("Starting Synchro instance")
         self._is_running = True
         active_threads: list[Thread] = []
 
@@ -96,31 +119,40 @@ class CoreManager:
             created_thread.start()
             active_threads.append(created_thread)
 
-        try:
-            with AudioDeviceManager() as manager:
-                for in_channel in self._inputs:
-                    activate_thread(
-                        Thread(
-                            target=self._thread_input_stream,
-                            args=(manager, in_channel),
-                        ),
-                    )
-
-                for out_channel in self._outputs:
-                    activate_thread(
-                        Thread(
-                            target=self._thread_output_stream,
-                            args=(manager, out_channel),
-                        ),
-                    )
-
+        with AudioDeviceManager() as manager:
+            for index, in_channel in enumerate(self._inputs):
                 activate_thread(
                     Thread(
-                        target=self._thread_dispatcher,
+                        name=f"input_stream_{index}",
+                        target=self._thread_input_stream,
+                        args=(manager, in_channel),
                     ),
                 )
 
-        finally:
-            self._is_running = False
+            for out_channel in self._outputs:
+                activate_thread(
+                    Thread(
+                        name=f"output_stream_{index}",
+                        target=self._thread_output_stream,
+                        args=(manager, out_channel),
+                    ),
+                )
+
+            activate_thread(
+                Thread(
+                    target=self._thread_dispatcher,
+                ),
+            )
+
+            # Wait for interruption
+            with suppress(KeyboardInterrupt):
+                while self._is_running:
+                    time.sleep(0.1)
+
+            self.stop()
+
+            logger.info("Synchro instance stopped")
+
+            logger.info("Waiting for threads to finish")
             for thread in active_threads:
                 thread.join()
