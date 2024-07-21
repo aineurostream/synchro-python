@@ -81,7 +81,7 @@ class CoreManager:
         with AudioStreamInput(manager, entity.config) as stream:
             while self._is_running:
                 logger.debug(f"Reading audio frames for {entity.config.language}")
-                frames = stream.get_audio_frames()
+                frames = stream.get_speech_frames()
                 entity.queue.put(frames)
         logger.info(f"Finished input stream for {entity.id}/{entity.config.language}")
 
@@ -129,7 +129,7 @@ class CoreManager:
                     ),
                 )
 
-            for out_channel in self._outputs:
+            for index, out_channel in enumerate(self._outputs):
                 activate_thread(
                     Thread(
                         name=f"output_stream_{index}",
