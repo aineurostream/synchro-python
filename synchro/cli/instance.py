@@ -20,9 +20,9 @@ def manager() -> None:
 
 @manager.command(
     help="""
-Starts a new synchro instance.
-Example:
-python run.py instance start -i 0 0 ru -i 0 1 en -o 1 0 en -o 1 1 ru
+    Starts a new synchro instance.
+    Example:
+    python run.py instance start -i 0 0 ru -i 0 1 en -o 1 0 en -o 1 1 ru
 """,
 )
 @click.option(
@@ -57,7 +57,7 @@ python run.py instance start -i 0 0 ru -i 0 1 en -o 1 0 en -o 1 1 ru
 @click.option(
     "-r",
     "--rate",
-    default=44100,
+    default=16000,
     required=False,
     show_default=True,
     type=int,

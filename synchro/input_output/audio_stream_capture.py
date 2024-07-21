@@ -5,6 +5,14 @@ import pyaudio
 
 from synchro.input_output.audio_device_manager import AudioDeviceManager
 from synchro.input_output.schemas import InputAudioStreamConfig
+from synchro.input_output.voice_activity_detector import (
+    VoiceActivityDetector,
+    VoiceActivityDetectorResult,
+)
+
+SAMPLE_SIZE_BYTES_INT_16 = 2
+PREFERRED_BUFFER_SIZE_SEC = 0.2
+MIN_BUFFER_SIZE_SEC = 0.03
 
 
 class AudioStreamInput:
@@ -13,8 +21,17 @@ class AudioStreamInput:
         manager: AudioDeviceManager,
         config: InputAudioStreamConfig,
     ) -> None:
+        if config.audio_format != pyaudio.paInt16:
+            raise ValueError("Only paInt16 audio format is supported")
+
         self._config = config
         self._manager = manager
+        self._vad = VoiceActivityDetector(
+            sample_size_bytes=SAMPLE_SIZE_BYTES_INT_16,
+            sample_rate=config.rate,
+            min_buffer_size_sec=MIN_BUFFER_SIZE_SEC,
+            shrink_buffer_size_sec=PREFERRED_BUFFER_SIZE_SEC,
+        )
         self._stream: pyaudio.Stream | None = None
 
     def __enter__(self) -> Self:
@@ -41,8 +58,14 @@ class AudioStreamInput:
 
         return False
 
-    def get_audio_frames(self) -> bytes:
+    def get_speech_frames(self) -> bytes:
         if not self._stream:
             raise RuntimeError("Audio stream is not open")
 
-        return self._stream.read(self._config.chunk_size)
+        read_bytes = self._stream.read(self._config.chunk_size)
+
+        voice_result = self._vad.detect_voice(read_bytes)
+        if voice_result == VoiceActivityDetectorResult.SPEECH:
+            return read_bytes
+
+        return b""
