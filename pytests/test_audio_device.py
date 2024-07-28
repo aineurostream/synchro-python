@@ -5,6 +5,7 @@ def test_input_output_device():
     device_info = {
         "maxInputChannels": 2,
         "maxOutputChannels": 2,
+        "defaultSampleRate": 44100,
         "name": "Test Audio Device",
     }
     device_index = 0
@@ -19,6 +20,7 @@ def test_input_only_device():
     device_info = {
         "maxInputChannels": 1,
         "maxOutputChannels": 0,
+        "defaultSampleRate": 44100,
         "name": "Input Only Device",
     }
     device_index = 1
@@ -33,6 +35,7 @@ def test_output_only_device():
     device_info = {
         "maxInputChannels": 0,
         "maxOutputChannels": 2,
+        "defaultSampleRate": 44100,
         "name": "Output Only Device",
     }
     device_index = 2
@@ -47,6 +50,7 @@ def test_no_input_output_device():
     device_info = {
         "maxInputChannels": 0,
         "maxOutputChannels": 0,
+        "defaultSampleRate": 44100,
         "name": "No I/O Device",
     }
     device_index = 3

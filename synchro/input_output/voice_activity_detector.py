@@ -1,6 +1,8 @@
 from enum import Enum
 
-import webrtcvad
+import numpy as np
+
+DEFAULT_MINIMAL_EDGE = 100
 
 
 class VoiceActivityDetectorResult(str, Enum):
@@ -15,9 +17,9 @@ class VoiceActivityDetector:
         sample_size_bytes: int = 2,
         sample_rate: int = 16000,
         min_buffer_size_sec: float = 0.05,
-        shrink_buffer_size_sec: float = 0.2,
+        shrink_buffer_size_sec: float = 0.3,
     ) -> None:
-        self._vad = webrtcvad.Vad()
+        self._vad = None
         self._sample_size_bytes = sample_size_bytes
         self._sample_rate = sample_rate
         self._min_buffer_size_sec = min_buffer_size_sec
@@ -32,14 +34,12 @@ class VoiceActivityDetector:
 
         self._shrink_buffer()
 
-        result = self._vad.is_speech(
-            audio_data,
-            sample_rate=self._sample_rate,
-        )
+        joined_buffer = np.frombuffer(b"".join(self._buffer), np.int16)
 
+        has_speech = np.any(abs(joined_buffer) > DEFAULT_MINIMAL_EDGE)
         return (
             VoiceActivityDetectorResult.SPEECH
-            if result
+            if has_speech
             else VoiceActivityDetectorResult.NON_SPEECH
         )
 

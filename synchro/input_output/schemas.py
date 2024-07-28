@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
-from multiprocessing import Queue
+from queue import Queue
 
 import pyaudio
 
 
-@dataclass
+@dataclass(frozen=True)
 class BaseAudioStreamConfig:
     device: int
     language: str
@@ -13,25 +13,25 @@ class BaseAudioStreamConfig:
     rate: int = 44100
 
 
-@dataclass
+@dataclass(frozen=True)
 class InputAudioStreamConfig(BaseAudioStreamConfig):
     chunk_size: int = 1024
 
 
-@dataclass
+@dataclass(frozen=True)
 class OutputAudioStreamConfig(BaseAudioStreamConfig):
     pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class InputStreamEntity:
-    id: int
+    id: str
     config: InputAudioStreamConfig
     queue: Queue = field(default_factory=Queue)
 
 
-@dataclass
+@dataclass(frozen=True)
 class OutputStreamEntity:
-    id: int
+    id: str
     config: OutputAudioStreamConfig
     queue: Queue = field(default_factory=Queue)
