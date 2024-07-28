@@ -10,7 +10,11 @@ python = "^3.11"
 click = "8.1.7"
 PyAudio = "0.2.14"
 python-socketio = "5.11.3"
-webrtcvad = "2.0.10"
+websocket-client = "1.8.0"
+vad = "1.0.2"
+numpy = "2.0.1"
+requests = "2.32.3"
+librosa = "0.10.2.post1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.4.0"
@@ -29,7 +33,6 @@ log_cli_format = "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)s %(message)
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 env = [
     'D:SP_ENVIRONMENT_MODE=development',
-    'D:SP_TRANSLATION_MODE=ru-en'
 ]
 testpaths = [
     "pytests",

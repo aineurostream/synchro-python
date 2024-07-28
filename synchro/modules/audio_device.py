@@ -3,6 +3,8 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import cast
 
+from numpy.ma.core import floor
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,10 +26,11 @@ class AudioDevice:
         device_index: int,
         device_info: Mapping[str, str | int | float],
     ) -> None:
-        self.device_index: int = device_index
+        self.index: int = device_index
         self.name = device_info["name"]
         self.input_channels: int = cast(int, device_info["maxInputChannels"])
         self.output_channels: int = cast(int, device_info["maxOutputChannels"])
+        self.default_sample_rate: int = int(floor(device_info["defaultSampleRate"]))
 
     @property
     def mode(self) -> DeviceMode:
@@ -44,6 +47,8 @@ class AudioDevice:
 
     def __str__(self) -> str:
         return (
-            f"{self.device_index}: {self.name} "
-            f"(in: {self.input_channels}, out: {self.output_channels})"
+            f"{self.index}: {self.name} "
+            f"(in: {self.input_channels}, "
+            f"out: {self.output_channels}, "
+            f"rate: {self.default_sample_rate})"
         )

@@ -8,8 +8,9 @@ from synchro.core import CoreManager
 
 
 class ConfigDict(TypedDict):
+    server_url: str
     format: str
-    rate: int
+    rate: int | None
     chunk_size: int
 
 
@@ -55,13 +56,19 @@ def manager() -> None:
     help="Audio format",
 )
 @click.option(
-    "-r",
-    "--rate",
-    default=16000,
+    "--server-url",
+    default="http://localhost:7860",
     required=False,
     show_default=True,
+    type=str,
+    help="Neuro server URL",
+)
+@click.option(
+    "-r",
+    "--rate",
+    required=False,
     type=int,
-    help="Audio rate",
+    help="Audio rate (will use device's default if not specified)",
 )
 @click.option(
     "-c",
@@ -81,6 +88,7 @@ def start(
     cli_echo_title("Starting Synchro instance")
 
     core = CoreManager(
+        server_url=config["server_url"],
         audio_format=config["format"],
         rate=config["rate"],
         chunk_size=config["chunk_size"],

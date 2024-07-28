@@ -1,3 +1,4 @@
+import logging
 from types import TracebackType
 from typing import Literal, Self
 
@@ -9,6 +10,8 @@ from synchro.input_output.voice_activity_detector import (
     VoiceActivityDetector,
     VoiceActivityDetectorResult,
 )
+
+logger = logging.getLogger(__name__)
 
 SAMPLE_SIZE_BYTES_INT_16 = 2
 PREFERRED_BUFFER_SIZE_SEC = 0.2
@@ -62,10 +65,15 @@ class AudioStreamInput:
         if not self._stream:
             raise RuntimeError("Audio stream is not open")
 
-        read_bytes = self._stream.read(self._config.chunk_size)
+        read_bytes = self._stream.read(
+            self._config.chunk_size,
+            exception_on_overflow=False,
+        )
 
         voice_result = self._vad.detect_voice(read_bytes)
         if voice_result == VoiceActivityDetectorResult.SPEECH:
+            logger.debug("Detected speech")
             return read_bytes
 
+        logger.debug("No speech detected")
         return b""

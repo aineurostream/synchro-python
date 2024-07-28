@@ -41,6 +41,20 @@ class AudioDeviceManager:
         return self.active_context
 
     @staticmethod
+    def list_default_audio_devices() -> list[AudioDevice]:
+        audio = pyaudio.PyAudio()
+        devices = []
+        for device_info in [
+            audio.get_default_input_device_info(),
+            audio.get_default_output_device_info(),
+        ]:
+            device = AudioDevice(0, device_info)
+            devices.append(device)
+
+        audio.terminate()
+        return devices
+
+    @staticmethod
     def list_audio_devices() -> list[AudioDevice]:
         """
         Retrieve a list of audio devices available
