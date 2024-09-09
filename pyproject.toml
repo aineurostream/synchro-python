@@ -7,14 +7,15 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+pydantic = "2.9.0"
 click = "8.1.7"
 PyAudio = "0.2.14"
-python-socketio = "5.11.3"
+python-socketio = "5.11.4"
 websocket-client = "1.8.0"
 vad = "1.0.2"
-numpy = "2.0.1"
+numpy = "2.1.1"
 requests = "2.32.3"
-librosa = "0.10.2.post1"
+soxr = "0.5.0.post1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.4.0"

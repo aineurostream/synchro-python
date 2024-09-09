@@ -1,4 +1,4 @@
-from synchro.modules.audio_device import AudioDevice, DeviceMode
+from synchro.audio.audio_device import AudioDevice, DeviceMode
 
 
 def test_input_output_device():
