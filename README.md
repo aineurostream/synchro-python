@@ -9,6 +9,11 @@ Application for **real-time** translation.
 - poetry
 - pyaudio (based on portaudio)
 
+## TODOs:
+- Separate node for VAD
+- Separate node for buffers
+- Support dynamic node management
+
 ## How to setup
 ```bash
 pip3 install poetry

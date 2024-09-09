@@ -5,7 +5,7 @@ from typing import Literal, Self
 
 import pyaudio
 
-from synchro.modules.audio_device import AudioDevice
+from synchro.audio.audio_device import AudioDevice
 
 logger = logging.getLogger(__name__)
 

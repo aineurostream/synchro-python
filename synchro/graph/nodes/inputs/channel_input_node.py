@@ -1,37 +1,34 @@
-import logging
 from types import TracebackType
 from typing import Literal, Self
 
 import pyaudio
 
-from synchro.input_output.audio_device_manager import AudioDeviceManager
-from synchro.input_output.schemas import InputAudioStreamConfig
-from synchro.input_output.voice_activity_detector import (
+from synchro.audio.audio_device_manager import AudioDeviceManager
+from synchro.audio.frame_container import FrameContainer
+from synchro.audio.voice_activity_detector import (
     VoiceActivityDetector,
     VoiceActivityDetectorResult,
 )
+from synchro.config.commons import StreamConfig
+from synchro.config.schemas import ChannelStreamerNodeSchema
+from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
 
-logger = logging.getLogger(__name__)
-
-SAMPLE_SIZE_BYTES_INT_16 = 2
 PREFERRED_BUFFER_SIZE_SEC = 0.2
 MIN_BUFFER_SIZE_SEC = 0.03
 
 
-class AudioStreamInput:
+class ChannelInputNode(AbstractInputNode):
     def __init__(
         self,
+        config: ChannelStreamerNodeSchema,
         manager: AudioDeviceManager,
-        config: InputAudioStreamConfig,
     ) -> None:
-        if config.audio_format != pyaudio.paInt16:
-            raise ValueError("Only paInt16 audio format is supported")
-
+        super().__init__(config.name)
         self._config = config
         self._manager = manager
         self._vad = VoiceActivityDetector(
-            sample_size_bytes=SAMPLE_SIZE_BYTES_INT_16,
-            sample_rate=config.rate,
+            sample_size_bytes=self._config.stream.audio_format.sample_size,
+            sample_rate=config.stream.rate,
             min_buffer_size_sec=MIN_BUFFER_SIZE_SEC,
             shrink_buffer_size_sec=PREFERRED_BUFFER_SIZE_SEC,
         )
@@ -39,9 +36,9 @@ class AudioStreamInput:
 
     def __enter__(self) -> Self:
         self._stream = self._manager.context.open(
-            format=self._config.audio_format,
-            channels=self._config.channels,
-            rate=self._config.rate,
+            format=self._config.stream.audio_format.pyaudio_format,
+            channels=self._config.channel,
+            rate=self._config.stream.rate,
             input=True,
             input_device_index=self._config.device,
             frames_per_buffer=self._config.chunk_size,
@@ -61,7 +58,27 @@ class AudioStreamInput:
 
         return False
 
-    def get_speech_frames(self) -> bytes:
+    def initialize_edges(
+        self,
+        inputs: list[StreamConfig],
+        outputs: list[StreamConfig],
+    ) -> None:
+        self.check_inputs_count(inputs, 0)
+        self.check_has_outputs(outputs)
+
+    def predict_config(
+        self,
+        _inputs: list[StreamConfig],
+    ) -> StreamConfig:
+        return self._config.stream
+
+    def get_data(self) -> FrameContainer:
+        return FrameContainer.from_config(
+            self._config.stream,
+            self._read_speech_frames(),
+        )
+
+    def _read_speech_frames(self) -> bytes:
         if not self._stream:
             raise RuntimeError("Audio stream is not open")
 
@@ -72,8 +89,8 @@ class AudioStreamInput:
 
         voice_result = self._vad.detect_voice(read_bytes)
         if voice_result == VoiceActivityDetectorResult.SPEECH:
-            logger.debug("Detected speech")
+            self._logger.debug("Detected speech")
             return read_bytes
 
-        logger.debug("No speech detected")
+        self._logger.debug("No speech detected")
         return b""

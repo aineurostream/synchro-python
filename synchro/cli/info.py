@@ -1,7 +1,7 @@
 import click
 
+from synchro.audio.audio_device_manager import AudioDeviceManager
 from synchro.cli.utils.formatting import cli_echo_title
-from synchro.input_output.audio_device_manager import AudioDeviceManager
 
 
 @click.group(help="System info and management")
