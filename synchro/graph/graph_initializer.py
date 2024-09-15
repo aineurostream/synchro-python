@@ -5,6 +5,7 @@ from synchro.config.schemas import (
     InputFileStreamerNodeSchema,
     MixerNodeSchema,
     OutputChannelStreamerNodeSchema,
+    OutputFileNodeSchema,
     ProcessingGraphConfig,
     ResamplerNodeSchema,
     SeamlessConnectorNodeSchema,
@@ -15,6 +16,7 @@ from synchro.graph.nodes.inputs.channel_input_node import ChannelInputNode
 from synchro.graph.nodes.inputs.file_input_node import FileInputNode
 from synchro.graph.nodes.models.seamless_connector_node import SeamlessConnectorNode
 from synchro.graph.nodes.outputs.channel_output_node import ChannelOutputNode
+from synchro.graph.nodes.outputs.file_output_node import FileOutputNode
 from synchro.graph.nodes.processors.mixer_node import MixerNode
 from synchro.graph.nodes.processors.resample_node import ResampleNode
 
@@ -46,6 +48,12 @@ class GraphInitializer:
     ) -> ChannelOutputNode:
         return ChannelOutputNode(config, self._manager)
 
+    def _create_file_output_node(
+        self,
+        config: OutputFileNodeSchema,
+    ) -> FileOutputNode:
+        return FileOutputNode(config)
+
     def _create_seamless_connector_node(
         self,
         config: SeamlessConnectorNodeSchema,
@@ -69,12 +77,16 @@ class GraphInitializer:
                 nodes.append(self._create_file_input_node(node_config))
             elif isinstance(node_config, OutputChannelStreamerNodeSchema):
                 nodes.append(self._create_channel_output_node(node_config))
+            elif isinstance(node_config, OutputFileNodeSchema):
+                nodes.append(self._create_file_output_node(node_config))
             elif isinstance(node_config, SeamlessConnectorNodeSchema):
                 nodes.append(self._create_seamless_connector_node(node_config))
             elif isinstance(node_config, MixerNodeSchema):
                 nodes.append(self._create_mixer_node(node_config))
             elif isinstance(node_config, ResamplerNodeSchema):
                 nodes.append(self._create_resample_node(node_config))
+            else:
+                raise TypeError(f"Unknown node type: {node_config}")
 
         edges = [GraphEdge(edge[0], edge[1]) for edge in self._config.edges]
 

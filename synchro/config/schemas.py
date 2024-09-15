@@ -1,10 +1,10 @@
 from enum import Enum
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pydantic import (
     AnyUrl,
     BaseModel,
-    DirectoryPath,
     Discriminator,
     Field,
     FilePath,
@@ -48,8 +48,9 @@ class OutputChannelStreamerNodeSchema(ChannelStreamerNodeSchema):
 class InputFileStreamerNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.INPUT_FILE] = NodeType.INPUT_FILE
     path: FilePath
-    looping: bool = True
     stream: StreamConfig
+    looping: bool = True
+    delay_ms: int = 0.0
 
 
 class SeamlessConnectorNodeSchema(BaseNodeSchema):
@@ -70,7 +71,7 @@ class ResamplerNodeSchema(BaseNodeSchema):
 
 class OutputFileNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.OUTPUT_FILE] = NodeType.OUTPUT_FILE
-    folder: DirectoryPath
+    path: Path
     stream: StreamConfig
 
 

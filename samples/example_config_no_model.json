@@ -5,6 +5,7 @@
       "node_type": "input_file",
       "path": "./samples/mozg_speaks.wav",
       "looping": true,
+      "delay_ms": 0,
       "stream": {
         "language": "ru",
         "rate": 16000,
@@ -14,17 +15,11 @@
       }
     },
     {
-      "name": "seamless_nn_1",
-      "node_type": "converter_seamless",
-      "server_url": "http://localhost:7860",
-      "from_language": "ru",
-      "to_language": "en"
-    },
-    {
       "name": "input_file_2",
       "node_type": "input_file",
       "path": "./samples/test_ryan.wav",
       "looping": true,
+      "delay_ms": 1000,
       "stream": {
         "language": "en",
         "rate": 20500,
@@ -32,19 +27,13 @@
           "format_type": "int16"
         }
       }
-    },
-    {
-      "name": "seamless_nn_2",
-      "node_type": "converter_seamless",
-      "server_url": "http://localhost:7860",
-      "from_language": "en",
-      "to_language": "ru"
     },
     {
       "name": "input_file_3",
       "node_type": "input_file",
       "path": "./samples/test_hfc_male.wav",
       "looping": true,
+      "delay_ms": 3000,
       "stream": {
         "language": "en",
         "rate": 20500,
@@ -54,26 +43,19 @@
       }
     },
     {
-      "name": "seamless_nn_3",
-      "node_type": "converter_seamless",
-      "server_url": "http://localhost:7860",
-      "from_language": "en",
-      "to_language": "ru"
-    },
-    {
       "name": "resampler_1",
       "node_type": "resampler",
-      "to_rate": 41000
+      "to_rate": 48000
     },
     {
       "name": "resampler_2",
       "node_type": "resampler",
-      "to_rate": 41000
+      "to_rate": 48000
     },
     {
       "name": "resampler_3",
       "node_type": "resampler",
-      "to_rate": 41000
+      "to_rate": 48000
     },
     {
       "name": "mixer_1",
@@ -82,11 +64,23 @@
     {
       "name": "output_channel_1",
       "node_type": "output_channel",
-      "device": 9,
+      "device": 1,
       "channel": 1,
       "stream": {
         "language": "en",
-        "rate": 41000,
+        "rate": 48000,
+        "audio_format": {
+          "format_type": "int16"
+        }
+      }
+    },
+    {
+      "name": "output_file_1",
+      "node_type": "output_file",
+      "path": "./samples/result_no_model.wav",
+      "stream": {
+        "language": "en",
+        "rate": 48000,
         "audio_format": {
           "format_type": "int16"
         }
@@ -94,15 +88,13 @@
     }
   ],
   "edges": [
-    ["input_file_1", "seamless_nn_1"],
-    ["input_file_2", "seamless_nn_2"],
-    ["input_file_3", "seamless_nn_3"],
-    ["seamless_nn_1", "resampler_1"],
-    ["seamless_nn_2", "resampler_2"],
-    ["seamless_nn_3", "resampler_3"],
+    ["input_file_1", "resampler_1"],
+    ["input_file_2", "resampler_2"],
+    ["input_file_3", "resampler_3"],
     ["resampler_1", "mixer_1"],
     ["resampler_2", "mixer_1"],
     ["resampler_3", "mixer_1"],
-    ["mixer_1", "output_channel_1"]
+    ["mixer_1", "output_channel_1"],
+    ["mixer_1", "output_file_1"]
   ]
 }

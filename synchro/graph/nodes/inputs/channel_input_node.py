@@ -4,13 +4,13 @@ from typing import Literal, Self
 import pyaudio
 
 from synchro.audio.audio_device_manager import AudioDeviceManager
-from synchro.audio.frame_container import FrameContainer
 from synchro.audio.voice_activity_detector import (
     VoiceActivityDetector,
     VoiceActivityDetectorResult,
 )
 from synchro.config.commons import StreamConfig
 from synchro.config.schemas import ChannelStreamerNodeSchema
+from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
 
 PREFERRED_BUFFER_SIZE_SEC = 0.2
@@ -72,8 +72,9 @@ class ChannelInputNode(AbstractInputNode):
     ) -> StreamConfig:
         return self._config.stream
 
-    def get_data(self) -> FrameContainer:
-        return FrameContainer.from_config(
+    def get_data(self) -> GraphFrameContainer:
+        return GraphFrameContainer.from_config(
+            self.name,
             self._config.stream,
             self._read_speech_frames(),
         )

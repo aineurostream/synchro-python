@@ -1,0 +1,71 @@
+{
+  "inputs": [
+    {
+      "file": "./samples/mozg_speaks.wav",
+      "language": "ru"
+    },
+    {
+      "file": "./samples/designflaws_en.wav",
+      "language": "en",
+      "delay": 0
+    },
+    {
+      "file": "./samples/test_hfc_male.wav",
+      "language": "en",
+      "delay": 3000
+    },
+    {
+      "file": "./samples/test_ryan.wav",
+      "language": "en",
+      "delay": 6000
+    },
+    {
+      "file": "./samples/designflaws_en.wav",
+      "language": "en",
+      "delay": 8000
+    },
+    {
+      "file": "./samples/wh40_france_fr.wav",
+      "language": "fr",
+      "delay": 10000
+    },
+    {
+      "file": "./samples/wh40k_de.wav",
+      "language": "de",
+      "delay": 12000
+    },
+    {
+      "file": "./samples/chinese_ch.wav",
+      "language": "ch",
+      "delay": 16000
+    }
+  ],
+  "outputs": [
+    {
+      "file": "./samples/result_en.wav",
+      "language": "en"
+    },
+    {
+      "file": "./samples/result_de.wav",
+      "language": "de"
+    },
+    {
+      "file": "./samples/result_fr.wav",
+      "language": "fr"
+    },
+    {
+      "file": "./samples/result_ru.wav",
+      "language": "ru"
+    },
+    {
+      "file": "./samples/result_ch.wav",
+      "language": "ch"
+    },
+    {
+      "device": "speaker",
+      "language": "all"
+    }
+  ],
+  "sample_rate": 16000,
+  "model": "http://localhost:7860"
+}

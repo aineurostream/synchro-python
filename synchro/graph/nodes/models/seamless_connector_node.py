@@ -6,10 +6,10 @@ import numpy as np
 from socketio import SimpleClient
 from socketio.exceptions import TimeoutError as SioTimeoutError
 
-from synchro.audio.frame_container import FrameContainer
 from synchro.config.audio_format import AudioFormat, AudioFormatType
 from synchro.config.commons import StreamConfig
 from synchro.config.schemas import SeamlessConnectorNodeSchema
+from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
     ContextualGraphNode,
     EmittingNodeMixin,
@@ -141,7 +141,7 @@ class SeamlessConnectorNode(ContextualGraphNode, ReceivingNodeMixin, EmittingNod
             rate=DEFAULT_OUTPUT_RATE,
         )
 
-    def put_data(self, data: list[FrameContainer]) -> None:
+    def put_data(self, data: list[GraphFrameContainer]) -> None:
         if len(data) != 1:
             raise ValueError("Expected one frame container")
 
@@ -157,7 +157,7 @@ class SeamlessConnectorNode(ContextualGraphNode, ReceivingNodeMixin, EmittingNod
             self._logger.debug("Sent %d bytes to %s", len(samples), self._client.sid)
             self._buffer = b""
 
-    def get_data(self) -> FrameContainer:
+    def get_data(self) -> GraphFrameContainer:
         has_incoming_messages = True
         audio_result = b""
         raw_rate = DEFAULT_OUTPUT_RATE
@@ -191,7 +191,8 @@ class SeamlessConnectorNode(ContextualGraphNode, ReceivingNodeMixin, EmittingNod
                 self._client.sid,
             )
 
-        return FrameContainer.from_config(
+        return GraphFrameContainer.from_config(
+            self.name,
             StreamConfig(
                 language=self._config.to_language,
                 audio_format=AudioFormat(type=AudioFormatType.INT_16),

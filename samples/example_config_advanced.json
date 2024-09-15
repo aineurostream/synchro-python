@@ -9,7 +9,7 @@
         "language": "ru",
         "rate": 48000,
         "audio_format": {
-          "type": "int16"
+          "format_type": "int16"
         }
       }
     },
@@ -71,7 +71,7 @@
       "stream": {
         "language": "ru",
         "audio_format": {
-          "type": "int16"
+          "format_type": "int16"
         }
       }
     },
@@ -91,7 +91,7 @@
       "stream": {
         "language": "en",
         "audio_format": {
-          "type": "int16"
+          "format_type": "int16"
         }
       }
     },
@@ -111,7 +111,7 @@
       "stream": {
         "language": "ru",
         "audio_format": {
-          "type": "int16"
+          "format_type": "int16"
         }
       }
     }
