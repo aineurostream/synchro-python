@@ -7,15 +7,19 @@ from threading import Thread
 
 from pydantic import BaseModel, ConfigDict
 
-from synchro.audio.frame_container import FrameContainer
-from synchro.config.commons import StreamConfig
+from synchro.config.commons import StreamConfig, MIN_STEP_LENGTH_SECS
 from synchro.graph.graph_edge import GraphEdge
+from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
     ContextualGraphNode,
     EmittingNodeMixin,
     GraphNode,
     ReceivingNodeMixin,
 )
+
+MS_IN_SEC = 1000.0
+
+WAIT_PRECENT_OF_PREV_FRAME = 0.9
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,7 @@ class EdgeQueue(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     edge: GraphEdge
-    queue: Queue[FrameContainer]
+    queue: Queue[GraphFrameContainer]
 
     def __repr__(self) -> str:
         return f"-[{self.edge}]-"
@@ -63,7 +67,12 @@ class NodeExecutor(Thread):
         while self._running:
             self.process_inputs()
             sleep_time = self.process_outputs()
-            time.sleep(max(0.01, sleep_time))
+            time.sleep(
+                max(
+                    MIN_STEP_LENGTH_SECS,
+                    sleep_time
+                )
+            )
 
     def process_outputs(self) -> float:
         if isinstance(self.node, EmittingNodeMixin):
@@ -77,13 +86,17 @@ class NodeExecutor(Thread):
                     )
                     out.queue.put(outgoing_data)
 
-                return outgoing_data.length_ms() / 1000.0
+                return (
+                        outgoing_data.length_ms()
+                        / MS_IN_SEC
+                        * WAIT_PRECENT_OF_PREV_FRAME
+                )
 
         return 0.0
 
     def process_inputs(self) -> None:
         if isinstance(self.node, ReceivingNodeMixin):
-            incoming_data: list[FrameContainer] = []
+            incoming_data: list[GraphFrameContainer] = []
             for inc in self._incoming:
                 with suppress(Empty):
                     incoming_data.append(inc.queue.get(block=False))

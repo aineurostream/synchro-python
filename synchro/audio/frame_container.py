@@ -2,26 +2,10 @@ from dataclasses import dataclass
 from typing import Self
 
 from synchro.config.audio_format import AudioFormat
-from synchro.config.commons import StreamConfig
 
 
 @dataclass
 class FrameContainer:
-    @classmethod
-    def from_config(cls, config: StreamConfig, data: bytes = b"") -> Self:
-        if config.audio_format is None:
-            raise ValueError("Audio format is required")
-        if config.rate is None:
-            raise ValueError("Rate is required")
-
-        return cls(
-            language=config.language,
-            audio_format=config.audio_format,
-            rate=config.rate,
-            frame_data=data,
-        )
-
-    language: str
     audio_format: AudioFormat
     rate: int
     frame_data: bytes
@@ -29,11 +13,11 @@ class FrameContainer:
     def __len__(self) -> int:
         return len(self.frame_data) // self.audio_format.sample_size
 
-    def __str__(self) -> str:
-        return f"FC({self.language}, {self.audio_format}, {self.rate} [{len(self)}])"
-
     def __repr__(self) -> str:
         return str(self)
+
+    def __str__(self) -> str:
+        return f"FC({self.audio_format}, {self.rate} [{len(self.frame_data)}b])"
 
     def append(self, other: Self) -> None:
         self.frame_data += other.frame_data
@@ -52,7 +36,13 @@ class FrameContainer:
 
         self.frame_data = self.frame_data[n:]
 
+    def frames_to_bytes(self, frames: int) -> bytes:
+        return self.frame_data[: frames * self.audio_format.sample_size]
+
     def length_ms(self) -> int:
         return (
             len(self.frame_data) * 1000 // (self.rate * self.audio_format.sample_size)
         )
+
+    def length_frames(self) -> int:
+        return len(self)

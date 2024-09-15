@@ -1,9 +1,9 @@
 import numpy as np
 import soxr
 
-from synchro.audio.frame_container import FrameContainer
 from synchro.config.commons import StreamConfig
 from synchro.config.schemas import ResamplerNodeSchema
+from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
 
 INT16_MAX = 32767
@@ -12,7 +12,7 @@ INT16_MAX = 32767
 class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
     def __init__(self, config: ResamplerNodeSchema) -> None:
         super().__init__(config.name)
-        self._buffer: list[FrameContainer] = []
+        self._buffer: list[GraphFrameContainer] = []
         self.output_config: StreamConfig | None = None
         self._to_rate = config.to_rate
 
@@ -47,49 +47,57 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         return self.output_config
 
-    def put_data(self, data: list[FrameContainer]) -> None:
+    def put_data(self, data: list[GraphFrameContainer]) -> None:
         if len(data) != 1:
             raise ValueError(f"Expected one frame container, got {len(data)}")
 
         self._buffer.append(data[0])
 
-    def get_data(self) -> FrameContainer:
+    def get_data(self) -> GraphFrameContainer:
         if self.output_config is None:
             raise ValueError("Output config is not set")
 
         if not self._buffer:
-            return FrameContainer.from_config(
+            return GraphFrameContainer.from_config(
+                self.name,
                 self.output_config,
                 b"",
             )
 
-        int16_payload = b"".join([frame.frame_data for frame in self._buffer])
+        initial_payload = b"".join([frame.frame_data for frame in self._buffer])
         from_rate = self._buffer[0].rate
         self._buffer.clear()
 
-        if len(int16_payload) == 0:
-            return FrameContainer.from_config(
+        if len(initial_payload) == 0:
+            return GraphFrameContainer.from_config(
+                self.name,
                 self.output_config,
                 b"",
             )
 
-        int16_payload_np = np.frombuffer(int16_payload, dtype=np.int16)
-        float_payload_np = int16_payload_np.astype(np.float32) / INT16_MAX
+        converted_payload_np = np.frombuffer(
+            initial_payload,
+            dtype=self.output_config.audio_format.numpy_format
+        )
+        float_payload_np = converted_payload_np.astype(np.float32) / INT16_MAX
         raw_float_payload = soxr.resample(
             float_payload_np,
             from_rate,
             self._to_rate,
         )
-        int16_payload_np = (raw_float_payload * INT16_MAX).astype(np.int16)
+        converted_payload_np = (raw_float_payload * INT16_MAX).astype(
+            self.output_config.audio_format.numpy_format
+        )
         self._logger.debug(
             "Resampled %d bytes from %d to %d in %s",
-            len(int16_payload_np.tobytes()),
+            len(converted_payload_np.tobytes()),
             from_rate,
             self._to_rate,
             self,
         )
 
-        return FrameContainer.from_config(
+        return GraphFrameContainer.from_config(
+            self.name,
             self.output_config,
-            int16_payload_np.tobytes(),
+            converted_payload_np.tobytes(),
         )

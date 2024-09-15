@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import Literal, Self
 
-from synchro.audio.frame_container import FrameContainer
 from synchro.config.commons import StreamConfig
+from synchro.graph.graph_frame_container import GraphFrameContainer
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +62,25 @@ class GraphNode(ABC):
         if len(outputs) == 0:
             raise ValueError(f"Node {self} has NO outputs {outputs}")
 
+    def check_audio_formats(self, configs: list[StreamConfig]) -> None:
+        if len(configs) == 0:
+            raise ValueError(f"Node {self} has NO inputs {configs}")
+
+        first_format = configs[0].audio_format
+        first_rate = configs[0].rate
+        for other_stream in configs:
+            if other_stream.audio_format != first_format:
+                raise ValueError(
+                    f"Node {self} has AF {other_stream.audio_format} "
+                    f"but expected {first_format}",
+                )
+
+            if other_stream.rate != first_rate:
+                raise ValueError(
+                    f"Node {self} has rate {other_stream.rate} "
+                    f"but expected {first_rate}",
+                )
+
     def __str__(self) -> str:
         return f"({self.name})"
 
@@ -86,11 +105,11 @@ class ContextualGraphNode(GraphNode, ABC):
 
 class EmittingNodeMixin(ABC):
     @abstractmethod
-    def get_data(self) -> FrameContainer:
+    def get_data(self) -> GraphFrameContainer:
         raise NotImplementedError
 
 
 class ReceivingNodeMixin(ABC):
     @abstractmethod
-    def put_data(self, data: list[FrameContainer]) -> None:
+    def put_data(self, data: list[GraphFrameContainer]) -> None:
         raise NotImplementedError

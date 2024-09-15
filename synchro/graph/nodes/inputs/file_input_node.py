@@ -2,9 +2,9 @@ import wave
 from types import TracebackType
 from typing import Literal, Self
 
-from synchro.audio.frame_container import FrameContainer
-from synchro.config.commons import StreamConfig
+from synchro.config.commons import StreamConfig, MIN_WORKING_STEP_LENGTH_SECS
 from synchro.config.schemas import InputFileStreamerNodeSchema
+from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
 
 
@@ -16,12 +16,15 @@ class FileInputNode(AbstractInputNode):
         super().__init__(config.name)
         self._config = config
         self._wavefile_data: bytes | None = None
+        self._wavefile_index = 0
+        self._delay_completed = False
 
     def __enter__(self) -> Self:
         wavefile = wave.open(str(self._config.path), "r")
 
         length = wavefile.getnframes()
         self._wavefile_data = wavefile.readframes(length)
+        self._wavefile_index = 0
         return self
 
     def __exit__(
@@ -47,19 +50,50 @@ class FileInputNode(AbstractInputNode):
     ) -> StreamConfig:
         return self._config.stream
 
-    def get_data(self) -> FrameContainer:
+    def get_data(self) -> GraphFrameContainer:
         if self._wavefile_data is None:
-            return FrameContainer.from_config(
+            return GraphFrameContainer.from_config(
+                self.name,
                 self._config.stream,
                 b"",
             )
 
-        data_to_send = self._wavefile_data
+        if not self._delay_completed and self._config.delay_ms > 0:
+            self._delay_completed = True
+            delay_seconds = self._config.delay_ms / 1000
+            delay_bytes = int(
+                delay_seconds * self._config.stream.rate * self._config.stream.audio_format.sample_size
+            )
+            return GraphFrameContainer.from_config(
+                self.name,
+                self._config.stream,
+                b"\x00" * delay_bytes,
+            )
 
-        if not self._config.looping:
-            self._wavefile_data = None
+        bytes_per_batch = int(
+            MIN_WORKING_STEP_LENGTH_SECS
+            * self._config.stream.rate
+            * self._config.stream.audio_format.sample_size
+        )
 
-        return FrameContainer.from_config(
+        data_to_send = self._wavefile_data[
+            self._wavefile_index : self._wavefile_index + bytes_per_batch
+        ]
+        self._wavefile_index += len(data_to_send)
+
+        if len(data_to_send) < bytes_per_batch and self._config.looping:
+            bytes_left = bytes_per_batch - len(data_to_send)
+            data_to_send += self._wavefile_data[
+                self._wavefile_index : self._wavefile_index + bytes_left
+            ]
+            self._wavefile_index = bytes_left
+        elif self._wavefile_index >= len(self._wavefile_data):
+            self._wavefile_index = 0
+            if not self._config.looping:
+                self._wavefile_data = None
+
+        return GraphFrameContainer.from_config(
+            self.name,
             self._config.stream,
             data_to_send,
         )
