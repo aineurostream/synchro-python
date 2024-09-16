@@ -45,17 +45,17 @@
     {
       "name": "resampler_1",
       "node_type": "resampler",
-      "to_rate": 48000
+      "to_rate": 41100
     },
     {
       "name": "resampler_2",
       "node_type": "resampler",
-      "to_rate": 48000
+      "to_rate": 41100
     },
     {
       "name": "resampler_3",
       "node_type": "resampler",
-      "to_rate": 48000
+      "to_rate": 41100
     },
     {
       "name": "mixer_1",
@@ -64,11 +64,11 @@
     {
       "name": "output_channel_1",
       "node_type": "output_channel",
-      "device": 1,
+      "device": 9,
       "channel": 1,
       "stream": {
         "language": "en",
-        "rate": 48000,
+        "rate": 41100,
         "audio_format": {
           "format_type": "int16"
         }
@@ -80,7 +80,7 @@
       "path": "./samples/result_no_model.wav",
       "stream": {
         "language": "en",
-        "rate": 48000,
+        "rate": 41100,
         "audio_format": {
           "format_type": "int16"
         }

@@ -24,6 +24,9 @@ class SeamlessConnectorNode(ContextualGraphNode, ReceivingNodeMixin, EmittingNod
     LANGUAGES_MAP: ClassVar[dict[str, str]] = {
         "en": "eng",
         "ru": "rus",
+        "fr": "fra",
+        "ch": "cmn",
+        "de": "deu",
     }
 
     def __init__(
@@ -137,7 +140,7 @@ class SeamlessConnectorNode(ContextualGraphNode, ReceivingNodeMixin, EmittingNod
     ) -> StreamConfig:
         return StreamConfig(
             language=self._config.to_language,
-            audio_format=AudioFormat(type=AudioFormatType.INT_16),
+            audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
             rate=DEFAULT_OUTPUT_RATE,
         )
 
@@ -152,7 +155,7 @@ class SeamlessConnectorNode(ContextualGraphNode, ReceivingNodeMixin, EmittingNod
         if len(self._buffer) > 0 and self._connected:
             self._client.emit(
                 "incoming_audio",
-                samples,
+                self._buffer,
             )
             self._logger.debug("Sent %d bytes to %s", len(samples), self._client.sid)
             self._buffer = b""
@@ -195,7 +198,7 @@ class SeamlessConnectorNode(ContextualGraphNode, ReceivingNodeMixin, EmittingNod
             self.name,
             StreamConfig(
                 language=self._config.to_language,
-                audio_format=AudioFormat(type=AudioFormatType.INT_16),
+                audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
                 rate=raw_rate,
             ),
             audio_result,

@@ -48,7 +48,7 @@ class AudioDeviceManager:
             audio.get_default_input_device_info(),
             audio.get_default_output_device_info(),
         ]:
-            device = AudioDevice(0, device_info)
+            device = AudioDevice(device_info['index'], device_info)
             devices.append(device)
 
         audio.terminate()
