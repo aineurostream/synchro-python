@@ -8,11 +8,6 @@
       "file": "./samples/test_hfc_male.wav",
       "language": "en",
       "delay_ms": 3000
-    },
-    {
-      "file": "./samples/test_ryan.wav",
-      "language": "en",
-      "delay_ms": 6000
     }
   ],
   "outputs": [

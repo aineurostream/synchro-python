@@ -4,10 +4,12 @@ from typing import Literal, Self
 import pyaudio
 
 from synchro.audio.audio_device_manager import AudioDeviceManager
-from synchro.config.commons import StreamConfig
+from synchro.config.commons import StreamConfig, MIN_STEP_LENGTH_SECS
 from synchro.config.schemas import OutputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.outputs.abstract_output_node import AbstractOutputNode
+
+PREFILL_SILENCE_MULT = 10
 
 
 class ChannelOutputNode(AbstractOutputNode):
@@ -20,6 +22,7 @@ class ChannelOutputNode(AbstractOutputNode):
         self._config = config
         self._manager = manager
         self._stream: pyaudio.Stream | None = None
+        self._prefilled = False
 
     def __enter__(self) -> Self:
         self._stream = self._manager.context.open(
@@ -76,5 +79,18 @@ class ChannelOutputNode(AbstractOutputNode):
 
         if self._stream is None:
             raise RuntimeError("Audio stream is not open")
+
+        if not self._prefilled:
+            prefill_bytes = int(
+                self._config.stream.audio_format.sample_size
+                * self._config.stream.rate
+                * MIN_STEP_LENGTH_SECS
+                * PREFILL_SILENCE_MULT
+            )
+            self._stream.write(
+                b"\x00" * prefill_bytes
+            )
+            self._prefilled = True
+
 
         self._stream.write(frames[0].frame_data)
