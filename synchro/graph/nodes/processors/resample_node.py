@@ -88,9 +88,10 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         converted_payload_np = (raw_float_payload * INT16_MAX).astype(
             self.output_config.audio_format.numpy_format
         )
+        converted_payload = converted_payload_np.tobytes()
         self._logger.debug(
             "Resampled %d bytes from %d to %d in %s",
-            len(converted_payload_np.tobytes()),
+            len(converted_payload),
             from_rate,
             self._to_rate,
             self,
@@ -99,5 +100,5 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         return GraphFrameContainer.from_config(
             self.name,
             self.output_config,
-            converted_payload_np.tobytes(),
+            converted_payload,
         )

@@ -30,7 +30,7 @@ def _node_input_creator(
         )
 
     return InputFileStreamerNodeSchema(
-        name=f"input_file_{index}",
+        name=f"input_file_{index}_{language}",
         path=file_path,
         delay_ms=delay_ms,
         stream=stream_config,
@@ -49,7 +49,7 @@ def _node_file_output_creator(
     )
 
     return OutputFileNodeSchema(
-        name=f"output_file_{index}",
+        name=f"output_file_{index}_{language}",
         path=file_path,
         stream=stream_config,
         looping=True,
@@ -62,7 +62,7 @@ def _node_device_creator(
     """Create output for the node"""
     devices = AudioDeviceManager.list_default_audio_devices()
     output_device = [
-        device for device in devices if device.mode == DeviceMode.OUTPUT
+        device for device in devices if device.mode == DeviceMode.OUTPUT or device.name == "default"
     ][0]
 
     stream_config = StreamConfig(
@@ -72,7 +72,7 @@ def _node_device_creator(
     )
 
     return OutputChannelStreamerNodeSchema(
-        name=f"output_device_{index}",
+        name=f"output_device_{index}_{language}",
         device=output_device.index,
         stream=stream_config,
         looping=True,
@@ -111,6 +111,7 @@ def generate(setup: str, config: str) -> None:
 
     desired_rate = setup_data["sample_rate"]
     desired_model = setup_data["model"]
+    no_model = setup_data.get("no_model", False)
 
     converter_outputs: dict[str, list[str]] = defaultdict(list)
 
@@ -129,27 +130,35 @@ def generate(setup: str, config: str) -> None:
         resampler_node = None
         if found_rate != desired_rate:
             resampler_node = ResamplerNodeSchema(
-                name=f"resampler_{index}",
+                name=f"resampler_input_{index}_{language}",
                 to_rate=desired_rate,
             )
             nodes.append(resampler_node)
             edges.append((input_node.name, resampler_node.name))
 
         for language_other in language_set:
-            if language_other != language:
-                converter_node = SeamlessConnectorNodeSchema(
-                    name=f"converter_{index}_{language}->{language_other}",
-                    server_url=desired_model,
-                    from_language=language,
-                    to_language=language_other,
-                )
-                nodes.append(converter_node)
-                if resampler_node is not None:
-                    edges.append((resampler_node.name, converter_node.name))
-                else:
-                    edges.append((input_node.name, converter_node.name))
+            if language_other == language:
+                continue
 
-                converter_outputs[language].append(converter_node.name)
+            if no_model:
+                if resampler_node is not None:
+                    converter_outputs[language_other].append(resampler_node.name)
+                else:
+                    converter_outputs[language_other].append(input_node.name)
+            else:
+                    converter_node = SeamlessConnectorNodeSchema(
+                        name=f"converter_{index}_{language}_{language_other}",
+                        server_url=desired_model,
+                        from_language=language,
+                        to_language=language_other,
+                    )
+                    nodes.append(converter_node)
+                    if resampler_node is not None:
+                        edges.append((resampler_node.name, converter_node.name))
+                    else:
+                        edges.append((input_node.name, converter_node.name))
+
+                    converter_outputs[language_other].append(converter_node.name)
 
     for index, output_setup in enumerate(setup_data["outputs"]):
         if "device" in output_setup:
@@ -181,18 +190,21 @@ def generate(setup: str, config: str) -> None:
             model_output
             for lang in language_set
             for model_output in converter_outputs[lang]
-            if lang != output_setup["language"]
+            if output_node.stream.language == "all" or lang == output_setup["language"]
         ]
 
         mixer_node = MixerNodeSchema(
             name=f"mixer_{index}_{output_setup['language']}",
         )
         nodes.append(mixer_node)
+
+        if resampler_node is not None:
+            edges.append((mixer_node.name, resampler_node.name))
+        else:
+            edges.append((mixer_node.name, output_node.name))
+
         for converter_node in mixer_inputs:
-            if resampler_node is not None:
-                edges.append((converter_node, resampler_node.name))
-            else:
-                edges.append((converter_node, mixer_node.name))
+            edges.append((converter_node, mixer_node.name))
 
     with open(config, "w") as config_file:
         json.dump(
