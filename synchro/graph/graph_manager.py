@@ -1,11 +1,9 @@
 import logging
 import time
-import multiprocessing as mp
 from collections import defaultdict
 from contextlib import suppress
-from multiprocessing import Queue, Pipe
-from multiprocessing.connection import Connection
-from queue import Empty
+from queue import Empty, Queue
+from threading import Thread
 
 from pydantic import BaseModel, ConfigDict
 
@@ -26,32 +24,25 @@ WAIT_PRECENT_OF_PREV_FRAME = 0.9
 logger = logging.getLogger(__name__)
 
 
-class EdgeQueue:
+class EdgeQueue(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     edge: GraphEdge
-    queue: Queue
-
-    def __init__(self, edge: GraphEdge, queue: Queue) -> None:
-        self.edge = edge
-        self.queue = queue
-
-    def __str__(self) -> str:
-        return f"-[{self.edge}]-"
+    queue: Queue[GraphFrameContainer]
 
     def __repr__(self) -> str:
-        return str(self)
+        return f"-[{self.edge}]-"
 
 
-class NodeExecutor(mp.Process):
+class NodeExecutor(Thread):
     def __init__(
         self,
         node: GraphNode,
-        stopper: Connection,
         incoming: list[EdgeQueue],
         outgoing: list[EdgeQueue],
     ) -> None:
         super().__init__()
         self.node = node
-        self._stopper = stopper
         self._running = True
         self._incoming = incoming
         self._outgoing = outgoing
@@ -62,6 +53,9 @@ class NodeExecutor(mp.Process):
             outgoing,
         )
 
+    def stop(self) -> None:
+        self._running = False
+
     def run(self) -> None:
         if isinstance(self.node, ContextualGraphNode):
             with self.node:
@@ -71,9 +65,6 @@ class NodeExecutor(mp.Process):
 
     def run_processing_loop(self) -> None:
         while self._running:
-            if self._stopper.poll():
-                self._running = False
-
             self.process_inputs()
             sleep_time = self.process_outputs()
             time.sleep(
@@ -129,12 +120,12 @@ class GraphManager:
         self._warmup_graph()
 
         logger.info("Starting Synchro graph execution")
-        active_processes: list[(NodeExecutor, Connection)] = []
+        active_threads: list[NodeExecutor] = []
 
-        def activate_thread(created_thread: (NodeExecutor, Connection)) -> None:
-            created_thread[0].start()
-            active_processes.append(created_thread)
-            logger.info("Executing of node %s started", created_thread[0].node.name)
+        def activate_thread(created_thread: NodeExecutor) -> None:
+            created_thread.start()
+            active_threads.append(created_thread)
+            logger.info("Executing of node %s started", created_thread.node.name)
 
         queued_edges = {
             edge.id: EdgeQueue(
@@ -155,8 +146,7 @@ class GraphManager:
                 for edge in self._edges
                 if edge.source == node.name
             ]
-            parent_conn, child_conn = Pipe()
-            activate_thread((NodeExecutor(node, child_conn, incoming, outgoing), parent_conn))
+            activate_thread(NodeExecutor(node, incoming, outgoing))
 
         # Wait for interruption
         with suppress(KeyboardInterrupt):
@@ -164,13 +154,13 @@ class GraphManager:
                 time.sleep(0.1)
 
         self.stop()
-        for process in active_processes:
-            process[1].send("stop")
+        for thread in active_threads:
+            thread.stop()
         logger.info("Synchro instance stopping")
 
         logger.info("Waiting for threads to finish")
-        for process in active_processes:
-            process[0].join()
+        for thread in active_threads:
+            thread.join()
         logger.info("All threads completed - finishing instance execution")
 
     def stop(self) -> None:
