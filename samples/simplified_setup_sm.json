@@ -31,5 +31,5 @@
   ],
   "sample_rate": 16000,
   "model": "http://localhost:7860",
-  "no_model": false
+  "no_model": true
 }
