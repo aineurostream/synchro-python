@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import ClassVar, Self
 
-import pyaudio
 import numpy as np
+import pyaudio
 from pydantic import BaseModel
 
 

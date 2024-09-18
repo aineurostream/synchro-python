@@ -3,7 +3,10 @@ from typing import cast
 import numpy as np
 
 from synchro.audio.frame_container import FrameContainer
-from synchro.config.commons import StreamConfig, MIN_STEP_LENGTH_SECS, MIN_WORKING_STEP_LENGTH_SECS
+from synchro.config.commons import (
+    MIN_WORKING_STEP_LENGTH_SECS,
+    StreamConfig,
+)
 from synchro.config.schemas import MixerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
@@ -97,9 +100,9 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             raise ValueError("Stream config is not set")
 
         min_length_frames = (
-                MIN_WORKING_STEP_LENGTH_SECS
-                * MIN_MIXING_LENGTH_MULT
-                * self._stream_config.rate
+            MIN_WORKING_STEP_LENGTH_SECS
+            * MIN_MIXING_LENGTH_MULT
+            * self._stream_config.rate
         )
         selected_frame_containers = []
         for frame in self._incoming_buffer.values():
@@ -111,7 +114,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             return b""
 
         cut_length_frames = int(
-            MIN_WORKING_STEP_LENGTH_SECS * self._stream_config.rate
+            MIN_WORKING_STEP_LENGTH_SECS * self._stream_config.rate,
         )
         audio_matrix = np.zeros(
             (
@@ -131,5 +134,5 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             bytes,
             np.mean(audio_matrix, axis=0)
             .astype(self._stream_config.audio_format.numpy_format)
-            .tobytes()
+            .tobytes(),
         )

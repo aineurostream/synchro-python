@@ -1,17 +1,24 @@
 import json
+import wave
 from collections import defaultdict
 
 import click
-import wave
 
 from synchro.audio.audio_device import DeviceMode
-from synchro.cli.utils.formatting import cli_echo_title
-from synchro.config.audio_format import AudioFormatType, AudioFormat
-from synchro.config.commons import StreamConfig
-from synchro.config.schemas import InputFileStreamerNodeSchema, ResamplerNodeSchema, \
-    SeamlessConnectorNodeSchema, BaseNodeSchema, OutputFileNodeSchema, OutputChannelStreamerNodeSchema, \
-    MixerNodeSchema
 from synchro.audio.audio_device_manager import AudioDeviceManager
+from synchro.cli.utils.formatting import cli_echo_title
+from synchro.config.audio_format import AudioFormat, AudioFormatType
+from synchro.config.commons import StreamConfig
+from synchro.config.schemas import (
+    BaseNodeSchema,
+    InputFileStreamerNodeSchema,
+    MixerNodeSchema,
+    OutputChannelStreamerNodeSchema,
+    OutputFileNodeSchema,
+    ResamplerNodeSchema,
+    SeamlessConnectorNodeSchema,
+)
+
 
 @click.group(help="Setup graph helpers")
 def manager() -> None:
@@ -19,7 +26,10 @@ def manager() -> None:
 
 
 def _node_input_creator(
-        index: int, file_path: str, language: str, delay_ms: int
+    index: int,
+    file_path: str,
+    language: str,
+    delay_ms: int,
 ) -> InputFileStreamerNodeSchema:
     """Create input for the node"""
     with wave.open(file_path, "rb") as wav_file:
@@ -39,7 +49,10 @@ def _node_input_creator(
 
 
 def _node_file_output_creator(
-        index: int, language: str, file_path: str, rate: int
+    index: int,
+    language: str,
+    file_path: str,
+    rate: int,
 ) -> OutputFileNodeSchema:
     """Create output for the node"""
     stream_config = StreamConfig(
@@ -57,13 +70,16 @@ def _node_file_output_creator(
 
 
 def _node_device_creator(
-        index: int, language: str
+    index: int,
+    language: str,
 ) -> OutputChannelStreamerNodeSchema:
     """Create output for the node"""
     devices = AudioDeviceManager.list_default_audio_devices()
-    output_device = [
-        device for device in devices if device.mode == DeviceMode.OUTPUT or device.name == "default"
-    ][0]
+    output_device = next(
+        device
+        for device in devices
+        if device.mode == DeviceMode.OUTPUT or device.name == "default"
+    )
 
     stream_config = StreamConfig(
         language=language,
@@ -94,19 +110,18 @@ def _node_device_creator(
     type=click.Path(),
     help="Configuration file output",
 )
-def generate(setup: str, config: str) -> None:
+def generate(setup: str, config: str) -> None:  # noqa: C901, PLR0912, PLR0915
     """Display system information"""
     cli_echo_title("Generate graph configuration from the setup")
 
-    with open(setup, "r") as setup_file:
+    with open(setup) as setup_file:
         setup_data = json.load(setup_file)
 
     nodes: list[BaseNodeSchema] = []
     edges: list[tuple[str, str]] = []
 
     language_set = {
-        item["language"] for item in setup_data["inputs"]
-        if item["language"] != "all"
+        item["language"] for item in setup_data["inputs"] if item["language"] != "all"
     }
 
     desired_rate = setup_data["sample_rate"]
@@ -146,19 +161,19 @@ def generate(setup: str, config: str) -> None:
                 else:
                     converter_outputs[language_other].append(input_node.name)
             else:
-                    converter_node = SeamlessConnectorNodeSchema(
-                        name=f"converter_{index}_{language}_{language_other}",
-                        server_url=desired_model,
-                        from_language=language,
-                        to_language=language_other,
-                    )
-                    nodes.append(converter_node)
-                    if resampler_node is not None:
-                        edges.append((resampler_node.name, converter_node.name))
-                    else:
-                        edges.append((input_node.name, converter_node.name))
+                converter_node = SeamlessConnectorNodeSchema(
+                    name=f"converter_{index}_{language}_{language_other}",
+                    server_url=desired_model,
+                    from_language=language,
+                    to_language=language_other,
+                )
+                nodes.append(converter_node)
+                if resampler_node is not None:
+                    edges.append((resampler_node.name, converter_node.name))
+                else:
+                    edges.append((input_node.name, converter_node.name))
 
-                    converter_outputs[language_other].append(converter_node.name)
+                converter_outputs[language_other].append(converter_node.name)
 
     for index, output_setup in enumerate(setup_data["outputs"]):
         if "device" in output_setup:
@@ -203,8 +218,10 @@ def generate(setup: str, config: str) -> None:
         else:
             edges.append((mixer_node.name, output_node.name))
 
-        for converter_node in mixer_inputs:
-            edges.append((converter_node, mixer_node.name))
+        edges += [
+            (converter_node_input, mixer_node.name)
+            for converter_node_input in mixer_inputs
+        ]
 
     with open(config, "w") as config_file:
         json.dump(

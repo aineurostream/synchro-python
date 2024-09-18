@@ -2,7 +2,7 @@ import wave
 from types import TracebackType
 from typing import Literal, Self
 
-from synchro.config.commons import StreamConfig, MIN_WORKING_STEP_LENGTH_SECS
+from synchro.config.commons import MIN_WORKING_STEP_LENGTH_SECS, StreamConfig
 from synchro.config.schemas import InputFileStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
@@ -62,7 +62,9 @@ class FileInputNode(AbstractInputNode):
             self._delay_completed = True
             delay_seconds = self._config.delay_ms / 1000
             delay_bytes = int(
-                delay_seconds * self._config.stream.rate * self._config.stream.audio_format.sample_size
+                delay_seconds
+                * self._config.stream.rate
+                * self._config.stream.audio_format.sample_size,
             )
             return GraphFrameContainer.from_config(
                 self.name,
@@ -73,7 +75,7 @@ class FileInputNode(AbstractInputNode):
         bytes_per_batch = int(
             MIN_WORKING_STEP_LENGTH_SECS
             * self._config.stream.rate
-            * self._config.stream.audio_format.sample_size
+            * self._config.stream.audio_format.sample_size,
         )
 
         data_to_send = self._wavefile_data[

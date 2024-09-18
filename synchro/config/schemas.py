@@ -50,7 +50,7 @@ class InputFileStreamerNodeSchema(BaseNodeSchema):
     path: FilePath
     stream: StreamConfig
     looping: bool = True
-    delay_ms: int = 0.0
+    delay_ms: int = 0
 
 
 class SeamlessConnectorNodeSchema(BaseNodeSchema):

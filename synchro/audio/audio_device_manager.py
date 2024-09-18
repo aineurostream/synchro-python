@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from types import TracebackType
-from typing import Literal, Self
+from typing import Literal, Self, cast
 
 import pyaudio
 
@@ -48,7 +48,7 @@ class AudioDeviceManager:
             audio.get_default_input_device_info(),
             audio.get_default_output_device_info(),
         ]:
-            device = AudioDevice(device_info['index'], device_info)
+            device = AudioDevice(cast(int, device_info["index"]), device_info)
             devices.append(device)
 
         audio.terminate()
