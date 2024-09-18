@@ -7,7 +7,7 @@ from threading import Thread
 
 from pydantic import BaseModel, ConfigDict
 
-from synchro.config.commons import StreamConfig, MIN_STEP_LENGTH_SECS
+from synchro.config.commons import MIN_STEP_LENGTH_SECS, StreamConfig
 from synchro.graph.graph_edge import GraphEdge
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
@@ -70,8 +70,8 @@ class NodeExecutor(Thread):
             time.sleep(
                 max(
                     MIN_STEP_LENGTH_SECS,
-                    sleep_time
-                )
+                    sleep_time,
+                ),
             )
 
     def process_outputs(self) -> float:
@@ -87,9 +87,7 @@ class NodeExecutor(Thread):
                     out.queue.put(outgoing_data)
 
                 return (
-                        outgoing_data.length_ms()
-                        / MS_IN_SEC
-                        * WAIT_PRECENT_OF_PREV_FRAME
+                    outgoing_data.length_ms() / MS_IN_SEC * WAIT_PRECENT_OF_PREV_FRAME
                 )
 
         return 0.0

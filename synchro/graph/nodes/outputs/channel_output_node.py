@@ -4,7 +4,7 @@ from typing import Literal, Self
 import pyaudio
 
 from synchro.audio.audio_device_manager import AudioDeviceManager
-from synchro.config.commons import StreamConfig, MIN_STEP_LENGTH_SECS
+from synchro.config.commons import MIN_STEP_LENGTH_SECS, StreamConfig
 from synchro.config.schemas import OutputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.outputs.abstract_output_node import AbstractOutputNode
@@ -85,12 +85,11 @@ class ChannelOutputNode(AbstractOutputNode):
                 self._config.stream.audio_format.sample_size
                 * self._config.stream.rate
                 * MIN_STEP_LENGTH_SECS
-                * PREFILL_SILENCE_MULT
+                * PREFILL_SILENCE_MULT,
             )
             self._stream.write(
-                b"\x00" * prefill_bytes
+                b"\x00" * prefill_bytes,
             )
             self._prefilled = True
-
 
         self._stream.write(frames[0].frame_data)

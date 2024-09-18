@@ -77,7 +77,7 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         converted_payload_np = np.frombuffer(
             initial_payload,
-            dtype=self.output_config.audio_format.numpy_format
+            dtype=self.output_config.audio_format.numpy_format,
         )
         float_payload_np = converted_payload_np.astype(np.float32) / INT16_MAX
         raw_float_payload = soxr.resample(
@@ -86,7 +86,7 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             self._to_rate,
         )
         converted_payload_np = (raw_float_payload * INT16_MAX).astype(
-            self.output_config.audio_format.numpy_format
+            self.output_config.audio_format.numpy_format,
         )
         converted_payload = converted_payload_np.tobytes()
         self._logger.debug(
