@@ -1,3 +1,4 @@
+import logging
 from types import TracebackType
 from typing import Literal, Self
 
@@ -9,7 +10,7 @@ from synchro.config.schemas import OutputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.outputs.abstract_output_node import AbstractOutputNode
 
-PREFILL_SILENCE_MULT = 10
+logger = logging.getLogger(__name__)
 
 
 class ChannelOutputNode(AbstractOutputNode):
@@ -25,12 +26,18 @@ class ChannelOutputNode(AbstractOutputNode):
         self._prefilled = False
 
     def __enter__(self) -> Self:
+        frames_per_buffer = int(
+            self._config.stream.rate
+            * MIN_STEP_LENGTH_SECS
+        )
+
         self._stream = self._manager.context.open(
             format=self._config.stream.audio_format.pyaudio_format,
             channels=self._config.channel,
             rate=self._config.stream.rate,
             output=True,
             output_device_index=self._config.device,
+            frames_per_buffer=frames_per_buffer,
         )
 
         return self
@@ -74,22 +81,28 @@ class ChannelOutputNode(AbstractOutputNode):
         return self._config.stream
 
     def put_data(self, frames: list[GraphFrameContainer]) -> None:
+        logger.info(f"Writing {frames[0].length_frames()} frames to stream")
+
         if len(frames) != 1:
             raise ValueError("Expected one frame container")
 
         if self._stream is None:
             raise RuntimeError("Audio stream is not open")
 
+        frames_per_buffer = int(
+            self._config.stream.rate
+            * MIN_STEP_LENGTH_SECS
+        )
+
         if not self._prefilled:
-            prefill_bytes = int(
-                self._config.stream.audio_format.sample_size
-                * self._config.stream.rate
-                * MIN_STEP_LENGTH_SECS
-                * PREFILL_SILENCE_MULT,
-            )
-            self._stream.write(
-                b"\x00" * prefill_bytes,
-            )
+            logger.info(f"Prefilling buffer for {frames_per_buffer} samples")
+            prefill_bytes = frames_per_buffer * self._config.stream.rate
+            self._stream.write(b"0" * prefill_bytes)
             self._prefilled = True
+
+        if frames_per_buffer > frames[0].length_frames():
+            raise ValueError(
+                f"Expected {frames_per_buffer} frames, got {frames[0].length_frames()}",
+            )
 
         self._stream.write(frames[0].frame_data)

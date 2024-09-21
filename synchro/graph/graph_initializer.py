@@ -88,6 +88,11 @@ class GraphInitializer:
             else:
                 raise TypeError(f"Unknown node type: {node_config}")
 
-        edges = [GraphEdge(edge[0], edge[1]) for edge in self._config.edges]
+        if len(set(self._config.edges)) != len(self._config.edges):
+            raise ValueError("Duplicate edges found")
+
+        edges = [
+            GraphEdge(edge[0], edge[1]) for edge in self._config.edges
+        ]
 
         return nodes, edges

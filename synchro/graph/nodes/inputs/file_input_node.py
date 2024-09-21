@@ -1,8 +1,9 @@
+import time
 import wave
 from types import TracebackType
 from typing import Literal, Self
 
-from synchro.config.commons import MIN_WORKING_STEP_LENGTH_SECS, StreamConfig
+from synchro.config.commons import StreamConfig
 from synchro.config.schemas import InputFileStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
@@ -17,10 +18,17 @@ class FileInputNode(AbstractInputNode):
         self._config = config
         self._wavefile_data: bytes | None = None
         self._wavefile_index = 0
-        self._delay_completed = False
+        self._delay_left = self._config.delay_ms
+        self._last_query = time.time()
 
     def __enter__(self) -> Self:
         wavefile = wave.open(str(self._config.path), "r")
+
+        if wavefile.getnchannels() != 1:
+            raise ValueError("Only mono files are supported")
+
+        if wavefile.getsampwidth() != 2:
+            raise ValueError("Only 16-bit audio files are supported")
 
         length = wavefile.getnframes()
         self._wavefile_data = wavefile.readframes(length)
@@ -55,44 +63,44 @@ class FileInputNode(AbstractInputNode):
             return GraphFrameContainer.from_config(
                 self.name,
                 self._config.stream,
-                b"",
             )
 
-        if not self._delay_completed and self._config.delay_ms > 0:
-            self._delay_completed = True
-            delay_seconds = self._config.delay_ms / 1000
-            delay_bytes = int(
-                delay_seconds
-                * self._config.stream.rate
-                * self._config.stream.audio_format.sample_size,
-            )
+        time_passed_ms = int((time.time() - self._last_query) * 1000)
+
+        if self._delay_left > 0:
+            delay_duration_ms = min(self._delay_left, time_passed_ms)
+            delay_samples = delay_duration_ms * self._config.stream.rate // 1000
+            delay_bytes = delay_samples * self._config.stream.audio_format.sample_size
+            self._delay_left -= delay_duration_ms
+            self._last_query = time.time()
             return GraphFrameContainer.from_config(
                 self.name,
                 self._config.stream,
-                b"\x00" * delay_bytes,
+                b"\0" * delay_bytes,
             )
 
-        bytes_per_batch = int(
-            MIN_WORKING_STEP_LENGTH_SECS
-            * self._config.stream.rate
-            * self._config.stream.audio_format.sample_size,
-        )
+        time_passed_samples = time_passed_ms * self._config.stream.rate // 1000
+        time_passed_bytes = time_passed_samples * self._config.stream.audio_format.sample_size
+        self._last_query = time.time()
 
         data_to_send = self._wavefile_data[
-            self._wavefile_index : self._wavefile_index + bytes_per_batch
+            self._wavefile_index: self._wavefile_index + time_passed_bytes
         ]
-        self._wavefile_index += len(data_to_send)
+        self._wavefile_index += time_passed_bytes
 
-        if len(data_to_send) < bytes_per_batch and self._config.looping:
-            bytes_left = bytes_per_batch - len(data_to_send)
+        not_enough_data = len(data_to_send) < time_passed_bytes
+        if not_enough_data and self._config.looping:
+            bytes_left = time_passed_bytes - len(data_to_send)
             data_to_send += self._wavefile_data[
-                self._wavefile_index : self._wavefile_index + bytes_left
+                0: bytes_left
             ]
             self._wavefile_index = bytes_left
-        elif self._wavefile_index >= len(self._wavefile_data):
-            self._wavefile_index = 0
-            if not self._config.looping:
-                self._wavefile_data = None
+        elif not_enough_data:
+            self._wavefile_data = None
+            return GraphFrameContainer.from_config(
+                self.name,
+                self._config.stream
+            )
 
         return GraphFrameContainer.from_config(
             self.name,

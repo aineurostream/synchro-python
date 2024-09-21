@@ -17,7 +17,12 @@ class FrameContainer:
         return str(self)
 
     def __str__(self) -> str:
-        return f"FC({self.audio_format}, {self.rate} [{len(self.frame_data)}b])"
+        return (
+            "FC("
+            f"{self.audio_format}, {self.rate} "
+            f"[{len(self.frame_data)}b/{self.length_ms()}ms]"
+            ")"
+        )
 
     def append(self, other: Self) -> None:
         self.frame_data += other.frame_data
@@ -28,11 +33,11 @@ class FrameContainer:
     def clear(self) -> None:
         self.frame_data = b""
 
-    def shrink(self, frames_count: int) -> None:
+    def shrink_first_frames(self, frames_count: int) -> None:
         if frames_count <= 0:
             raise ValueError("Count must be positive")
 
-        n = int(frames_count * self.audio_format.sample_size)
+        n = frames_count * self.audio_format.sample_size
 
         self.frame_data = self.frame_data[n:]
 

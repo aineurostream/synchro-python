@@ -11,15 +11,12 @@ from synchro.config.commons import MIN_STEP_LENGTH_SECS, StreamConfig
 from synchro.graph.graph_edge import GraphEdge
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
-    ContextualGraphNode,
     EmittingNodeMixin,
     GraphNode,
     ReceivingNodeMixin,
 )
 
 MS_IN_SEC = 1000.0
-
-WAIT_PRECENT_OF_PREV_FRAME = 0.9
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +38,7 @@ class NodeExecutor(Thread):
         incoming: list[EdgeQueue],
         outgoing: list[EdgeQueue],
     ) -> None:
-        super().__init__()
+        super().__init__(name=node.name)
         self.node = node
         self._running = True
         self._incoming = incoming
@@ -57,24 +54,13 @@ class NodeExecutor(Thread):
         self._running = False
 
     def run(self) -> None:
-        if isinstance(self.node, ContextualGraphNode):
-            with self.node:
-                self.run_processing_loop()
-        else:
-            self.run_processing_loop()
+        with self.node:
+            while self._running:
+                self.process_inputs()
+                self.process_outputs()
+                time.sleep(MIN_STEP_LENGTH_SECS)
 
-    def run_processing_loop(self) -> None:
-        while self._running:
-            self.process_inputs()
-            sleep_time = self.process_outputs()
-            time.sleep(
-                max(
-                    MIN_STEP_LENGTH_SECS,
-                    sleep_time,
-                ),
-            )
-
-    def process_outputs(self) -> float:
+    def process_outputs(self) -> None:
         if isinstance(self.node, EmittingNodeMixin):
             outgoing_data = self.node.get_data()
             if len(outgoing_data) > 0:
@@ -85,12 +71,6 @@ class NodeExecutor(Thread):
                         out.edge,
                     )
                     out.queue.put(outgoing_data)
-
-                return (
-                    outgoing_data.length_ms() / MS_IN_SEC * WAIT_PRECENT_OF_PREV_FRAME
-                )
-
-        return 0.0
 
     def process_inputs(self) -> None:
         if isinstance(self.node, ReceivingNodeMixin):
