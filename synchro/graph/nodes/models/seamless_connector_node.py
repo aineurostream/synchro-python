@@ -11,7 +11,7 @@ from synchro.config.commons import StreamConfig
 from synchro.config.schemas import SeamlessConnectorNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
-    ContextualGraphNode,
+    GraphNode,
     EmittingNodeMixin,
     ReceivingNodeMixin,
 )
@@ -20,7 +20,7 @@ INT16_MAX = 32767
 DEFAULT_OUTPUT_RATE = 16000
 
 
-class SeamlessConnectorNode(ContextualGraphNode, ReceivingNodeMixin, EmittingNodeMixin):
+class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
     LANGUAGES_MAP: ClassVar[dict[str, str]] = {
         "en": "eng",
         "ru": "rus",

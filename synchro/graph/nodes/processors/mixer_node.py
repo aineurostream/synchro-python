@@ -1,4 +1,6 @@
-from typing import cast
+from dataclasses import dataclass
+from types import TracebackType
+from typing import cast, Literal, Self
 
 import numpy as np
 
@@ -14,10 +16,17 @@ from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNode
 MIN_MIXING_LENGTH_MULT = 10
 
 
+@dataclass
+class InnerFrameHolder:
+    frame: FrameContainer
+    streaming: bool = False
+
+
 class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
+
     def __init__(self, config: MixerNodeSchema) -> None:
         super().__init__(config.name)
-        self._incoming_buffer: dict[str, FrameContainer] = {}
+        self._incoming_buffer: dict[str, InnerFrameHolder] = {}
         self._stream_config: StreamConfig | None = None
         self._buffer: FrameContainer | None = None
 
@@ -53,13 +62,15 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         for frame in data:
             if frame.source not in self._incoming_buffer:
-                self._incoming_buffer[frame.source] = FrameContainer(
-                    audio_format=frame.audio_format,
-                    rate=frame.rate,
-                    frame_data=b"",
+                self._incoming_buffer[frame.source] = InnerFrameHolder(
+                    FrameContainer(
+                        audio_format=frame.audio_format,
+                        rate=frame.rate,
+                        frame_data=b"",
+                    )
                 )
 
-            self._incoming_buffer[frame.source].append_bytes(frame.frame_data)
+            self._incoming_buffer[frame.source].frame.append_bytes(frame.frame_data)
 
     def get_data(self) -> GraphFrameContainer:
         if self._buffer is None:
@@ -99,40 +110,52 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         if self._stream_config is None:
             raise ValueError("Stream config is not set")
 
-        min_length_frames = (
+        stream_start_frames = int(
             MIN_WORKING_STEP_LENGTH_SECS
             * MIN_MIXING_LENGTH_MULT
             * self._stream_config.rate
         )
-        selected_frame_containers = []
-        for frame in self._incoming_buffer.values():
-            current_frame_length = frame.length_frames()
-            if current_frame_length > min_length_frames:
-                selected_frame_containers.append(frame)
+
+        batch_length_frames = int(
+            MIN_WORKING_STEP_LENGTH_SECS * self._stream_config.rate,
+        )
+
+        for incoming_frame in self._incoming_buffer.values():
+            current_frame_length = incoming_frame.frame.length_frames()
+            if current_frame_length > stream_start_frames:
+                incoming_frame.streaming = True
+            elif current_frame_length < batch_length_frames:
+                incoming_frame.streaming = False
+
+        selected_frame_containers = [
+            incoming_frame.frame
+            for incoming_frame in self._incoming_buffer.values()
+            if incoming_frame.streaming
+        ]
 
         if len(selected_frame_containers) == 0:
             return b""
 
-        cut_length_frames = int(
-            MIN_WORKING_STEP_LENGTH_SECS * self._stream_config.rate,
-        )
         audio_matrix = np.zeros(
             (
                 len(selected_frame_containers),
-                cut_length_frames,
+                batch_length_frames,
             ),
             dtype=self._stream_config.audio_format.numpy_format,
         )
-        for i, frame in enumerate(selected_frame_containers):
+        for i, selected_frame in enumerate(selected_frame_containers):
             audio_matrix[i] = np.frombuffer(
-                frame.frames_to_bytes(cut_length_frames),
+                selected_frame.frames_to_bytes(batch_length_frames),
                 dtype=self._stream_config.audio_format.numpy_format,
             )
-            frame.shrink(cut_length_frames)
+            selected_frame.shrink_first_frames(batch_length_frames)
+
+        audio_matrix = np.divide(audio_matrix, len(selected_frame_containers))
+        audio_matrix = np.sum(audio_matrix, axis=0)
 
         return cast(
             bytes,
-            np.mean(audio_matrix, axis=0)
+            audio_matrix
             .astype(self._stream_config.audio_format.numpy_format)
             .tobytes(),
         )

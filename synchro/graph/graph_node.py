@@ -81,26 +81,19 @@ class GraphNode(ABC):
                     f"but expected {first_rate}",
                 )
 
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: TracebackType | None,
+    ) -> Literal[False]:
+        return False
+
     def __str__(self) -> str:
         return f"({self.name})"
-
-
-class ContextualGraphNode(GraphNode, ABC):
-    @abstractmethod
-    def __enter__(self) -> Self:
-        raise NotImplementedError
-
-    @abstractmethod
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> Literal[False]:
-        raise NotImplementedError
-
-    def __str__(self) -> str:
-        return f"(-{self.name}-)"
 
 
 class EmittingNodeMixin(ABC):

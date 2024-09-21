@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pydantic = "2.9.0"
+pydantic = "2.9.2"
 click = "8.1.7"
 PyAudio = "0.2.14"
 python-socketio = "5.11.4"

@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import soxr
 
@@ -7,6 +9,8 @@ from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
 
 INT16_MAX = 32767
+
+logger = logging.getLogger(__name__)
 
 
 class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
@@ -79,16 +83,12 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             initial_payload,
             dtype=self.output_config.audio_format.numpy_format,
         )
-        float_payload_np = converted_payload_np.astype(np.float32) / INT16_MAX
-        raw_float_payload = soxr.resample(
-            float_payload_np,
+        resulting_payload = soxr.resample(
+            converted_payload_np,
             from_rate,
             self._to_rate,
         )
-        converted_payload_np = (raw_float_payload * INT16_MAX).astype(
-            self.output_config.audio_format.numpy_format,
-        )
-        converted_payload = converted_payload_np.tobytes()
+        converted_payload = resulting_payload.tobytes()
         self._logger.debug(
             "Resampled %d bytes from %d to %d in %s",
             len(converted_payload),

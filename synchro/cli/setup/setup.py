@@ -224,10 +224,11 @@ def generate(setup: str, config: str) -> None:  # noqa: C901, PLR0912, PLR0915
         ]
 
     with open(config, "w") as config_file:
+        edges_set = set(edges)
         json.dump(
             {
                 "nodes": [node.model_dump(mode="json") for node in nodes],
-                "edges": edges,
+                "edges": list(edges_set),
             },
             config_file,
             indent=4,

@@ -1,7 +1,7 @@
 from abc import ABC
 
-from synchro.graph.graph_node import ContextualGraphNode, EmittingNodeMixin
+from synchro.graph.graph_node import GraphNode, EmittingNodeMixin
 
 
-class AbstractInputNode(ContextualGraphNode, EmittingNodeMixin, ABC):
+class AbstractInputNode(GraphNode, EmittingNodeMixin, ABC):
     pass
