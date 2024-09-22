@@ -23,12 +23,10 @@ class ChannelOutputNode(AbstractOutputNode):
         self._config = config
         self._manager = manager
         self._stream: pyaudio.Stream | None = None
-        self._prefilled = False
 
     def __enter__(self) -> Self:
         frames_per_buffer = int(
-            self._config.stream.rate
-            * MIN_STEP_LENGTH_SECS
+            self._config.stream.rate * MIN_STEP_LENGTH_SECS,
         )
 
         self._stream = self._manager.context.open(
@@ -90,15 +88,8 @@ class ChannelOutputNode(AbstractOutputNode):
             raise RuntimeError("Audio stream is not open")
 
         frames_per_buffer = int(
-            self._config.stream.rate
-            * MIN_STEP_LENGTH_SECS
+            self._config.stream.rate * MIN_STEP_LENGTH_SECS,
         )
-
-        if not self._prefilled:
-            logger.info(f"Prefilling buffer for {frames_per_buffer} samples")
-            prefill_bytes = frames_per_buffer * self._config.stream.rate
-            self._stream.write(b"0" * prefill_bytes)
-            self._prefilled = True
 
         if frames_per_buffer > frames[0].length_frames():
             raise ValueError(

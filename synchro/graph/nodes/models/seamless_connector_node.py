@@ -11,8 +11,8 @@ from synchro.config.commons import StreamConfig
 from synchro.config.schemas import SeamlessConnectorNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
-    GraphNode,
     EmittingNodeMixin,
+    GraphNode,
     ReceivingNodeMixin,
 )
 
