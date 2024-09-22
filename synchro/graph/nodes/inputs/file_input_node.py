@@ -8,6 +8,8 @@ from synchro.config.schemas import InputFileStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
 
+BYTES_IN_INT16 = 2
+
 
 class FileInputNode(AbstractInputNode):
     def __init__(
@@ -27,7 +29,7 @@ class FileInputNode(AbstractInputNode):
         if wavefile.getnchannels() != 1:
             raise ValueError("Only mono files are supported")
 
-        if wavefile.getsampwidth() != 2:
+        if wavefile.getsampwidth() != BYTES_IN_INT16:
             raise ValueError("Only 16-bit audio files are supported")
 
         length = wavefile.getnframes()
@@ -80,26 +82,26 @@ class FileInputNode(AbstractInputNode):
             )
 
         time_passed_samples = time_passed_ms * self._config.stream.rate // 1000
-        time_passed_bytes = time_passed_samples * self._config.stream.audio_format.sample_size
+        time_passed_bytes = (
+            time_passed_samples * self._config.stream.audio_format.sample_size
+        )
         self._last_query = time.time()
 
         data_to_send = self._wavefile_data[
-            self._wavefile_index: self._wavefile_index + time_passed_bytes
+            self._wavefile_index : self._wavefile_index + time_passed_bytes
         ]
         self._wavefile_index += time_passed_bytes
 
         not_enough_data = len(data_to_send) < time_passed_bytes
         if not_enough_data and self._config.looping:
             bytes_left = time_passed_bytes - len(data_to_send)
-            data_to_send += self._wavefile_data[
-                0: bytes_left
-            ]
+            data_to_send += self._wavefile_data[0:bytes_left]
             self._wavefile_index = bytes_left
         elif not_enough_data:
             self._wavefile_data = None
             return GraphFrameContainer.from_config(
                 self.name,
-                self._config.stream
+                self._config.stream,
             )
 
         return GraphFrameContainer.from_config(

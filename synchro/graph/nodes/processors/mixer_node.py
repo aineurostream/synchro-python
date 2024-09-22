@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from types import TracebackType
-from typing import cast, Literal, Self
+from typing import cast
 
 import numpy as np
 
@@ -13,7 +12,8 @@ from synchro.config.schemas import MixerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
 
-MIN_MIXING_LENGTH_MULT = 10
+MAX_MIXING_LENGTH_MULT = 3
+MIN_MIXING_LENGTH_MULT = 2
 
 
 @dataclass
@@ -23,7 +23,6 @@ class InnerFrameHolder:
 
 
 class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
-
     def __init__(self, config: MixerNodeSchema) -> None:
         super().__init__(config.name)
         self._incoming_buffer: dict[str, InnerFrameHolder] = {}
@@ -67,7 +66,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                         audio_format=frame.audio_format,
                         rate=frame.rate,
                         frame_data=b"",
-                    )
+                    ),
                 )
 
             self._incoming_buffer[frame.source].frame.append_bytes(frame.frame_data)
@@ -113,7 +112,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         stream_start_frames = int(
             MIN_WORKING_STEP_LENGTH_SECS
             * MIN_MIXING_LENGTH_MULT
-            * self._stream_config.rate
+            * self._stream_config.rate,
         )
 
         batch_length_frames = int(
@@ -155,7 +154,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         return cast(
             bytes,
-            audio_matrix
-            .astype(self._stream_config.audio_format.numpy_format)
-            .tobytes(),
+            audio_matrix.astype(
+                self._stream_config.audio_format.numpy_format,
+            ).tobytes(),
         )
