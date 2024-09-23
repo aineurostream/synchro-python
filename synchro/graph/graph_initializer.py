@@ -22,7 +22,6 @@ from synchro.graph.nodes.outputs.file_output_node import FileOutputNode
 from synchro.graph.nodes.processors.mixer_node import MixerNode
 from synchro.graph.nodes.processors.resample_node import ResampleNode
 
-
 logger = logging.getLogger(__name__)
 
 
