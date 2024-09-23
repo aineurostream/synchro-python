@@ -1,16 +1,20 @@
 import logging
+import time
 from types import TracebackType
 from typing import Literal, Self
 
 import pyaudio
 
 from synchro.audio.audio_device_manager import AudioDeviceManager
-from synchro.config.commons import MIN_STEP_LENGTH_SECS, StreamConfig
+from synchro.config.commons import MIN_STEP_LENGTH_SECS, StreamConfig, MIN_WORKING_STEP_LENGTH_SECS
 from synchro.config.schemas import OutputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.outputs.abstract_output_node import AbstractOutputNode
 
 logger = logging.getLogger(__name__)
+
+
+PREFILL_SECONDS = 2
 
 
 class ChannelOutputNode(AbstractOutputNode):
@@ -23,6 +27,7 @@ class ChannelOutputNode(AbstractOutputNode):
         self._config = config
         self._manager = manager
         self._stream: pyaudio.Stream | None = None
+        self._last_time_emit = 0
 
     def __enter__(self) -> Self:
         frames_per_buffer = int(
@@ -37,6 +42,10 @@ class ChannelOutputNode(AbstractOutputNode):
             output_device_index=self._config.device,
             frames_per_buffer=frames_per_buffer,
         )
+
+        prefill_frames = int(self._config.stream.rate * PREFILL_SECONDS)
+        prefill_bytes = b"\x00" * self._config.stream.audio_format.sample_size * prefill_frames
+        self._stream.write(prefill_bytes)
 
         return self
 
@@ -79,7 +88,8 @@ class ChannelOutputNode(AbstractOutputNode):
         return self._config.stream
 
     def put_data(self, frames: list[GraphFrameContainer]) -> None:
-        logger.info(f"Writing {frames[0].length_frames()} frames to stream")
+        active_frame = frames[0]
+        logger.info(f"Writing {active_frame.length_frames()} frames to stream")
 
         if len(frames) != 1:
             raise ValueError("Expected one frame container")
@@ -91,9 +101,18 @@ class ChannelOutputNode(AbstractOutputNode):
             self._config.stream.rate * MIN_STEP_LENGTH_SECS,
         )
 
-        if frames_per_buffer > frames[0].length_frames():
+        if frames_per_buffer > active_frame.length_frames():
             raise ValueError(
-                f"Expected {frames_per_buffer} frames, got {frames[0].length_frames()}",
+                f"Expected {frames_per_buffer} frames, got {active_frame.length_frames()}",
             )
 
-        self._stream.write(frames[0].frame_data)
+        current_emit_time = time.time()
+        if self._last_time_emit > 0:
+            time_diff = current_emit_time - self._last_time_emit
+            if time_diff > active_frame.length_secs():
+                logger.warning("Time diff is %.3f while expected %.3f", time_diff, active_frame.length_secs())
+
+
+        self._stream.write(active_frame.frame_data)
+
+        self._last_time_emit = current_emit_time
