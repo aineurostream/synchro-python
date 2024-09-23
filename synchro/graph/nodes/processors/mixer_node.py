@@ -12,8 +12,8 @@ from synchro.config.schemas import MixerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
 
-MAX_MIXING_LENGTH_MULT = 3
-MIN_MIXING_LENGTH_MULT = 2
+MAX_MIXING_LENGTH_MULT = 4
+MIN_MIXING_LENGTH_MULT = 1
 
 
 @dataclass
@@ -28,6 +28,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._incoming_buffer: dict[str, InnerFrameHolder] = {}
         self._stream_config: StreamConfig | None = None
         self._buffer: FrameContainer | None = None
+        self._inputs_count = 1
 
     def initialize_edges(
         self,
@@ -36,6 +37,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
     ) -> None:
         self.check_has_inputs(inputs)
         self.check_has_outputs(outputs)
+        self._inputs_count = len(inputs)
 
     def predict_config(
         self,
@@ -111,6 +113,12 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         stream_start_frames = int(
             MIN_WORKING_STEP_LENGTH_SECS
+            * MAX_MIXING_LENGTH_MULT
+            * self._stream_config.rate,
+        )
+
+        stream_end_frames = int(
+            MIN_WORKING_STEP_LENGTH_SECS
             * MIN_MIXING_LENGTH_MULT
             * self._stream_config.rate,
         )
@@ -123,7 +131,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             current_frame_length = incoming_frame.frame.length_frames()
             if current_frame_length > stream_start_frames:
                 incoming_frame.streaming = True
-            elif current_frame_length < batch_length_frames:
+            elif current_frame_length < stream_end_frames:
                 incoming_frame.streaming = False
 
         selected_frame_containers = [
@@ -149,7 +157,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             )
             selected_frame.shrink_first_frames(batch_length_frames)
 
-        audio_matrix = np.divide(audio_matrix, len(selected_frame_containers))
+        audio_matrix = np.divide(audio_matrix, self._inputs_count)
         audio_matrix = np.sum(audio_matrix, axis=0)
 
         return cast(

@@ -49,5 +49,8 @@ class FrameContainer:
             len(self.frame_data) * 1000 // (self.rate * self.audio_format.sample_size)
         )
 
+    def length_secs(self) -> float:
+        return self.length_ms() / 1000
+
     def length_frames(self) -> int:
         return len(self)

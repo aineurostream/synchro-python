@@ -1,3 +1,5 @@
+import logging
+
 from synchro.audio.audio_device_manager import AudioDeviceManager
 from synchro.config.schemas import (
     AllNodeTypes,
@@ -19,6 +21,9 @@ from synchro.graph.nodes.outputs.channel_output_node import ChannelOutputNode
 from synchro.graph.nodes.outputs.file_output_node import FileOutputNode
 from synchro.graph.nodes.processors.mixer_node import MixerNode
 from synchro.graph.nodes.processors.resample_node import ResampleNode
+
+
+logger = logging.getLogger(__name__)
 
 
 class GraphInitializer:
@@ -92,5 +97,7 @@ class GraphInitializer:
             raise ValueError("Duplicate edges found")
 
         edges = [GraphEdge(edge[0], edge[1]) for edge in self._config.edges]
+
+        logger.info(f"Built graph with {len(nodes)} nodes and {len(edges)} edges")
 
         return nodes, edges
