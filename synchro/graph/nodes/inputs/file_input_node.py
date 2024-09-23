@@ -71,17 +71,17 @@ class FileInputNode(AbstractInputNode):
 
         if self._delay_left > 0:
             delay_duration_ms = min(self._delay_left, time_passed_ms)
-            delay_samples = delay_duration_ms * self._config.stream.rate // 1000
+            delay_samples = int(delay_duration_ms * self._config.stream.rate // 1000)
             delay_bytes = delay_samples * self._config.stream.audio_format.sample_size
             self._delay_left -= delay_duration_ms
             self._last_query = time.time()
             return GraphFrameContainer.from_config(
                 self.name,
                 self._config.stream,
-                b"\0" * delay_bytes,
+                b"\x00" * delay_bytes,
             )
 
-        time_passed_samples = time_passed_ms * self._config.stream.rate // 1000
+        time_passed_samples = int(time_passed_ms * self._config.stream.rate // 1000)
         time_passed_bytes = (
             time_passed_samples * self._config.stream.audio_format.sample_size
         )
