@@ -51,22 +51,11 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         self._logger.debug("Connecting to %s", url)
         self._client.connect(
-            f"{url}/?clientID={self._user_id}",
+            str(url),
             transports=["websocket"],
             socketio_path="/ws/socket.io",
         )
         self._logger.debug("Connected to %s with SID: %s", url, self._client.sid)
-        self._client.emit(
-            "join_room",
-            (
-                self._user_id,
-                self._room_id,
-                {
-                    "roles": ["speaker", "listener"],
-                    "lockServerName": None,
-                },
-            ),
-        )
 
         if to_language not in self.LANGUAGES_MAP:
             raise ValueError(
@@ -82,32 +71,11 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         language_to_sc = self.LANGUAGES_MAP[to_language]
         language_from_sc = self.LANGUAGES_MAP[from_language]
-
-        self._logger.debug("Joined room %s in %s", self._room_id, self._client.sid)
-        self._client.emit(
-            "set_dynamic_config",
-            {
-                "source_language": language_from_sc,
-                "target_language": language_to_sc,
-                "expressive": None,
-            },
-        )
-        self._logger.debug(
-            "Set dynamic config for %s to %s",
-            self._client.sid,
-            language_to_sc,
-        )
-
         self._client.emit(
             "configure_stream",
             {
-                "event": "config",
-                "rate": DEFAULT_OUTPUT_RATE,
-                "model_name": "SeamlessStreaming",
-                "model_type": "s2s&t",
-                "debug": False,
-                "async_processing": True,
-                "buffer_limit": 1,
+                "language_from": language_from_sc,
+                "language_to": language_to_sc,
             },
         )
         self._logger.debug("Configured stream for %s", self._client.sid)

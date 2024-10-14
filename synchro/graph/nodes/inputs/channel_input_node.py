@@ -90,8 +90,8 @@ class ChannelInputNode(AbstractInputNode):
 
         voice_result = self._vad.detect_voice(read_bytes)
         if voice_result == VoiceActivityDetectorResult.SPEECH:
-            self._logger.debug("Detected speech")
+            self._logger.debug("Detected speech: %d bytes", len(read_bytes))
             return read_bytes
 
-        self._logger.debug("No speech detected")
+        self._logger.info("No speech detected")
         return b""
