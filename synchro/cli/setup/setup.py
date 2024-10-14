@@ -25,7 +25,7 @@ def manager() -> None:
     """System information and management"""
 
 
-def _node_input_creator(
+def _node_file_input_creator(
     index: int,
     file_path: str,
     language: str,
@@ -121,7 +121,7 @@ def generate(setup: str, config: str) -> None:  # noqa: C901, PLR0912, PLR0915
     edges: list[tuple[str, str]] = []
 
     language_set = {
-        item["language"] for item in setup_data["inputs"] if item["language"] != "all"
+        item["language"] for item in setup_data["outputs"] if item["language"] != "all"
     }
 
     desired_rate = setup_data["sample_rate"]
@@ -133,7 +133,7 @@ def generate(setup: str, config: str) -> None:  # noqa: C901, PLR0912, PLR0915
     for index, input_setup in enumerate(setup_data["inputs"]):
         language = input_setup["language"]
 
-        input_node = _node_input_creator(
+        input_node = _node_file_input_creator(
             index=index,
             file_path=input_setup["file"],
             language=language,

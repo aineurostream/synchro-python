@@ -1,14 +1,17 @@
+import logging
 import time
 import wave
 from types import TracebackType
 from typing import Literal, Self
 
+from synchro.config.audio_format import AudioFormat, AudioFormatType
 from synchro.config.commons import StreamConfig
 from synchro.config.schemas import InputFileStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
 
-BYTES_IN_INT16 = 2
+
+logger = logging.getLogger(__name__)
 
 
 class FileInputNode(AbstractInputNode):
@@ -29,7 +32,8 @@ class FileInputNode(AbstractInputNode):
         if wavefile.getnchannels() != 1:
             raise ValueError("Only mono files are supported")
 
-        if wavefile.getsampwidth() != BYTES_IN_INT16:
+        supported_format = AudioFormat(format_type=AudioFormatType.INT_16)
+        if wavefile.getsampwidth() != supported_format.sample_size:
             raise ValueError("Only 16-bit audio files are supported")
 
         length = wavefile.getnframes()
@@ -94,6 +98,7 @@ class FileInputNode(AbstractInputNode):
 
         not_enough_data = len(data_to_send) < time_passed_bytes
         if not_enough_data and self._config.looping:
+            logger.info("Looping the file")
             bytes_left = time_passed_bytes - len(data_to_send)
             data_to_send += self._wavefile_data[0:bytes_left]
             self._wavefile_index = bytes_left
@@ -104,6 +109,7 @@ class FileInputNode(AbstractInputNode):
                 self._config.stream,
             )
 
+        logger.info("Sending %d bytes", len(data_to_send))
         return GraphFrameContainer.from_config(
             self.name,
             self._config.stream,

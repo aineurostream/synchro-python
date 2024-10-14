@@ -77,7 +77,7 @@ class GraphInitializer:
         for node_config in node_configs:
             if isinstance(node_config, InputChannelStreamerNodeSchema):
                 nodes.append(self._create_channel_input_node(node_config))
-            if isinstance(node_config, InputFileStreamerNodeSchema):
+            elif isinstance(node_config, InputFileStreamerNodeSchema):
                 nodes.append(self._create_file_input_node(node_config))
             elif isinstance(node_config, OutputChannelStreamerNodeSchema):
                 nodes.append(self._create_channel_output_node(node_config))
