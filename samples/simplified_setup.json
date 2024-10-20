@@ -67,6 +67,6 @@
     }
   ],
   "sample_rate": 16000,
-  "model": "http://localhost:7860",
-  "no_model": true
+  "model": "ws://localhost:8000",
+  "no_model": false
 }

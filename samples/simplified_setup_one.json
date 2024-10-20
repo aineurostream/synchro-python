@@ -1,0 +1,22 @@
+{
+  "inputs": [
+    {
+      "file": "./samples/test_hfc_male.wav",
+      "language": "en",
+      "delay_ms": 0
+    }
+  ],
+  "outputs": [
+    {
+      "file": "./samples/result_de.wav",
+      "language": "ru"
+    },
+    {
+      "device": "speaker",
+      "language": "ru"
+    }
+  ],
+  "sample_rate": 16000,
+  "model": "http://localhost:8000",
+  "no_model": false
+}

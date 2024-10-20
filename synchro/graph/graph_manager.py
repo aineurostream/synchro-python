@@ -65,12 +65,13 @@ class NodeExecutor(Thread):
             outgoing_data = self.node.get_data()
             if len(outgoing_data) > 0:
                 for out in self._outgoing:
-                    logger.debug(
-                        "Sending %s bytes %s",
-                        len(outgoing_data.frame_data),
-                        out.edge,
-                    )
-                    out.queue.put(outgoing_data)
+                    if len(outgoing_data) > 0:
+                        logger.debug(
+                            "Sending %s bytes %s",
+                            len(outgoing_data.frame_data),
+                            out.edge,
+                        )
+                        out.queue.put(outgoing_data)
 
     def process_inputs(self) -> None:
         if isinstance(self.node, ReceivingNodeMixin):

@@ -9,7 +9,7 @@ from synchro.audio.voice_activity_detector import (
     VoiceActivityDetectorResult,
 )
 from synchro.config.commons import StreamConfig
-from synchro.config.schemas import ChannelStreamerNodeSchema
+from synchro.config.schemas import InputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
 
@@ -20,7 +20,7 @@ MIN_BUFFER_SIZE_SEC = 0.03
 class ChannelInputNode(AbstractInputNode):
     def __init__(
         self,
-        config: ChannelStreamerNodeSchema,
+        config: InputChannelStreamerNodeSchema,
         manager: AudioDeviceManager,
     ) -> None:
         super().__init__(config.name)
