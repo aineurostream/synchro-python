@@ -140,13 +140,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                         "ATG: Received audio message: %s",
                         received_message[0],
                     )
-                    data = received_message[1]
-                    raw_rate = data["sample_rate"]
-                    raw_payload: list[float] = data["payload"]
-                    raw_float_payload = np.asarray(raw_payload)
-                    int16_payload = (raw_float_payload * INT16_MAX).astype(np.int16)
-                    converted_payload = int16_payload.tobytes()
-                    audio_result += converted_payload
+                    audio_result += received_message[1]
                 else:
                     self._logger.debug(
                         "ATG: Received non-audio message: %s",

@@ -3,7 +3,7 @@
         {
             "name": "input_file_0_ru",
               "node_type": "input_channel",
-              "device": 8,
+              "device": 9,
               "channel": 1,
               "stream": {
                 "language": "ru",
@@ -55,7 +55,7 @@
         },
         {
             "name": "output_device_1_en",
-            "device": 8,
+            "device": 9,
             "channel": 1,
             "stream": {
                 "language": "en",
