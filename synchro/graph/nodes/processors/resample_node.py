@@ -26,7 +26,7 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         outputs: list[StreamConfig],
     ) -> None:
         self.check_inputs_count(inputs, 1)
-        self.check_outputs_count(inputs, 1)
+        self.check_has_outputs(outputs)
         if self._to_rate != outputs[0].rate:
             raise ValueError(
                 f"Expected output rate to be {self._to_rate} but got {outputs[0].rate}",

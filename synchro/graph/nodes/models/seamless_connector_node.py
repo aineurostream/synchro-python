@@ -17,7 +17,8 @@ from synchro.graph.graph_node import (
 )
 
 INT16_MAX = 32767
-DEFAULT_OUTPUT_RATE = 16000
+DEFAULT_INPUT_RATE = 16000
+DEFAULT_OUTPUT_RATE = 22050
 
 
 class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
@@ -109,7 +110,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         return StreamConfig(
             language=self._config.to_language,
             audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
-            rate=DEFAULT_OUTPUT_RATE,
+            rate=DEFAULT_INPUT_RATE,
         )
 
     def put_data(self, data: list[GraphFrameContainer]) -> None:
