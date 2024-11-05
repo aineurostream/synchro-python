@@ -8,7 +8,6 @@ from synchro.audio.voice_activity_detector import (
     VoiceActivityDetector,
     VoiceActivityDetectorResult,
 )
-from synchro.config.commons import StreamConfig
 from synchro.config.schemas import InputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
@@ -57,20 +56,6 @@ class ChannelInputNode(AbstractInputNode):
             self._stream.close()
 
         return False
-
-    def initialize_edges(
-        self,
-        inputs: list[StreamConfig],
-        outputs: list[StreamConfig],
-    ) -> None:
-        self.check_inputs_count(inputs, 0)
-        self.check_has_outputs(outputs)
-
-    def predict_config(
-        self,
-        _inputs: list[StreamConfig],
-    ) -> StreamConfig:
-        return self._config.stream
 
     def get_data(self) -> GraphFrameContainer:
         return GraphFrameContainer.from_config(

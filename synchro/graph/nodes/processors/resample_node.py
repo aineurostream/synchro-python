@@ -20,64 +20,29 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self.output_config: StreamConfig | None = None
         self._to_rate = config.to_rate
 
-    def initialize_edges(
-        self,
-        inputs: list[StreamConfig],
-        outputs: list[StreamConfig],
-    ) -> None:
-        self.check_inputs_count(inputs, 1)
-        self.check_has_outputs(outputs)
-        if self._to_rate != outputs[0].rate:
-            raise ValueError(
-                f"Expected output rate to be {self._to_rate} but got {outputs[0].rate}",
-            )
-
-        if inputs[0].rate == self._to_rate:
-            raise ValueError(
-                f"Resampling is not needed from {inputs[0].rate} in {self.name}",
-            )
-
-    def predict_config(
-        self,
-        inputs: list[StreamConfig],
-    ) -> StreamConfig:
-        self.check_inputs_count(inputs, 1)
-        first_input = inputs[0]
-        self.output_config = StreamConfig(
-            audio_format=first_input.audio_format,
-            language=first_input.language,
-            rate=self._to_rate,
-        )
-
-        return self.output_config
-
     def put_data(self, data: list[GraphFrameContainer]) -> None:
         if len(data) != 1:
             raise ValueError(f"Expected one frame container, got {len(data)}")
 
+        if self.output_config is None:
+            self.output_config = StreamConfig(
+                language=data[0].language,
+                audio_format=data[0].audio_format,
+                rate=self._to_rate,
+            )
+
         self._buffer.append(data[0])
 
-    def get_data(self) -> GraphFrameContainer:
-        if self.output_config is None:
-            raise ValueError("Output config is not set")
-
-        if not self._buffer:
-            return GraphFrameContainer.from_config(
-                self.name,
-                self.output_config,
-                b"",
-            )
+    def get_data(self) -> GraphFrameContainer | None:
+        if not self._buffer or not self.output_config:
+            return None
 
         initial_payload = b"".join([frame.frame_data for frame in self._buffer])
         from_rate = self._buffer[0].rate
         self._buffer.clear()
 
         if len(initial_payload) == 0:
-            return GraphFrameContainer.from_config(
-                self.name,
-                self.output_config,
-                b"",
-            )
+            return None
 
         converted_payload_np = np.frombuffer(
             initial_payload,

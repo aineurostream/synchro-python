@@ -3,13 +3,12 @@ from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import Literal, Self
 
-from synchro.config.commons import StreamConfig
 from synchro.graph.graph_frame_container import GraphFrameContainer
 
 logger = logging.getLogger(__name__)
 
 
-class GraphNode(ABC):
+class GraphNode(ABC):  # noqa: B024
     def __init__(self, name: str) -> None:
         self._name = name
         self._logger = logger.getChild(str(self))
@@ -18,68 +17,6 @@ class GraphNode(ABC):
     @property
     def name(self) -> str:
         return self._name
-
-    @abstractmethod
-    def initialize_edges(
-        self,
-        inputs: list[StreamConfig],
-        outputs: list[StreamConfig],
-    ) -> None:
-        pass
-
-    @abstractmethod
-    def predict_config(
-        self,
-        inputs: list[StreamConfig],
-    ) -> StreamConfig:
-        pass
-
-    def check_inputs_count(
-        self,
-        inputs: list[StreamConfig],
-        allowed_count: int,
-    ) -> None:
-        if len(inputs) != allowed_count:
-            raise ValueError(
-                f"Node {self} has inputs {inputs} - {allowed_count} ALLOWED",
-            )
-
-    def check_outputs_count(
-        self,
-        outputs: list[StreamConfig],
-        allowed_count: int,
-    ) -> None:
-        if len(outputs) != allowed_count:
-            raise ValueError(
-                f"Node {self} has outputs {outputs} - {allowed_count} ALLOWED",
-            )
-
-    def check_has_inputs(self, inputs: list[StreamConfig]) -> None:
-        if len(inputs) == 0:
-            raise ValueError(f"Node {self} has NO inputs {inputs}")
-
-    def check_has_outputs(self, outputs: list[StreamConfig]) -> None:
-        if len(outputs) == 0:
-            raise ValueError(f"Node {self} has NO outputs {outputs}")
-
-    def check_audio_formats(self, configs: list[StreamConfig]) -> None:
-        if len(configs) == 0:
-            raise ValueError(f"Node {self} has NO inputs {configs}")
-
-        first_format = configs[0].audio_format
-        first_rate = configs[0].rate
-        for other_stream in configs:
-            if other_stream.audio_format != first_format:
-                raise ValueError(
-                    f"Node {self} has AF {other_stream.audio_format} "
-                    f"but expected {first_format}",
-                )
-
-            if other_stream.rate != first_rate:
-                raise ValueError(
-                    f"Node {self} has rate {other_stream.rate} "
-                    f"but expected {first_rate}",
-                )
 
     def __enter__(self) -> Self:
         return self
@@ -98,7 +35,7 @@ class GraphNode(ABC):
 
 class EmittingNodeMixin(ABC):
     @abstractmethod
-    def get_data(self) -> GraphFrameContainer:
+    def get_data(self) -> GraphFrameContainer | None:
         raise NotImplementedError
 
 

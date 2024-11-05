@@ -1,8 +1,7 @@
 import uuid
 from types import TracebackType
-from typing import ClassVar, Literal, Self
+from typing import Literal, Self
 
-import numpy as np
 from socketio import SimpleClient
 from socketio.exceptions import TimeoutError as SioTimeoutError
 
@@ -22,14 +21,6 @@ DEFAULT_OUTPUT_RATE = 22050
 
 
 class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
-    LANGUAGES_MAP: ClassVar[dict[str, str]] = {
-        "en": "eng",
-        "ru": "rus",
-        "fr": "fra",
-        "ch": "cmn",
-        "de": "deu",
-    }
-
     def __init__(
         self,
         config: SeamlessConnectorNodeSchema,
@@ -47,8 +38,6 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             raise RuntimeError("Client already connected")
 
         url = self._config.server_url
-        from_language = self._config.from_language
-        to_language = self._config.to_language
 
         self._logger.debug("Connecting to %s", url)
         self._client.connect(
@@ -58,25 +47,11 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         )
         self._logger.debug("Connected to %s with SID: %s", url, self._client.sid)
 
-        if to_language not in self.LANGUAGES_MAP:
-            raise ValueError(
-                f"Unsupported language {to_language}"
-                f" - add to language map if needed",
-            )
-
-        if from_language not in self.LANGUAGES_MAP:
-            raise ValueError(
-                f"Unsupported language {from_language}"
-                f" - add to language map if needed",
-            )
-
-        language_to_sc = self.LANGUAGES_MAP[to_language]
-        language_from_sc = self.LANGUAGES_MAP[from_language]
         self._client.emit(
             "configure_stream",
             {
-                "language_from": language_from_sc,
-                "language_to": language_to_sc,
+                "language_from": self._config.from_language,
+                "language_to": self._config.to_language,
             },
         )
         self._logger.debug("Configured stream for %s", self._client.sid)
@@ -95,24 +70,6 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         return False
 
-    def initialize_edges(
-        self,
-        inputs: list[StreamConfig],
-        outputs: list[StreamConfig],
-    ) -> None:
-        self.check_inputs_count(inputs, 1)
-        self.check_has_outputs(outputs)
-
-    def predict_config(
-        self,
-        _inputs: list[StreamConfig],
-    ) -> StreamConfig:
-        return StreamConfig(
-            language=self._config.to_language,
-            audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
-            rate=DEFAULT_INPUT_RATE,
-        )
-
     def put_data(self, data: list[GraphFrameContainer]) -> None:
         if len(data) != 1:
             raise ValueError("Expected one frame container")
@@ -129,10 +86,9 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             self._logger.debug("Sent %d bytes to %s", len(samples), self._client.sid)
             self._buffer = b""
 
-    def get_data(self) -> GraphFrameContainer:
+    def get_data(self) -> GraphFrameContainer | None:
         has_incoming_messages = True
         audio_result = b""
-        raw_rate = DEFAULT_OUTPUT_RATE
         while has_incoming_messages:
             try:
                 received_message = self._client.receive(timeout=0.01)
@@ -162,7 +118,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             StreamConfig(
                 language=self._config.to_language,
                 audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
-                rate=raw_rate,
+                rate=DEFAULT_OUTPUT_RATE,
             ),
             audio_result,
         )

@@ -1,13 +1,12 @@
 import logging
 import time
-from collections import defaultdict
 from contextlib import suppress
 from queue import Empty, Queue
 from threading import Thread
 
 from pydantic import BaseModel, ConfigDict
 
-from synchro.config.commons import MIN_STEP_LENGTH_SECS, StreamConfig
+from synchro.config.commons import MIN_STEP_LENGTH_SECS
 from synchro.graph.graph_edge import GraphEdge
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
@@ -63,7 +62,7 @@ class NodeExecutor(Thread):
     def process_outputs(self) -> None:
         if isinstance(self.node, EmittingNodeMixin):
             outgoing_data = self.node.get_data()
-            if len(outgoing_data) > 0:
+            if outgoing_data is not None and len(outgoing_data) > 0:
                 for out in self._outgoing:
                     if len(outgoing_data) > 0:
                         logger.debug(
@@ -95,9 +94,6 @@ class GraphManager:
         if self._executing:
             raise RuntimeError("Graph is already executing")
         self._executing = True
-        logger.info("Synchro graph warm up")
-        self._warmup_graph()
-
         logger.info("Starting Synchro graph execution")
         active_threads: list[NodeExecutor] = []
 
@@ -144,51 +140,3 @@ class GraphManager:
 
     def stop(self) -> None:
         self._executing = False
-
-    def _warmup_graph(self) -> None:
-        starting_nodes: list[GraphNode] = []
-        preferred_inputs: dict[str, list[StreamConfig]] = defaultdict(list)
-        resulting_inputs: dict[str, StreamConfig] = {}
-        visited_nodes: set[str] = set()
-        logger.debug("Warming up graph")
-        starting_nodes += [
-            node
-            for node in self._nodes.values()
-            if not any(edge.target == node.name for edge in self._edges)
-        ]
-
-        while len(starting_nodes) > 0:
-            node = starting_nodes.pop()
-            visited_nodes.add(node.name)
-
-            outgoing_config = node.predict_config(
-                preferred_inputs[node.name],
-            )
-            resulting_inputs[node.name] = outgoing_config
-            logger.debug("Warm up node %s resulted in %s", node, outgoing_config)
-            for edge in self._edges:
-                if edge.source == node.name:
-                    target_node = self._nodes[edge.target]
-                    preferred_inputs[edge.target].append(outgoing_config)
-                    if target_node.name not in visited_nodes:
-                        starting_nodes.append(target_node)
-
-        for node in self._nodes.values():
-            inputs = [edge for edge in self._edges if edge.target == node.name]
-            outputs = [edge for edge in self._edges if edge.source == node.name]
-            node.initialize_edges(
-                inputs=[
-                    resulting_inputs[edge.source]
-                    for edge in inputs
-                    if edge.source in resulting_inputs
-                ],
-                outputs=[
-                    resulting_inputs[edge.target]
-                    for edge in outputs
-                    if edge.target in resulting_inputs
-                ],
-            )
-
-        for init_node, results in resulting_inputs.items():
-            logger.info("Node %s initialized with %s", init_node, results)
-        logger.debug("Warming up graph finished")

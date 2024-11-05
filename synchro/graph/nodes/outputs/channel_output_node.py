@@ -8,7 +8,6 @@ import pyaudio
 from synchro.audio.audio_device_manager import AudioDeviceManager
 from synchro.config.commons import (
     MIN_STEP_LENGTH_SECS,
-    StreamConfig,
 )
 from synchro.config.schemas import OutputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
@@ -65,32 +64,6 @@ class ChannelOutputNode(AbstractOutputNode):
             self._stream.close()
 
         return False
-
-    def initialize_edges(
-        self,
-        inputs: list[StreamConfig],
-        outputs: list[StreamConfig],
-    ) -> None:
-        self.check_inputs_count(inputs, 1)
-        self.check_outputs_count(outputs, 0)
-
-        if inputs[0].audio_format != self._config.stream.audio_format:
-            raise ValueError(
-                f"Node {self} has AF {inputs[0].audio_format} "
-                f"but expected {self._config.stream.audio_format}",
-            )
-
-        if inputs[0].rate != self._config.stream.rate:
-            raise ValueError(
-                f"Node {self} has rate {inputs[0].rate} "
-                f"but expected {self._config.stream.rate}",
-            )
-
-    def predict_config(
-        self,
-        _inputs: list[StreamConfig],
-    ) -> StreamConfig:
-        return self._config.stream
 
     def put_data(self, frames: list[GraphFrameContainer]) -> None:
         active_frame = frames[0]
