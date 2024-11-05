@@ -30,33 +30,18 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._buffer: FrameContainer | None = None
         self._inputs_count = 1
 
-    def initialize_edges(
-        self,
-        inputs: list[StreamConfig],
-        outputs: list[StreamConfig],
-    ) -> None:
-        self.check_has_inputs(inputs)
-        self.check_has_outputs(outputs)
-        self._inputs_count = len(inputs)
-
-    def predict_config(
-        self,
-        inputs: list[StreamConfig],
-    ) -> StreamConfig:
-        self.check_has_inputs(inputs)
-        self.check_audio_formats(inputs)
-        self._stream_config = inputs[0]
-        self._buffer = FrameContainer(
-            audio_format=self._stream_config.audio_format,
-            rate=self._stream_config.rate,
-            frame_data=b"",
-        )
-
-        return inputs[0]
-
     def put_data(self, data: list[GraphFrameContainer]) -> None:
         if self._stream_config is None:
-            raise ValueError("Stream config is not set")
+            self._stream_config = StreamConfig(
+                language=data[0].language,
+                audio_format=data[0].audio_format,
+                rate=data[0].rate,
+            )
+            self._buffer = FrameContainer(
+                audio_format=self._stream_config.audio_format,
+                rate=self._stream_config.rate,
+                frame_data=b"",
+            )
 
         if len(data) == 0:
             return
@@ -73,12 +58,9 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
             self._incoming_buffer[frame.source].frame.append_bytes(frame.frame_data)
 
-    def get_data(self) -> GraphFrameContainer:
-        if self._buffer is None:
-            raise ValueError("Buffer is not set")
-
-        if self._stream_config is None:
-            raise ValueError("Stream config is not set")
+    def get_data(self) -> GraphFrameContainer | None:
+        if self._buffer is None or self._stream_config is None:
+            return None
 
         mixed_frames = self.mix_frames()
         self._logger.debug(
@@ -88,9 +70,6 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         )
 
         self._buffer.append_bytes(mixed_frames)
-
-        if self._stream_config is None:
-            raise ValueError("Stream config is not set")
 
         if len(self._buffer) == 0:
             return GraphFrameContainer.from_config(

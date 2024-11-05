@@ -5,11 +5,9 @@ from types import TracebackType
 from typing import Literal, Self
 
 from synchro.config.audio_format import AudioFormat, AudioFormatType
-from synchro.config.commons import StreamConfig
 from synchro.config.schemas import InputFileStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
-
 
 logger = logging.getLogger(__name__)
 
@@ -50,26 +48,9 @@ class FileInputNode(AbstractInputNode):
         self._wavefile_data = None
         return False
 
-    def initialize_edges(
-        self,
-        inputs: list[StreamConfig],
-        outputs: list[StreamConfig],
-    ) -> None:
-        self.check_inputs_count(inputs, 0)
-        self.check_has_outputs(outputs)
-
-    def predict_config(
-        self,
-        _inputs: list[StreamConfig],
-    ) -> StreamConfig:
-        return self._config.stream
-
-    def get_data(self) -> GraphFrameContainer:
+    def get_data(self) -> GraphFrameContainer | None:
         if self._wavefile_data is None:
-            return GraphFrameContainer.from_config(
-                self.name,
-                self._config.stream,
-            )
+            return None
 
         time_passed_ms = int((time.time() - self._last_query) * 1000)
 
@@ -104,10 +85,7 @@ class FileInputNode(AbstractInputNode):
             self._wavefile_index = bytes_left
         elif not_enough_data:
             self._wavefile_data = None
-            return GraphFrameContainer.from_config(
-                self.name,
-                self._config.stream,
-            )
+            return None
 
         logger.info("Sending %d bytes", len(data_to_send))
         return GraphFrameContainer.from_config(
