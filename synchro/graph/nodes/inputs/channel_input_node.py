@@ -3,6 +3,8 @@ from typing import Literal, Self
 
 import pyaudio
 
+from pydub import AudioSegment, effects
+
 from synchro.audio.audio_device_manager import AudioDeviceManager
 from synchro.audio.voice_activity_detector import (
     VoiceActivityDetector,
@@ -72,7 +74,7 @@ class ChannelInputNode(AbstractInputNode):
             self._config.chunk_size,
             exception_on_overflow=False,
         )
-
+        read_bytes = self._normalize_audio(read_bytes)
         voice_result = self._vad.detect_voice(read_bytes)
         if voice_result == VoiceActivityDetectorResult.SPEECH:
             self._logger.debug("Detected speech: %d bytes", len(read_bytes))
@@ -80,3 +82,14 @@ class ChannelInputNode(AbstractInputNode):
 
         self._logger.info("No speech detected")
         return b""
+
+    def _normalize_audio(self, audio: bytes) -> bytes:
+        audio_segment = AudioSegment(
+            audio,
+            frame_rate=self._config.stream.rate,
+            sample_width=self._config.stream.audio_format.sample_size,
+            channels=1,
+        )
+        effects.normalize(audio_segment, headroom=1.0)
+
+        return audio_segment.raw_data
