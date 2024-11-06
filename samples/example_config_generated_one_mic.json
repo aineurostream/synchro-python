@@ -16,7 +16,7 @@
         {
             "name": "resampler_input_0_ru",
             "node_type": "resampler",
-            "to_rate": 16000
+            "to_rate": 22050
         },
         {
             "name": "converter_0_ru_en",
@@ -34,7 +34,7 @@
                 "audio_format": {
                     "format_type": "int16"
                 },
-                "rate": 16000
+                "rate": 22050
             }
         },
         {
@@ -46,7 +46,7 @@
                 "audio_format": {
                     "format_type": "int16"
                 },
-                "rate": 16000
+                "rate": 22050
             }
         },
         {
@@ -67,6 +67,18 @@
             "node_type": "output_channel"
         },
         {
+            "name": "output_file_1_en",
+            "node_type": "output_file",
+            "path": "samples/result_mic_result.wav",
+            "stream": {
+                "language": "en",
+                "audio_format": {
+                    "format_type": "int16"
+                },
+                "rate": 44100
+            }
+        },
+        {
             "name": "resampler_output_1",
             "node_type": "resampler",
             "to_rate": 44100
@@ -84,6 +96,10 @@
         [
             "resampler_output_1",
             "output_device_1_en"
+        ],
+        [
+            "resampler_output_1",
+            "output_file_1_en"
         ],
         [
             "mixer_1_en",
