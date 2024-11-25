@@ -14,24 +14,26 @@ Application for **real-time** translation.
 - Separate node for buffers
 - Support dynamic node management
 
-## How to setup
+## Step 1. Setup
 ```bash
 pip3 install poetry
 poetry install
 ```
 Poetry will install all dependencies from `pyproject.toml`.
 
-## How to use
-### Start application
-```bash
-poetry run python run.py instance start -i 0 0 ru -i 0 1 en -o 1 0 en -o 1 1 ru
-```
-This will start an application with 2 input and 2 output devices.
-
-### Get devices info
+### Step 2. Get devices info
 ```bash
 poetry run python run.py info devices
 ```
+Devices with `out` channels can be used in `input_channel` node type.
+Devices with `in` channels can be used in `output_channel` node type.
+
+## How to use
+### Step 3. Start application
+```bash
+poetry run python run.py instance start -c ./samples/example_config_generated_one.json
+```
+This will start an application using the provided configuration file.
 
 ## How to test
 ```bash
