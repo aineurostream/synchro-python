@@ -2,7 +2,7 @@ from enum import Enum
 
 import numpy as np
 
-DEFAULT_MINIMAL_EDGE = 1000
+DEFAULT_MINIMAL_EDGE = 100
 
 
 class VoiceActivityDetectorResult(str, Enum):
