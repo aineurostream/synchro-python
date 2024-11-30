@@ -1,7 +1,7 @@
 import uuid
-from io import TextIOWrapper
+from datetime import datetime
 from types import TracebackType
-from typing import Literal, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 from socketio import SimpleClient
 from socketio.exceptions import TimeoutError as SioTimeoutError
@@ -15,6 +15,9 @@ from synchro.graph.graph_node import (
     GraphNode,
     ReceivingNodeMixin,
 )
+
+if TYPE_CHECKING:
+    from io import TextIOWrapper
 
 INT16_MAX = 32767
 DEFAULT_INPUT_RATE = 16000
@@ -58,7 +61,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._connected = True
 
         if self._log_file_path is not None:
-            self._log_file = open(self._log_file_path, "w")
+            self._log_file = open(self._log_file_path, "w")  # noqa: SIM115
 
         return self
 
@@ -70,8 +73,9 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
     ) -> Literal[False]:
         self._client.disconnect()
         self._connected = False
-        self._log_file.close()
-        self._log_file = None
+        if self._log_file is not None:
+            self._log_file.close()
+            self._log_file = None
 
         return False
 
@@ -105,7 +109,10 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                     audio_result += received_message[1]
                 elif received_message[0] == "log":
                     log_body = received_message[1]
-                    log_message = f"{log_body['id']} {log_body['part']}: {log_body['message']}"
+                    log_message = (
+                        f"{datetime.now()} - {log_body['id']} "  # noqa: DTZ005
+                        f"{log_body['part']}: {log_body['message']}"
+                    )
                     self._logger.info(log_message)
                     if self._log_file is not None:
                         self._log_file.write(f"{log_message}\n")
