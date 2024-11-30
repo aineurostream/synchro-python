@@ -1,8 +1,7 @@
 from types import TracebackType
-from typing import Literal, Self
+from typing import Literal, Self, cast
 
 import pyaudio
-
 from pydub import AudioSegment, effects
 
 from synchro.audio.audio_device_manager import AudioDeviceManager
@@ -92,4 +91,4 @@ class ChannelInputNode(AbstractInputNode):
         )
         effects.normalize(audio_segment, headroom=1.0)
 
-        return audio_segment.raw_data
+        return cast(bytes, audio_segment.raw_data)

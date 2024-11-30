@@ -56,8 +56,7 @@ class InputFileStreamerNodeSchema(BaseNodeSchema):
 class SeamlessConnectorNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.CONVERTER_SEAMLESS] = NodeType.CONVERTER_SEAMLESS
     server_url: AnyUrl
-    from_language: str
-    to_language: str
+    config: dict[str, Any]
 
 
 class MixerNodeSchema(BaseNodeSchema):
