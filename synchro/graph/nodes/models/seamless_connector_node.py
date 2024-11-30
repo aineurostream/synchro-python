@@ -49,10 +49,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         self._client.emit(
             "configure_stream",
-            {
-                "language_from": self._config.from_language,
-                "language_to": self._config.to_language,
-            },
+            self._config.config,
         )
         self._logger.debug("Configured stream for %s", self._client.sid)
         self._connected = True
@@ -116,7 +113,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         return GraphFrameContainer.from_config(
             self.name,
             StreamConfig(
-                language=self._config.to_language,
+                language=self._config.config["tts"]["lang"],
                 audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
                 rate=DEFAULT_OUTPUT_RATE,
             ),

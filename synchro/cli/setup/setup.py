@@ -164,8 +164,7 @@ def generate(setup: str, config: str) -> None:  # noqa: C901, PLR0912, PLR0915
                 converter_node = SeamlessConnectorNodeSchema(
                     name=f"converter_{index}_{language}_{language_other}",
                     server_url=desired_model,
-                    from_language=language,
-                    to_language=language_other,
+                    config=config,
                 )
                 nodes.append(converter_node)
                 if resampler_node is not None:
