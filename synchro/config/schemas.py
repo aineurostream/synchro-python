@@ -57,6 +57,7 @@ class SeamlessConnectorNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.CONVERTER_SEAMLESS] = NodeType.CONVERTER_SEAMLESS
     server_url: AnyUrl
     config: dict[str, Any]
+    log_file: str | None = None
 
 
 class MixerNodeSchema(BaseNodeSchema):

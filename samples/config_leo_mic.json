@@ -22,6 +22,7 @@
       "name": "converter_0_en_ru",
       "node_type": "converter_seamless",
       "server_url": "http://127.0.0.1:8000",
+      "log_file": "leo_mic.log",
       "config": {
         "stt": {
           "lang": "en",
@@ -53,6 +54,7 @@
         },
         "tts": {
           "lang": "ru",
+          "gap_size_bytes": 12000,
           "voice_map": {
               "en": ["piper", "hfc_male"],
               "ru": ["piper", "ruslan"]
