@@ -70,7 +70,7 @@ class ChannelInputNode(AbstractInputNode):
             raise RuntimeError("Audio stream is not open")
 
         desired_size = self._config.stream.rate
-        read_bytes = self._stream.read(desired_size)
+        read_bytes = self._stream.read(desired_size, exception_on_overflow=False)
         read_bytes = self._normalize_audio(read_bytes)
         voice_result = self._vad.detect_voice(read_bytes)
         if voice_result == VoiceActivityDetectorResult.SPEECH:
