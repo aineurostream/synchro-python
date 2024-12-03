@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass
 from typing import cast
 
@@ -10,9 +11,9 @@ from synchro.config.commons import (
 )
 from synchro.config.schemas import MixerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
-from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
+from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin, logger
 
-MAX_MIXING_LENGTH_MULT = 2
+MAX_MIXING_LENGTH_MULT = 3
 MIN_MIXING_LENGTH_MULT = 1
 
 
@@ -29,6 +30,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._stream_config: StreamConfig | None = None
         self._buffer: FrameContainer | None = None
         self._inputs_count = 1
+        self._last_update_time = 0
 
     def put_data(self, data: list[GraphFrameContainer]) -> None:
         if self._stream_config is None:
@@ -92,6 +94,8 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
     def mix_frames(self) -> bytes:
         if self._stream_config is None:
             raise ValueError("Stream config is not set")
+        if self._last_update_time == 0:
+            self._last_update_time = time.time()
 
         stream_start_frames = int(
             MIN_WORKING_STEP_LENGTH_SECS
@@ -108,6 +112,18 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         batch_length_frames = int(
             MIN_WORKING_STEP_LENGTH_SECS * self._stream_config.rate,
         )
+
+        current_time = time.time()
+        delta = current_time - self._last_update_time
+        sample_size = self._stream_config.audio_format.sample_size
+        for source, incoming_frame in self._incoming_buffer.items():
+            incoming_length = incoming_frame.frame.length_frames()
+            if incoming_length < stream_start_frames and not incoming_frame.streaming:
+                delta_bytes = b"\00" * int(delta * self._stream_config.rate) * sample_size
+                incoming_frame.frame.append_bytes(
+                    delta_bytes
+                )
+        self._last_update_time = current_time
 
         for incoming_frame in self._incoming_buffer.values():
             current_frame_length = incoming_frame.frame.length_frames()
