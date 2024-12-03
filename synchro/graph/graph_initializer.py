@@ -1,6 +1,5 @@
 import logging
 
-from synchro.audio.audio_device_manager import AudioDeviceManager
 from synchro.config.schemas import (
     AllNodeTypes,
     InputChannelStreamerNodeSchema,
@@ -29,16 +28,14 @@ class GraphInitializer:
     def __init__(
         self,
         config: ProcessingGraphConfig,
-        manager: AudioDeviceManager,
     ) -> None:
         self._config = config
-        self._manager = manager
 
     def _create_channel_input_node(
         self,
         config: InputChannelStreamerNodeSchema,
     ) -> ChannelInputNode:
-        return ChannelInputNode(config, self._manager)
+        return ChannelInputNode(config)
 
     def _create_file_input_node(
         self,
@@ -50,7 +47,7 @@ class GraphInitializer:
         self,
         config: OutputChannelStreamerNodeSchema,
     ) -> ChannelOutputNode:
-        return ChannelOutputNode(config, self._manager)
+        return ChannelOutputNode(config)
 
     def _create_file_output_node(
         self,

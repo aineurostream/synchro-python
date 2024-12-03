@@ -57,6 +57,9 @@ class VoiceActivityDetector:
             return
 
         while buffer_duration_sec > self._shrink_buffer_size_sec:
+            if not self._buffer:
+                return
+
             first_element = self._buffer[0]
             first_element_duration_sec = self._sample_duration_sec(first_element)
             left_after_deletion_sec = buffer_duration_sec - first_element_duration_sec
