@@ -63,6 +63,9 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             return None
 
         mixed_frames = self.mix_frames()
+        if len(mixed_frames) == 0:
+            return None
+
         self._logger.debug(
             "Merging %d bytes in %s",
             len(mixed_frames),
