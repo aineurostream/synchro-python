@@ -9,12 +9,10 @@ from synchro.audio.voice_activity_detector import (
     VoiceActivityDetector,
     VoiceActivityDetectorResult,
 )
+from synchro.config.commons import MIN_BUFFER_SIZE_SEC, PREFERRED_BUFFER_SIZE_SEC
 from synchro.config.schemas import InputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
-
-PREFERRED_BUFFER_SIZE_SEC = 0.2
-MIN_BUFFER_SIZE_SEC = 0.03
 
 
 class ChannelInputNode(AbstractInputNode):
