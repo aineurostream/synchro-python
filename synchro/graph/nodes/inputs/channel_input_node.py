@@ -91,6 +91,11 @@ class ChannelInputNode(AbstractInputNode):
             sample_width=self._config.stream.audio_format.sample_size,
             channels=1,
         )
+        audio_segment = effects.strip_silence(
+            audio_segment,
+            silence_len=300,
+            silence_thresh=-60,
+        )
         audio_segment = effects.normalize(audio_segment, headroom=10.0)
 
         return cast(bytes, audio_segment.raw_data)
