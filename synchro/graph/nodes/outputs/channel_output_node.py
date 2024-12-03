@@ -3,9 +3,9 @@ import time
 from types import TracebackType
 from typing import Literal, Self
 
-import pyaudio
+import numpy as np
+import sounddevice as sd
 
-from synchro.audio.audio_device_manager import AudioDeviceManager
 from synchro.config.commons import (
     MIN_STEP_LENGTH_SECS,
 )
@@ -23,32 +23,35 @@ class ChannelOutputNode(AbstractOutputNode):
     def __init__(
         self,
         config: OutputChannelStreamerNodeSchema,
-        manager: AudioDeviceManager,
     ) -> None:
         super().__init__(config.name)
         self._config = config
-        self._manager = manager
-        self._stream: pyaudio.Stream | None = None
+        self._stream: sd.OutputStream | None = None
         self._last_time_emit = 0.0
+        self._out_buffer = b""
 
     def __enter__(self) -> Self:
-        frames_per_buffer = int(
-            self._config.stream.rate * MIN_STEP_LENGTH_SECS,
-        )
-        self._stream = self._manager.context.open(
-            format=self._config.stream.audio_format.pyaudio_format,
+        def callback(outdata, frames, time, status):
+            if status:
+                logger.error("Error in audio stream: %s", status)
+
+            outgoing_buffer = np.frombuffer(self._out_buffer, dtype=np.int16)
+            available_size = min(frames, outgoing_buffer.size)
+            outdata[:available_size, 0] = outgoing_buffer[:available_size]
+            self._out_buffer = outgoing_buffer[available_size:].tobytes()
+
+        device_info = sd.query_devices(self._config.device, "output")
+        self._stream = sd.OutputStream(
+            device=self._config.device,
             channels=self._config.channel,
-            rate=self._config.stream.rate,
-            output=True,
-            output_device_index=self._config.device,
-            frames_per_buffer=frames_per_buffer,
+            samplerate=device_info["default_samplerate"],
+            dtype=self._config.stream.audio_format.numpy_format,
+            callback=callback
         )
+        self._stream.start()
 
         prefill_frames = int(self._config.stream.rate * PREFILL_SECONDS)
-        prefill_bytes = (
-            b"\x00" * self._config.stream.audio_format.sample_size * prefill_frames
-        )
-        self._stream.write(prefill_bytes)
+        self._out_buffer += np.zeros((prefill_frames,), dtype=np.int16).tobytes()
 
         return self
 
@@ -59,7 +62,7 @@ class ChannelOutputNode(AbstractOutputNode):
         exc_tb: TracebackType | None,
     ) -> Literal[False]:
         if self._stream:
-            self._stream.stop_stream()
+            self._stream.stop()
             self._stream.close()
 
         return False
@@ -94,6 +97,5 @@ class ChannelOutputNode(AbstractOutputNode):
                     active_frame.length_secs(),
                 )
 
-        self._stream.write(active_frame.frame_data)
-
+        self._out_buffer += active_frame.frame_data
         self._last_time_emit = current_emit_time

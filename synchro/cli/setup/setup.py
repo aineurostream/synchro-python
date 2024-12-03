@@ -4,8 +4,6 @@ from collections import defaultdict
 
 import click
 
-from synchro.audio.audio_device import DeviceMode
-from synchro.audio.audio_device_manager import AudioDeviceManager
 from synchro.cli.utils.formatting import cli_echo_title
 from synchro.config.audio_format import AudioFormat, AudioFormatType
 from synchro.config.commons import StreamConfig
@@ -74,25 +72,19 @@ def _node_device_creator(
     language: str,
 ) -> OutputChannelStreamerNodeSchema:
     """Create output for the node"""
-    devices = AudioDeviceManager.list_default_audio_devices()
-    output_device = next(
-        device
-        for device in devices
-        if device.mode == DeviceMode.OUTPUT or device.name == "default"
-    )
 
-    stream_config = StreamConfig(
-        language=language,
-        audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
-        rate=output_device.default_sample_rate,
-    )
-
-    return OutputChannelStreamerNodeSchema(
-        name=f"output_device_{index}_{language}",
-        device=output_device.index,
-        stream=stream_config,
-        looping=True,
-    )
+    # stream_config = StreamConfig(
+    #     language=language,
+    #     audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
+    #     rate=output_device.default_sample_rate,
+    # )
+    #
+    # return OutputChannelStreamerNodeSchema(
+    #     name=f"output_device_{index}_{language}",
+    #     device=output_device.index,
+    #     stream=stream_config,
+    #     looping=True,
+    # )
 
 
 @manager.command(help="""Generate graph configuration from the setup""")

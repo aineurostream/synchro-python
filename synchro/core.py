@@ -1,6 +1,5 @@
 import logging
 
-from synchro.audio.audio_device_manager import AudioDeviceManager
 from synchro.config.schemas import ProcessingGraphConfig
 from synchro.graph.graph_initializer import GraphInitializer
 from synchro.graph.graph_manager import GraphManager
@@ -18,9 +17,8 @@ class CoreManager:
     def run(self) -> None:
         logger.info("Starting Synchro instance")
 
-        with AudioDeviceManager() as manager:
-            nodes, edges = GraphInitializer(self._config, manager).build()
-            full_graph = GraphManager(nodes, edges)
-            full_graph.execute()
+        nodes, edges = GraphInitializer(self._config).build()
+        full_graph = GraphManager(nodes, edges)
+        full_graph.execute()
 
         logger.info("Stopping Synchro instance")

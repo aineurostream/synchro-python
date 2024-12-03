@@ -3,11 +3,11 @@
     {
       "name": "input_mic_0_en",
       "node_type": "input_channel",
-      "device": 3,
+      "device": 0,
       "channel": 1,
       "stream": {
         "language": "en",
-        "rate": 44100,
+        "rate": 16000,
         "audio_format": {
           "format_type": "int16"
         }
