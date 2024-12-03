@@ -13,7 +13,7 @@ from synchro.config.schemas import MixerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin, logger
 
-MAX_MIXING_LENGTH_MULT = 3
+MAX_MIXING_LENGTH_MULT = 2
 MIN_MIXING_LENGTH_MULT = 1
 
 
