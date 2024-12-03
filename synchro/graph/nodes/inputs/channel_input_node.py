@@ -10,7 +10,8 @@ from synchro.audio.voice_activity_detector import (
     VoiceActivityDetectorResult,
 )
 from synchro.config.commons import (
-    MIN_BUFFER_SIZE_SEC, PREFERRED_BUFFER_SIZE_SEC, MIN_WORKING_STEP_LENGTH_SECS, MIN_STEP_LENGTH_SECS
+    MIN_BUFFER_SIZE_SEC,
+    PREFERRED_BUFFER_SIZE_SEC,
 )
 from synchro.config.schemas import InputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
@@ -69,7 +70,7 @@ class ChannelInputNode(AbstractInputNode):
         if not self._stream:
             raise RuntimeError("Audio stream is not open")
 
-        desired_size = self._config.stream.rate
+        desired_size = self._config.stream.rate // 2
         read_bytes = self._stream.read(desired_size, exception_on_overflow=False)
         read_bytes = self._normalize_audio(read_bytes)
         voice_result = self._vad.detect_voice(read_bytes)

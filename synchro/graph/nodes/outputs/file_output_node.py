@@ -2,7 +2,10 @@ import wave
 from types import TracebackType
 from typing import Literal, Self
 
-from synchro.audio.voice_activity_detector import VoiceActivityDetectorResult, VoiceActivityDetector
+from synchro.audio.voice_activity_detector import (
+    VoiceActivityDetector,
+    VoiceActivityDetectorResult,
+)
 from synchro.config.commons import MIN_BUFFER_SIZE_SEC, PREFERRED_BUFFER_SIZE_SEC
 from synchro.config.schemas import OutputFileNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer

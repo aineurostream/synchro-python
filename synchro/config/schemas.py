@@ -38,7 +38,7 @@ class ChannelStreamerNodeSchema(BaseNodeSchema):
 
 class InputChannelStreamerNodeSchema(ChannelStreamerNodeSchema):
     node_type: Literal[NodeType.INPUT_CHANNEL] = NodeType.INPUT_CHANNEL
-    chunk_size: int = 96000
+    chunk_size: int = 1024
 
 
 class OutputChannelStreamerNodeSchema(ChannelStreamerNodeSchema):

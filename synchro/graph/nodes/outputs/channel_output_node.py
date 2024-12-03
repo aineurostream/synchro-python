@@ -35,7 +35,6 @@ class ChannelOutputNode(AbstractOutputNode):
         frames_per_buffer = int(
             self._config.stream.rate * MIN_STEP_LENGTH_SECS,
         )
-
         self._stream = self._manager.context.open(
             format=self._config.stream.audio_format.pyaudio_format,
             channels=self._config.channel,

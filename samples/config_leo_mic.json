@@ -3,7 +3,7 @@
     {
       "name": "input_mic_0_en",
       "node_type": "input_channel",
-      "device": 9,
+      "device": 3,
       "channel": 1,
       "stream": {
         "language": "en",
@@ -14,6 +14,19 @@
       }
     },
     {
+      "name": "output_device_1_ru",
+      "device": 1,
+      "channel": 1,
+      "stream": {
+        "language": "ru",
+        "audio_format": {
+          "format_type": "int16"
+        },
+        "rate": 44100
+      },
+      "node_type": "output_channel"
+    },
+    {
       "name": "resampler_input_0_en",
       "node_type": "resampler",
       "to_rate": 16000
@@ -21,7 +34,7 @@
     {
       "name": "converter_0_en_ru",
       "node_type": "converter_seamless",
-      "server_url": "http://127.0.0.1:8000",
+      "server_url": "https://09f1-91-73-240-61.ngrok-free.app",
       "log_file": "leo_mic.log",
       "config": {
         "stt": {
@@ -75,19 +88,6 @@
         },
         "rate": 16000
       }
-    },
-    {
-      "name": "output_device_1_ru",
-      "device": 9,
-      "channel": 1,
-      "stream": {
-        "language": "ru",
-        "audio_format": {
-          "format_type": "int16"
-        },
-        "rate": 44100
-      },
-      "node_type": "output_channel"
     },
     {
       "name": "output_file_1_ru",
