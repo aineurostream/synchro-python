@@ -78,8 +78,6 @@ class ChannelInputNode(AbstractInputNode):
         if voice_result == VoiceActivityDetectorResult.SPEECH:
             self._logger.debug("Detected speech: %d bytes", len(read_bytes))
             return read_bytes
-
-        self._logger.info("No speech detected")
         return b""
 
     def _normalize_audio(self, audio: bytes) -> bytes:
