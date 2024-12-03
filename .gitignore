@@ -158,5 +158,3 @@ cython_debug/
 
 translated_output.wav
 source_input.wav
-config_leo_mic.json
-config_leo_mic_my.json
