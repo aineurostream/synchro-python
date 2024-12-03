@@ -85,6 +85,6 @@ class ChannelInputNode(AbstractInputNode):
             sample_width=self._config.stream.audio_format.sample_size,
             channels=1,
         )
-        effects.normalize(audio_segment, headroom=1.0)
+        audio_segment = effects.normalize(audio_segment, headroom=3.5)
 
         return cast(bytes, audio_segment.raw_data)
