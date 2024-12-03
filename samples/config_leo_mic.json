@@ -16,7 +16,7 @@
     {
       "name": "resampler_input_0_en",
       "node_type": "resampler",
-      "to_rate": 22050
+      "to_rate": 16000
     },
     {
       "name": "converter_0_en_ru",
@@ -32,8 +32,8 @@
             "субтитры делал",
             "M.K."
           ],
-          "buffer_min_words_size": 3,
-          "buffer_timeout_seconds": 0.7
+          "buffer_min_words_size": 6,
+          "buffer_timeout_seconds": 1.0
         },
         "translate": {
           "lang_from": "en",
@@ -52,14 +52,14 @@
               "en": "English"
           },
           "text_template": "I want you to act as a skilled translator.\nI will provide you with:\n- the original context (previous parts in the source language),\n- the translated context (previous parts translated into the target language),\n- the source and target languages,\n- the next part to translate (new input in the source language).\n\nYour task is to:\n1. Translate the \"next part to translate\" into the target language, without any additional explanations or comments, only the translated phrase.\n2. Ensure that the translation is consistent with the \"original context\" and continues seamlessly from the \"translated context\".\n3. If there are words or phrases in the original context that are missing in the translated context, do not retranslate them. Focus only on translating the \"next part to translate\".\n4. Provide the translation as a direct continuation of the translated context.\n\nOriginal context (source language): {source_context}\nTranslated context (target language): {translated_context}\nSource language: {lang_from}\nTarget language: {lang_to}\nNext part to translate (source language): {text}",
-          "correction_template": "I want you to act as a skilled reviewer.\nI will provide you with:\n- previous part of the phrase\n- current part of the phrase\n- language of the phrase\n\nYour task is to:\n1. Fix grammar inside active part of the phrase without changing the phrase too much\n2. Return only reviewed active phrase part\n3. Add only basic punctuation like dots or commas if needed, no stars, no brackets\n4. If next part is set - consider it as a following part of the phrase but omit it from output\n\nPrevious part: {previous_part}\nActive part: {active_part}\nLanguage: {lang}"
+          "correction_template": ""
         },
         "tts": {
           "lang": "ru",
           "gap_size_bytes": 12000,
           "voice_map": {
               "en": ["piper", "hfc_male"],
-              "ru": ["piper", "denis"]
+              "ru": ["piper", "ruslan"]
           }
         }
       }
@@ -73,7 +73,7 @@
         "audio_format": {
           "format_type": "int16"
         },
-        "rate": 22050
+        "rate": 16000
       }
     },
     {
