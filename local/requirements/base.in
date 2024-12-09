@@ -1,0 +1,17 @@
+# Для конфигурации
+hydra-core
+omegaconf
+
+# Для примера по Hydra
+pandas
+scikit-learn
+lightgbm
+
+# Для автоматического перевода
+translator
+
+# Для анализа качества перевода
+nltk
+
+# Для отчётов
+jinja2

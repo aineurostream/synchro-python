@@ -1,0 +1,6 @@
+# Для анализа качесва звука
+librosa 
+# pysepm
+https://github.com/schmiph2/pysepm/archive/master.zip
+numpy 
+scipy
