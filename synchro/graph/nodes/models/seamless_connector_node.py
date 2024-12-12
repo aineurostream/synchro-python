@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime
 from types import TracebackType
@@ -55,7 +56,12 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         self._client.emit(
             "configure_stream",
-            self._config.config,
+            {
+                "lang": {
+                    "source": self._config.lang_from,
+                    "target": self._config.lang_to,
+                }
+            },
         )
         self._logger.debug("Configured stream for %s", self._client.sid)
         self._connected = True
@@ -110,12 +116,14 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                 elif received_message[0] == "log":
                     log_body = received_message[1]
                     log_message = (
-                        f"{datetime.now()} - {log_body['id']} "  # noqa: DTZ005
+                        f"{log_body['time']} - {log_body['id']} "
                         f"{log_body['part']}: {log_body['message']}"
                     )
                     self._logger.info(log_message)
                     if self._log_file is not None:
-                        self._log_file.write(f"{log_message}\n")
+                        self._log_file.write(
+                            f"{json.dumps(log_body, separators=(',', ':'))}\n"
+                        )
                 else:
                     self._logger.debug(
                         "ATG: Received non-audio message: %s",
