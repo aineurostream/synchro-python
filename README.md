@@ -23,7 +23,7 @@ Poetry will install all dependencies from `pyproject.toml`.
 
 ### Step 2. Get devices info
 ```bash
-poetry run python run.py info devices
+poetry run python3 -m sounddevice
 ```
 Devices with `out` channels can be used in `input_channel` node type.
 Devices with `in` channels can be used in `output_channel` node type.
@@ -31,9 +31,9 @@ Devices with `in` channels can be used in `output_channel` node type.
 ## How to use
 ### Step 3. Start application
 ```bash
-poetry run python run.py instance start -c ./samples/example_config_generated_one.json
+poetry run python run.py instance start -p ./samples/config_leo_file.json -n ./samples/ai_config.json
 ```
-This will start an application using the provided configuration file.
+This will start an application using the provided pipeline and neural networks configuration files.
 
 ## How to test
 ```bash
