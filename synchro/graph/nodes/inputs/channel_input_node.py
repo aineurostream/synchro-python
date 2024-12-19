@@ -1,6 +1,7 @@
 from types import TracebackType
 from typing import Literal, Self, cast
 
+import numpy as np
 import sounddevice as sd
 from pydub import AudioSegment, effects
 
@@ -34,7 +35,12 @@ class ChannelInputNode(AbstractInputNode):
         self._incoming_buffer = b""
 
     def __enter__(self) -> Self:
-        def callback(indata, frames, time, status):
+        def callback(
+            indata: np.ndarray,
+            _frames: int,
+            _time: int,
+            status: str | None,
+        ) -> None:
             if status:
                 self._logger.error("Error in audio stream: %s", status)
             self._incoming_buffer += cast(bytes, indata.tobytes())

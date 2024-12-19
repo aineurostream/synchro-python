@@ -1,17 +1,18 @@
 {
   "nodes": [
     {
-      "name": "input_mic_0_en",
-      "node_type": "input_channel",
-      "device": 9,
-      "channel": 1,
+      "name": "input_file_0_en",
+      "node_type": "input_file",
+      "path": "samples/test_hfc_male.wav",
       "stream": {
-        "language": "en",
-        "rate": 16000,
-        "audio_format": {
-          "format_type": "int16"
-        }
-      }
+          "language": "en",
+          "audio_format": {
+              "format_type": "int16"
+          },
+          "rate": 22050
+      },
+      "looping": true,
+      "delay_ms": 0
     },
     {
       "name": "output_device_1_ru",
@@ -75,7 +76,7 @@
   ],
   "edges": [
     [
-      "input_mic_0_en",
+      "input_file_0_en",
       "resampler_input_0_en"
     ],
     [

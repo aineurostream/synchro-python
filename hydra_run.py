@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Any
 
 from omegaconf import DictConfig, OmegaConf
 import hydra
@@ -12,12 +12,10 @@ def hydra_app(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     """Start an instance of the Synchro application"""
 
-    graph_file = cast(str, cfg["graph_file"])
+    pipeline_config = cast(dict[str, Any], cfg["pipeline_config"])
+    neural_config = cast(dict[str, Any], cfg["neural_config"])
 
-    with open(graph_file) as config_file:
-        core_config = ProcessingGraphConfig.model_validate_json(
-            config_file.read(),
-        )
+    core_config = ProcessingGraphConfig.model_validate(pipeline_config)
 
-    core = CoreManager(core_config)
+    core = CoreManager(core_config, neural_config)
     core.run()

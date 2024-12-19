@@ -1,3 +1,5 @@
+import json
+
 import click
 
 from synchro.cli.utils.formatting import cli_echo_title
@@ -14,26 +16,38 @@ def manager() -> None:
     help="""
     Starts a new synchro instance.
     Example:
-    python run.py instance start -c ./samples/example_config.yaml
+    python run.py instance start -p ./pipeline_config.json -n ./neuro_config.json
 """,
 )
 @click.option(
-    "-c",
-    "--config",
+    "-p",
+    "--pipeline",
     required=True,
     type=click.Path(exists=True),
-    help="Main configuration file",
+    help="Main pipeline configuration file",
+)
+@click.option(
+    "-n",
+    "--neuro",
+    required=True,
+    type=click.Path(exists=True),
+    help="Neural networks configuration file",
 )
 def start(
-    config: str,
+    pipeline: str,
+    neuro: str,
 ) -> None:
     """Start an instance of the Synchro application"""
     cli_echo_title("Starting Synchro instance")
 
-    with open(config) as config_file:
+    with (
+        open(pipeline) as graph_config_file,
+        open(neuro) as neuro_config_file,
+    ):
         core_config = ProcessingGraphConfig.model_validate_json(
-            config_file.read(),
+            graph_config_file.read(),
         )
+        neuro_config = json.loads(neuro_config_file.read())
 
-    core = CoreManager(core_config)
+    core = CoreManager(core_config, neuro_config)
     core.run()
