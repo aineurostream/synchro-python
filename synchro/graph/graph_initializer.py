@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from synchro.config.schemas import (
     AllNodeTypes,
@@ -28,8 +29,10 @@ class GraphInitializer:
     def __init__(
         self,
         config: ProcessingGraphConfig,
+        neuro_config: dict[str, Any],
     ) -> None:
         self._config = config
+        self._neuro_config = neuro_config
 
     def _create_channel_input_node(
         self,
@@ -59,7 +62,7 @@ class GraphInitializer:
         self,
         config: SeamlessConnectorNodeSchema,
     ) -> SeamlessConnectorNode:
-        return SeamlessConnectorNode(config)
+        return SeamlessConnectorNode(config, self._neuro_config)
 
     def _create_mixer_node(self, config: MixerNodeSchema) -> MixerNode:
         return MixerNode(config)

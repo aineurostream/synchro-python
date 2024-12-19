@@ -1,8 +1,7 @@
 import json
 import uuid
-from datetime import datetime
 from types import TracebackType
-from typing import TYPE_CHECKING, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from socketio import SimpleClient
 from socketio.exceptions import TimeoutError as SioTimeoutError
@@ -29,9 +28,11 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
     def __init__(
         self,
         config: SeamlessConnectorNodeSchema,
+        neuro_config: dict[str, Any],
     ) -> None:
         super().__init__(config.name)
         self._config = config
+        self._neuro_config = neuro_config
         self._client = SimpleClient()
         self._buffer = b""
         self._user_id = str(uuid.uuid4())
@@ -60,7 +61,8 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                 "lang": {
                     "source": self._config.lang_from,
                     "target": self._config.lang_to,
-                }
+                },
+                **self._neuro_config,
             },
         )
         self._logger.debug("Configured stream for %s", self._client.sid)
@@ -115,14 +117,15 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                     audio_result += received_message[1]
                 elif received_message[0] == "log":
                     log_body = received_message[1]
+                    context = log_body["context"]
                     log_message = (
-                        f"{log_body['time']} - {log_body['id']} "
-                        f"{log_body['part']}: {log_body['message']}"
+                        f"{context['time']} - {log_body['id']} "
+                        f"{log_body['part']}: {context['message']}"
                     )
                     self._logger.info(log_message)
                     if self._log_file is not None:
                         self._log_file.write(
-                            f"{json.dumps(log_body, separators=(',', ':'))}\n"
+                            f"{json.dumps(log_body, separators=(',', ':'))}\n",
                         )
                 else:
                     self._logger.debug(
@@ -142,7 +145,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         return GraphFrameContainer.from_config(
             self.name,
             StreamConfig(
-                language=self._config.config["tts"]["lang"],
+                language=self._config.lang_to,
                 audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
                 rate=DEFAULT_OUTPUT_RATE,
             ),

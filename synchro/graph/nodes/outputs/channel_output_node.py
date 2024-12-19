@@ -31,7 +31,12 @@ class ChannelOutputNode(AbstractOutputNode):
         self._out_buffer = b""
 
     def __enter__(self) -> Self:
-        def callback(outdata, frames, time, status):
+        def callback(
+            outdata: np.ndarray,
+            frames: int,
+            _time: int,
+            status: str | None,
+        ) -> None:
             if status:
                 logger.error("Error in audio stream: %s", status)
 
@@ -46,7 +51,7 @@ class ChannelOutputNode(AbstractOutputNode):
             channels=self._config.channel,
             samplerate=device_info["default_samplerate"],
             dtype=self._config.stream.audio_format.numpy_format,
-            callback=callback
+            callback=callback,
         )
         self._stream.start()
 
