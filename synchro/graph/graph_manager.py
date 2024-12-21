@@ -7,6 +7,7 @@ from threading import Thread
 from pydantic import BaseModel, ConfigDict
 
 from synchro.config.commons import MIN_STEP_LENGTH_SECS
+from synchro.config.settings import SettingsSchema
 from synchro.graph.graph_edge import GraphEdge
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
@@ -85,9 +86,15 @@ class NodeExecutor(Thread):
 
 
 class GraphManager:
-    def __init__(self, nodes: list[GraphNode], edges: list[GraphEdge]) -> None:
+    def __init__(
+        self,
+        nodes: list[GraphNode],
+        edges: list[GraphEdge],
+        settings: SettingsSchema,
+    ) -> None:
         self._nodes = {node.name: node for node in nodes}
         self._edges = edges
+        self._settings = settings
         self._executing = False
 
     def execute(self) -> None:
@@ -122,6 +129,20 @@ class GraphManager:
                 if edge.source == node.name
             ]
             activate_thread(NodeExecutor(node, incoming, outgoing))
+
+        run_time_limit = self._settings.limits.run_time_seconds
+        if run_time_limit > 0:
+            logger.info(
+                "Synchro instance will run for %d seconds",
+                run_time_limit,
+            )
+
+            def stop_execution() -> None:
+                time.sleep(float(run_time_limit))
+                logger.info("Stopping Synchro instance due to time limit")
+                self.stop()
+
+            Thread(target=stop_execution).run()
 
         # Wait for interruption
         with suppress(KeyboardInterrupt):

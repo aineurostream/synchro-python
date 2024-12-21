@@ -4,6 +4,7 @@ import click
 
 from synchro.cli.utils.formatting import cli_echo_title
 from synchro.config.schemas import ProcessingGraphConfig
+from synchro.config.settings import SettingsSchema
 from synchro.core import CoreManager
 
 
@@ -49,5 +50,5 @@ def start(
         )
         neuro_config = json.loads(neuro_config_file.read())
 
-    core = CoreManager(core_config, neuro_config)
+    core = CoreManager(core_config, neuro_config, SettingsSchema())
     core.run()
