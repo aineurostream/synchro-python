@@ -38,8 +38,6 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._user_id = str(uuid.uuid4())
         self._room_id = str(uuid.uuid4())[:4]
         self._connected = False
-        self._log_file_path = config.log_file
-        self._log_file: TextIOWrapper | None = None
 
     def __enter__(self) -> Self:
         if self._client.connected:
@@ -68,9 +66,6 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._logger.debug("Configured stream for %s", self._client.sid)
         self._connected = True
 
-        if self._log_file_path is not None:
-            self._log_file = open(self._log_file_path, "w")  # noqa: SIM115
-
         return self
 
     def __exit__(
@@ -81,9 +76,6 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
     ) -> Literal[False]:
         self._client.disconnect()
         self._connected = False
-        if self._log_file is not None:
-            self._log_file.close()
-            self._log_file = None
 
         return False
 
@@ -122,11 +114,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                         f"{context['time']} - {log_body['id']} "
                         f"{log_body['part']}: {context['message']}"
                     )
-                    self._logger.info(log_message)
-                    if self._log_file is not None:
-                        self._log_file.write(
-                            f"{json.dumps(log_body, separators=(',', ':'))}\n",
-                        )
+                    self._logger.info(log_message, extra=log_body)
                 else:
                     self._logger.debug(
                         "ATG: Received non-audio message: %s",

@@ -10,22 +10,12 @@ nodes:
     rate: 22050
   looping: true
   delay_ms: 0
-- name: output_device_1_ru
-  device: 9
-  channel: 1
-  stream:
-    language: ru
-    audio_format:
-      format_type: int16
-    rate: 44100
-  node_type: output_channel
 - name: resampler_input_0_en
   node_type: resampler
   to_rate: 16000
 - name: converter_0_en_ru
   node_type: converter_seamless
   server_url: http://127.0.0.1:8000
-  log_file: leo_mic.log
   lang_from: en
   lang_to: ru
 - name: output_file_mic
@@ -52,8 +42,6 @@ nodes:
 edges:
 - - input_file_0_en
   - resampler_input_0_en
-- - resampler_output_1
-  - output_device_1_ru
 - - resampler_output_1
   - output_file_1_ru
 - - mixer_1_ru

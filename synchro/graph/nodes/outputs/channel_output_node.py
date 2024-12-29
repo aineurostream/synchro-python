@@ -74,7 +74,17 @@ class ChannelOutputNode(AbstractOutputNode):
 
     def put_data(self, frames: list[GraphFrameContainer]) -> None:
         active_frame = frames[0]
-        logger.info(f"Writing {active_frame.length_frames()} frames to stream")
+        logger.info(
+            f"Writing {active_frame.length_frames()} frames to stream",
+            extra={
+                "frames": active_frame.length_frames(),
+                "rate": active_frame.rate,
+                "length": active_frame.length_secs(),
+                "event": "audio_write",
+                "node": self.name,
+                "node_type": "channel_output",
+            }
+        )
 
         if len(frames) != 1:
             raise ValueError("Expected one frame container")
