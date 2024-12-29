@@ -2,3 +2,4 @@ defaults:
   - ai: default
   - pipeline: leo_file.yaml
   - settings: default.yaml
+  - override hydra/job_logging: custom

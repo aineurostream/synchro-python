@@ -58,7 +58,6 @@ class SeamlessConnectorNodeSchema(BaseNodeSchema):
     server_url: AnyUrl
     lang_from: str
     lang_to: str
-    log_file: str | None = None
 
 
 class MixerNodeSchema(BaseNodeSchema):
