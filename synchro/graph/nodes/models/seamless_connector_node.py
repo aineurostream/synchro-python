@@ -1,13 +1,12 @@
-import json
 import uuid
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import Any, Literal, Self
 
 from socketio import SimpleClient
 from socketio.exceptions import TimeoutError as SioTimeoutError
 
 from synchro.config.audio_format import AudioFormat, AudioFormatType
-from synchro.config.commons import StreamConfig
+from synchro.config.commons import NodeEventsCallback, StreamConfig
 from synchro.config.schemas import SeamlessConnectorNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
@@ -15,9 +14,6 @@ from synchro.graph.graph_node import (
     GraphNode,
     ReceivingNodeMixin,
 )
-
-if TYPE_CHECKING:
-    from io import TextIOWrapper
 
 INT16_MAX = 32767
 DEFAULT_INPUT_RATE = 16000
@@ -29,6 +25,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self,
         config: SeamlessConnectorNodeSchema,
         neuro_config: dict[str, Any],
+        events_cb: NodeEventsCallback | None = None,
     ) -> None:
         super().__init__(config.name)
         self._config = config
@@ -38,6 +35,7 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._user_id = str(uuid.uuid4())
         self._room_id = str(uuid.uuid4())[:4]
         self._connected = False
+        self._events_cb = events_cb
 
     def __enter__(self) -> Self:
         if self._client.connected:
@@ -115,6 +113,11 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                         f"{log_body['part']}: {context['message']}"
                     )
                     self._logger.info(log_message, extra=log_body)
+                    if self._events_cb:
+                        self._events_cb(
+                            self.name,
+                            log_body,
+                        )
                 else:
                     self._logger.debug(
                         "ATG: Received non-audio message: %s",
