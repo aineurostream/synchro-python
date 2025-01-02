@@ -83,7 +83,7 @@ class ChannelOutputNode(AbstractOutputNode):
                 "event": "audio_write",
                 "node": self.name,
                 "node_type": "channel_output",
-            }
+            },
         )
 
         if len(frames) != 1:

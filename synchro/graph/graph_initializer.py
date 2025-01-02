@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 
+from synchro.config.commons import NodeEventsCallback
 from synchro.config.schemas import (
     AllNodeTypes,
     InputChannelStreamerNodeSchema,
@@ -30,9 +31,11 @@ class GraphInitializer:
         self,
         config: ProcessingGraphConfig,
         neuro_config: dict[str, Any],
+        events_cb: NodeEventsCallback | None = None,
     ) -> None:
         self._config = config
         self._neuro_config = neuro_config
+        self._events_cb = events_cb
 
     def _create_channel_input_node(
         self,
@@ -62,7 +65,7 @@ class GraphInitializer:
         self,
         config: SeamlessConnectorNodeSchema,
     ) -> SeamlessConnectorNode:
-        return SeamlessConnectorNode(config, self._neuro_config)
+        return SeamlessConnectorNode(config, self._neuro_config, self._events_cb)
 
     def _create_mixer_node(self, config: MixerNodeSchema) -> MixerNode:
         return MixerNode(config)
