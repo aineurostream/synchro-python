@@ -56,10 +56,12 @@ def hydra_app(cfg: DictConfig) -> float:
     neural_config_dict = OmegaConf.to_container(neural_config)
 
     bleu_cb: dict[str, str] = defaultdict(str)
+    bleu_cb_channel: dict[str, str] = {}
 
     def node_event_callback(node_name: str, log: dict[str, Any]) -> None:
         if log["context"].get("action") == "synthesizing_text":
             bleu_cb[node_name] += log["context"]["text"]
+            bleu_cb_channel[node_name] = log["id"]
 
     from synchro.core import CoreManager
     core = CoreManager(core_config, neural_config_dict, settings, node_event_callback)
@@ -69,7 +71,15 @@ def hydra_app(cfg: DictConfig) -> float:
 
     # Calculating BLEU
     total_bleu_score = 0.0
-    bleu_eval: dict[str, dict[str, str | float]] = defaultdict(dict)
+    bleu_eval: dict[str, dict[str, str | float]] = {
+        node_name: {
+            "reference": "",
+            "hypothesis": "",
+            "bleu_score": 0.0,
+            "weight": 0.0,
+            "channel": bleu_cb_channel[node_name],
+        } for node_name in bleu_cb
+    }
     for bleu_experiment in settings.experiments.bleu:
         from nltk.translate.bleu_score import sentence_bleu
         reference = bleu_experiment.expected_text
@@ -84,8 +94,8 @@ def hydra_app(cfg: DictConfig) -> float:
             "hypothesis": hypothesis,
             "bleu_score": bleu_score,
             "weight": bleu_experiment.weight,
+            "channel": bleu_cb_channel[bleu_experiment.node],
         }
-        print(f"BLEU for {bleu_experiment.node}: {bleu_score}")
 
     with open(os.path.join(hydra_dir, "bleu_eval.json"), "w") as bleu_eval_file:
         json.dump(bleu_eval, bleu_eval_file, indent=4)
