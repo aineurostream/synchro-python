@@ -60,7 +60,7 @@ def hydra_app(cfg: DictConfig) -> float:
 
     def node_event_callback(node_name: str, log: dict[str, Any]) -> None:
         if log["context"].get("action") == "synthesizing_text":
-            bleu_cb[node_name] += log["context"]["text"]
+            bleu_cb[node_name] += " " + log["context"]["text"]
             bleu_cb_channel[node_name] = log["id"]
 
     from synchro.core import CoreManager
