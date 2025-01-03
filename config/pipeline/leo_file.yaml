@@ -46,8 +46,6 @@ edges:
   - output_file_1_ru
 - - mixer_1_ru
   - resampler_output_1
-- - mixer_0_ru
-  - output_file_0_ru
 - - converter_0_en_ru
   - mixer_1_ru
 - - resampler_input_0_en
