@@ -9,7 +9,8 @@ class SettingsLimitSchema(BaseModel):
 
 class BleuResult(BaseModel):
     node: str
-    expected_text: str
+    expected_translation: str
+    expected_transcription: str
     weight: Annotated[float, Field(default=1.0)]
 
 

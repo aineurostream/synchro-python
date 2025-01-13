@@ -3,7 +3,14 @@ limits:
 experiments:
   bleu:
   - node: converter_0_en_ru
-    expected_text: "
+    expected_transcription: "
+    Attention all passengers, 
+    the train to New York City will be departing from platform 5 in 10 minutes. 
+    Please ensure you have all your belongings with you before boarding. 
+    Thank you. Attention all passengers, the train to New York City will be 
+    departing from the airport. departing from platform 5 in 10 minutes.
+    "
+    expected_translation: "
     Вниманию всех пассажиров, 
     поезд до города Нью-Йорка отправится с площадки 5 через 10 минут. 
     пожалуйста, убедитесь, что у вас все необходимые документы вещи с собой перед посадкой. 
