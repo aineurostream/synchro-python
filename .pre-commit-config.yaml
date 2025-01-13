@@ -1,5 +1,7 @@
 files: |
   (?x)^(
+    hydra_run.py|
+    run.py|
     synchro/|
     pytests/
   )
