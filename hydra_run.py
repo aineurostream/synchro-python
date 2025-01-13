@@ -47,22 +47,27 @@ def persist_files(pipeline: ProcessingGraphConfig, hydra_dir: str) -> None:
             )
 
 
-def provide_bleu_for_text(base: str, resulted: str) -> float:
+def provide_bleu_for_text(base: str, resulted: str) -> tuple[float, float]:
     from nltk.translate.bleu_score import sentence_bleu
+    from jiwer import wer
 
-    result = sentence_bleu([split_string_bleu(base)], split_string_bleu(resulted))
-    return cast(float, result)
+    base_split = split_string_bleu(base)
+    result_split = split_string_bleu(resulted)
+    result = sentence_bleu([base_split], result_split)
+    wer_result = wer(' '.join(base), ' '.join(resulted))
+    return cast(float, result), wer_result
 
 
 def generate_report_on_bleu(
     reference: str,
     hypothesis: str,
 ) -> dict[str, str | float]:
-    bleu_score = provide_bleu_for_text(reference, hypothesis)
+    bleu_score, wer_score = provide_bleu_for_text(reference, hypothesis)
     return {
         "reference": reference,
         "hypothesis": hypothesis,
         "bleu_score": bleu_score,
+        "wer_score": wer_score,
     }
 
 
