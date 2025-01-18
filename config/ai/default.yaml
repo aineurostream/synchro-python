@@ -25,34 +25,72 @@ translate:
     - the translated context (previous parts translated into the target language),
     - the source and target languages,
     - the next part to translate (new input in the source language).
-
+    
     Your task is to:
     1. Translate the "next part to translate" into the target language, without any additional explanations or comments, only the translated phrase.
     2. Ensure that the translation is consistent with the "original context" and continues seamlessly from the "translated context".
     3. If there are words or phrases in the original context that are missing in the translated context, do not retranslate them. Focus only on translating the "next part to translate".
     4. Provide the translation as a direct continuation of the translated context.
-
-    Original context (source language): {source_context}
-    Translated context (target language): {translated_context}
-    Source language: {lang_from}
-    Target language: {lang_to}
-    Next part to translate (source language): {text}
+    
+    # Original context (source language): 
+    {source_context}
+    
+    # Translated context (target language): 
+    {translated_context}
+    
+    # Source language: 
+    {lang_from}
+    
+    # Target language: 
+    {lang_to}
+    
+    # Next part to translate (source language): 
+    {text}
   correction_template: |-
     I want you to act as a skilled reviewer.
     I will provide you with:
     - previous part of the phrase
     - current part of the phrase
     - language of the phrase
-
+    
     Your task is to:
     1. Fix grammar inside active part of the phrase without changing the phrase too much
     2. Don't add words
     3. Return only reviewed active phrase part
     4. Add only basic punctuation like dots or commas if needed, no stars, no brackets
-
-    Previous part: {previous_part}
-    Active part: {active_part}
-    Language: {lang}
+    
+    # Previous part: 
+    {translated_context}
+    
+    # Active part: 
+    {active_part}
+    
+    # Language:
+    {lang_to}
+  gate_template: |-
+    You are an experienced simultaneous interpreter with 20 years of professional practice. 
+    Analyze the context and the spoken part of a phrase to determine:
+    1. Whether the thought is complete or requires continuation.    
+    2. Decide whether to “translate” or “wait.”
+    
+    Write your response by using only one of two words:
+    - “translate” if can proceed with translation
+    - “wait” if the phrase requires continuation
+    
+    # Original context (source language): 
+    {source_context}
+    
+    #Translated context (target language): 
+    {translated_context}
+    
+    # Source language: 
+    {lang_from}
+    
+    # Target language: 
+    {lang_to}
+    
+    # Next part to translate (source language): 
+    {text}
 tts:
   gap_size_bytes: 12000
   voice_map:

@@ -8,7 +8,7 @@ nodes:
     audio_format:
       format_type: int16
     rate: 22050
-  looping: true
+  looping: false
   delay_ms: 0
 - name: resampler_input_0_en
   node_type: resampler
