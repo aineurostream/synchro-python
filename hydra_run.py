@@ -48,13 +48,13 @@ def persist_files(pipeline: ProcessingGraphConfig, hydra_dir: str) -> None:
 
 
 def provide_bleu_for_text(base: str, resulted: str) -> tuple[float, float]:
-    from nltk.translate.bleu_score import sentence_bleu
     from jiwer import wer
+    from nltk.translate.bleu_score import sentence_bleu
 
     base_split = split_string_bleu(base)
     result_split = split_string_bleu(resulted)
     result = sentence_bleu([base_split], result_split)
-    wer_result = wer(' '.join(base), ' '.join(resulted))
+    wer_result = wer(" ".join(base), " ".join(resulted))
     return cast(float, result), wer_result
 
 
