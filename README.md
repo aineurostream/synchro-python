@@ -42,6 +42,11 @@ poetry run python hydra_run.py
 In that case all configs are taken from the HYDRA's `config` folder. See [HYDRA](https://hydra.cc)
 documentation for launch options.
 
+You can try multirun on many threads for grid search:
+```bash
+poetry run python hydra_run.py --multirun --config-name optuna_01
+```
+
 ## How to test
 ```bash
 poetry run pytest ./pytests
