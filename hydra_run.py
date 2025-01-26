@@ -158,7 +158,7 @@ def hydra_app(cfg: DictConfig) -> float:
         )
 
     with open(os.path.join(hydra_dir, "bleu_eval.json"), "w") as bleu_eval_file:
-        json.dump(bleu_eval, bleu_eval_file, indent=4)
+        json.dump(bleu_eval, bleu_eval_file, indent=4, ensure_ascii=False)
 
     return total_bleu_score
 
