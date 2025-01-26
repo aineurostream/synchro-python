@@ -13,7 +13,9 @@ from synchro.config.schemas import (
     ProcessingGraphConfig,
 )
 from synchro.config.settings import BleuResult, SettingsSchema
+
 from synchro.logging import setup_logging
+setup_logging()
 
 KEY_TRANSCRIBED_TEXT = "transcribed"
 KEY_TRANSLATED_TEXT = "translated"
@@ -74,7 +76,6 @@ def generate_report_on_bleu(
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def hydra_app(cfg: DictConfig) -> float:
     hydra_dir: str = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-    setup_logging()
     """Start an instance of the Synchro application"""
 
     pipeline_config = cast(DictConfig, cfg["pipeline"])

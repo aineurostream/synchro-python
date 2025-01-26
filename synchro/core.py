@@ -23,6 +23,20 @@ class CoreManager:
         self._settings = settings
         self._events_cb = events_cb
 
+        self.preprocess_neuro_config()
+
+    def preprocess_neuro_config(self) -> None:
+        # Preprocess neuro config
+        def load_from_file(file_path: str) -> str:
+            with open(file_path, "r") as file:
+                return file.read()
+
+        translate_map = self._neuro_config["translate"]
+        swappable_keys = ["text_template", "correction_template", "gate_template"]
+        for key in swappable_keys:
+            if key in translate_map and translate_map[key].startswith("file://"):
+                translate_map[key] = load_from_file(translate_map[key][7:])
+
     def run(self) -> None:
         logger.info("Starting Synchro instance")
 

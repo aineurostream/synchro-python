@@ -157,6 +157,7 @@ cython_debug/
 .idea/
 
 outputs/
+multirun/
 
 translated_output.wav
 source_input.wav
