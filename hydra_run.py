@@ -1,6 +1,5 @@
 import json
 import os
-import time
 import shutil
 from collections import defaultdict
 from typing import Any, cast
@@ -14,27 +13,25 @@ from synchro.config.schemas import (
     ProcessingGraphConfig,
 )
 from synchro.config.settings import BleuResult, SettingsSchema
-
 from synchro.logging import setup_logging
+
 setup_logging()
-
-def file_resolver(path):
-    result = ""
-    with open(path, "rb") as fp:
-        result = fp.read()
-
-    return result
-
-OmegaConf.register_new_resolver(
-    "file", 
-    file_resolver,
-)
 
 KEY_TRANSCRIBED_TEXT = "transcribed"
 KEY_TRANSLATED_TEXT = "translated"
 KEY_CORRECTED_TEXT = "corrected"
 KEY_RESULTING_TEXT = "resulting"
 KEY_CHANNEL_NAME = "channel"
+
+def file_resolver(path: str) -> bytes:
+    with open(path, "rb") as fp:
+        return fp.read()
+
+
+OmegaConf.register_new_resolver(
+    "file",
+    file_resolver,
+)
 
 
 def split_string_bleu(text: str) -> list[str]:
@@ -94,25 +91,6 @@ def hydra_app(cfg: DictConfig) -> float:
     pipeline_config = cast(DictConfig, cfg["pipeline"])
     neural_config = cast(DictConfig, cfg["ai"])
     settings_config = cast(DictConfig, cfg["settings"])
-
-    # print(json.dumps(
-    #     OmegaConf.to_container(pipeline_config), 
-    #     indent=4, ensure_ascii=False,
-    # ))
-
-    # print(json.dumps(
-    #     OmegaConf.to_container(settings_config), 
-    #     indent=4, ensure_ascii=False,
-    # ))
-
-    # print(json.dumps(
-    #     OmegaConf.to_container(neural_config), 
-    #     indent=4, ensure_ascii=False,
-    # ))
-
-    # print(settings_config.experiments.bleu[0].expected_transcription)
-    # print(settings_config.experiments.bleu[0].expected_translation)
-    # time.sleep(5)
 
     core_config = ProcessingGraphConfig.model_validate(pipeline_config)
     settings = SettingsSchema.model_validate(settings_config)
