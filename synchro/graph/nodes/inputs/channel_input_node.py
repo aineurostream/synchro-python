@@ -36,21 +36,30 @@ class ChannelInputNode(AbstractInputNode):
 
     def __enter__(self) -> Self:
         def callback(
-            indata: np.ndarray,
+            input_data: np.ndarray,
             _frames: int,
             _time: int,
             status: str | None,
         ) -> None:
             if status:
                 self._logger.error("Error in audio stream: %s", status)
-            self._incoming_buffer += cast(bytes, indata.tobytes())
+            self._incoming_buffer += cast(bytes, input_data.tobytes())
 
         device_info = sd.query_devices(self._config.device, "input")
+        sample_rate = device_info["default_samplerate"]
+
+        if sample_rate != self._config.stream.rate:
+            self._logger.warning(
+                "Input device sample rate is %d, while expected %d",
+                sample_rate,
+                self._config.stream.rate,
+            )
+
         self._stream = sd.InputStream(
             device=self._config.device,
             channels=self._config.channel,
             dtype=self._config.stream.audio_format.numpy_format,
-            samplerate=device_info["default_samplerate"],
+            samplerate=sample_rate,
             callback=callback,
         )
         self._stream.start()

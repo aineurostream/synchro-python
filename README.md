@@ -47,6 +47,12 @@ You can try multirun on many threads for grid search:
 poetry run python hydra_run.py --multirun --config-name optuna_01
 ```
 
+You can try run using microphone with russian-to-english translation:
+```bash
+poetry run python hydra_run.py --config-name mic_01
+```
+
+
 ## How to test
 ```bash
 poetry run pytest ./pytests
