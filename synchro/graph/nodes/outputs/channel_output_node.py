@@ -32,24 +32,33 @@ class ChannelOutputNode(AbstractOutputNode):
 
     def __enter__(self) -> Self:
         def callback(
-            outdata: np.ndarray,
+            out_data: np.ndarray,
             frames: int,
             _time: int,
             status: str | None,
         ) -> None:
             if status:
-                logger.error("Error in audio stream: %s", status)
+                self._logger.error("Error in audio stream: %s", status)
 
             outgoing_buffer = np.frombuffer(self._out_buffer, dtype=np.int16)
             available_size = min(frames, outgoing_buffer.size)
-            outdata[:available_size, 0] = outgoing_buffer[:available_size]
+            out_data[:available_size, 0] = outgoing_buffer[:available_size]
             self._out_buffer = outgoing_buffer[available_size:].tobytes()
 
         device_info = sd.query_devices(self._config.device, "output")
+        sample_rate = device_info["default_samplerate"]
+
+        if sample_rate != self._config.stream.rate:
+            self._logger.warning(
+                "Output device sample rate is %d, while expected %d",
+                sample_rate,
+                self._config.stream.rate,
+            )
+
         self._stream = sd.OutputStream(
             device=self._config.device,
             channels=self._config.channel,
-            samplerate=device_info["default_samplerate"],
+            samplerate=sample_rate,
             dtype=self._config.stream.audio_format.numpy_format,
             callback=callback,
         )
@@ -74,7 +83,7 @@ class ChannelOutputNode(AbstractOutputNode):
 
     def put_data(self, frames: list[GraphFrameContainer]) -> None:
         active_frame = frames[0]
-        logger.info(
+        self._logger.info(
             f"Writing {active_frame.length_frames()} frames to stream",
             extra={
                 "frames": active_frame.length_frames(),
@@ -106,7 +115,7 @@ class ChannelOutputNode(AbstractOutputNode):
         if self._last_time_emit > 0:
             time_diff = current_emit_time - self._last_time_emit
             if time_diff > active_frame.length_secs():
-                logger.warning(
+                self._logger.warning(
                     "Time diff is %.3f while expected %.3f",
                     time_diff,
                     active_frame.length_secs(),

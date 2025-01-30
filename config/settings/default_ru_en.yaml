@@ -1,0 +1,16 @@
+limits:
+  run_time_seconds: 0  # <-- Set 0 for unlimited time
+experiments:
+  bleu:
+  - node: converter_0_ru_en
+    expected_transcription: "
+    Вниманию всех пассажиров, 
+    поезд до города Нью-Йорка отправится с площадки 5 через 10 минут. 
+    Пожалуйста, убедитесь, что у вас есть все необходимые вещи 
+    с собой перед посадкой.     
+    "
+    expected_translation: "
+    Attention all passengers, 
+    the train to New York City will be departing from platform 5 in 10 minutes. 
+    Please ensure you have all your belongings with you before boarding. 
+    "
