@@ -1,0 +1,9 @@
+limits:
+  # Как долго ждём конца прогона, длительность файла + 10-30%
+  run_time_seconds: 30
+experiments:
+  # Транскрипция и перевод для сравнения
+  bleu:
+  - node: converter_0_ru_en
+    expected_transcription: ""
+    expected_translation: ""
