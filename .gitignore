@@ -157,7 +157,9 @@ cython_debug/
 .idea/
 
 outputs/
+reports/
 multirun/
+samples/output_chunks/
 
 translated_output.wav
 source_input.wav
