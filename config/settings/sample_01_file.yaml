@@ -1,7 +1,8 @@
+name: Sample 01 File
 limits:
-  run_time_seconds: 90
-experiments:
-  bleu:
+  run_time_seconds: 15  # <-- Set 0 for unlimited time
+metrics:
+  quality:
   - node: converter_0_ru_en
     expected_transcription: "Просто нету практики взаимодействия с инвалидами. Мало 
     здоровые люди общаются, мало практикуют, сотрудничают с ними, и поэтому они 

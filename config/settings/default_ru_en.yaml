@@ -1,7 +1,8 @@
+name: Default_RU_EN
 limits:
-  run_time_seconds: 0  # <-- Set 0 for unlimited time
-experiments:
-  bleu:
+  run_time_seconds: 15  # <-- Set 0 for unlimited time
+metrics:
+  quality:
   - node: converter_0_ru_en
     expected_transcription: "
     Вниманию всех пассажиров, 

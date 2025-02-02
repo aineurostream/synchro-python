@@ -9,6 +9,7 @@ stt:
 translate:
   llm_call_timeout: 15
   context_window: 4
+  max_gate_size_words: 15
   forced_line_end: "..."
   escaped_characters:
   - "\n"

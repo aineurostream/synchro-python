@@ -12,7 +12,7 @@ from synchro.config.schemas import (
     OutputFileNodeSchema,
     ProcessingGraphConfig,
 )
-from synchro.config.settings import BleuResult, SettingsSchema
+from synchro.config.settings import QualityInfo, SettingsSchema
 from synchro.logging import setup_logging
 
 setup_logging()
@@ -22,6 +22,7 @@ KEY_TRANSLATED_TEXT = "translated"
 KEY_CORRECTED_TEXT = "corrected"
 KEY_RESULTING_TEXT = "resulting"
 KEY_CHANNEL_NAME = "channel"
+
 
 def file_resolver(path: str) -> bytes:
     with open(path, "rb") as fp:
@@ -126,50 +127,52 @@ def hydra_app(cfg: DictConfig) -> float:
 
     # Calculating BLEU
     total_bleu_score = 0.0
-    bleu_eval: dict[str, dict[str, str | dict[str, str | float]]] = defaultdict(dict)
+    quality_store: dict[str, dict[str, str | dict[str, str | float]]] = defaultdict(
+        dict,
+    )
 
     def append_value(
         mode: str,
         expected: str,
-        bleu_exp: BleuResult,
+        quality_info: QualityInfo,
     ) -> None:
-        bleu_eval[bleu_exp.node][mode] = generate_report_on_bleu(
+        quality_store[quality_info.node][mode] = generate_report_on_bleu(
             expected,
-            generated_texts[bleu_exp.node][mode],
+            generated_texts[quality_info.node][mode],
         )
 
-    for bleu_experiment in settings.experiments.bleu:
+    for quality_info in settings.metrics.quality:
         append_value(
             KEY_TRANSCRIBED_TEXT,
-            bleu_experiment.expected_transcription,
-            bleu_experiment,
+            quality_info.expected_transcription,
+            quality_info,
         )
         append_value(
             KEY_TRANSLATED_TEXT,
-            bleu_experiment.expected_translation,
-            bleu_experiment,
+            quality_info.expected_translation,
+            quality_info,
         )
         append_value(
             KEY_CORRECTED_TEXT,
-            bleu_experiment.expected_translation,
-            bleu_experiment,
+            quality_info.expected_translation,
+            quality_info,
         )
         append_value(
             KEY_RESULTING_TEXT,
-            bleu_experiment.expected_translation,
-            bleu_experiment,
+            quality_info.expected_translation,
+            quality_info,
         )
-        bleu_eval[bleu_experiment.node][KEY_CHANNEL_NAME] = generated_texts[
-            bleu_experiment.node
+        quality_store[quality_info.node][KEY_CHANNEL_NAME] = generated_texts[
+            quality_info.node
         ][KEY_CHANNEL_NAME]
 
         total_bleu_score += (
-            bleu_eval[bleu_experiment.node][KEY_RESULTING_TEXT]["bleu_score"]  # type: ignore
-            * bleu_experiment.weight
+            quality_store[quality_info.node][KEY_RESULTING_TEXT]["bleu_score"]  # type: ignore
+            * quality_info.weight
         )
 
-    with open(os.path.join(hydra_dir, "bleu_eval.json"), "w") as bleu_eval_file:
-        json.dump(bleu_eval, bleu_eval_file, indent=4, ensure_ascii=False)
+    with open(os.path.join(hydra_dir, "meta_store.json"), "w") as meta_file:
+        json.dump(quality_store, meta_file, indent=4, ensure_ascii=False)
 
     return total_bleu_score
 

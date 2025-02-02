@@ -7,23 +7,24 @@ class SettingsLimitSchema(BaseModel):
     run_time_seconds: Annotated[int, Field(default=0)]
 
 
-class BleuResult(BaseModel):
+class QualityInfo(BaseModel):
     node: str
     expected_translation: str
     expected_transcription: str
     weight: Annotated[float, Field(default=1.0)]
 
 
-class ExperimentsSchema(BaseModel):
-    bleu: Annotated[list[BleuResult], Field(default_factory=list)]
+class MetricsSchema(BaseModel):
+    quality: Annotated[list[QualityInfo], Field(default_factory=list)]
 
 
 class SettingsSchema(BaseModel):
+    name: str
     limits: Annotated[
         SettingsLimitSchema,
         Field(default_factory=SettingsLimitSchema),
     ]
-    experiments: Annotated[
-        ExperimentsSchema,
-        Field(default_factory=ExperimentsSchema),
+    metrics: Annotated[
+        MetricsSchema,
+        Field(default_factory=MetricsSchema),
     ]
