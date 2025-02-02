@@ -1,9 +1,8 @@
+name: Sample RU->EN
 limits:
-  # Как долго ждём конца прогона, длительность файла + 10-30%
-  run_time_seconds: 30
-experiments:
-  # Транскрипция и перевод для сравнения
-  bleu:
+  run_time_seconds: 30  # <-- Set 0 for unlimited time
+metrics:
+  quality:
   - node: converter_0_en_ru
     expected_transcription: ""
     expected_translation: ""

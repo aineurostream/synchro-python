@@ -1,7 +1,8 @@
+name: Default
 limits:
   run_time_seconds: 15  # <-- Set 0 for unlimited time
-experiments:
-  bleu:
+metrics:
+  quality:
   - node: converter_0_en_ru
     expected_transcription: "
     Attention all passengers, 
