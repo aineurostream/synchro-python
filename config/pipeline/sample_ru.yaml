@@ -7,7 +7,7 @@ nodes:
     language: ru
     audio_format:
       format_type: int16
-    rate: 44100
+    rate: 16000
   looping: false
   delay_ms: 0
 - name: resampler_input_0_ru
