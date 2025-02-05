@@ -25,12 +25,13 @@ class ChannelInputNode(AbstractInputNode):
     ) -> None:
         super().__init__(config.name)
         self._config = config
-        self._vad = VoiceActivityDetector(
-            sample_size_bytes=self._config.stream.audio_format.sample_size,
-            sample_rate=config.stream.rate,
-            min_buffer_size_sec=MIN_BUFFER_SIZE_SEC,
-            shrink_buffer_size_sec=PREFERRED_BUFFER_SIZE_SEC,
-        )
+        # self._vad = VoiceActivityDetector(
+        #     sample_size_bytes=self._config.stream.audio_format.sample_size,
+        #     sample_rate=config.stream.rate,
+        #     min_buffer_size_sec=MIN_BUFFER_SIZE_SEC,
+        #     shrink_buffer_size_sec=PREFERRED_BUFFER_SIZE_SEC,
+        # )
+        self._vad = None
         self._stream: sd.InputStream | None = None
         self._incoming_buffer = b""
 
@@ -43,7 +44,9 @@ class ChannelInputNode(AbstractInputNode):
         ) -> None:
             if status:
                 self._logger.error("Error in audio stream: %s", status)
-            self._incoming_buffer += cast(bytes, input_data.tobytes())
+
+            chunk = cast(bytes, input_data.tobytes())
+            self._incoming_buffer += chunk
 
         device_info = sd.query_devices(self._config.device, "input")
         sample_rate = device_info["default_samplerate"]
@@ -93,6 +96,10 @@ class ChannelInputNode(AbstractInputNode):
         self._incoming_buffer = b""
         if len(read_bytes) > 0:
             read_bytes = self._normalize_audio(read_bytes)
+
+            if not self._vad:
+                return read_bytes
+
             voice_result = self._vad.detect_voice(read_bytes)
             if voice_result == VoiceActivityDetectorResult.SPEECH:
                 self._logger.debug("Detected speech: %d bytes", len(read_bytes))

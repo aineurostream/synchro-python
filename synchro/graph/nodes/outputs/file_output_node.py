@@ -54,6 +54,4 @@ class FileOutputNode(AbstractOutputNode):
         if self._wave_file is None:
             raise RuntimeError("Audio stream is not open")
 
-        voice_result = self._vad.detect_voice(frames[0].frame_data)
-        if voice_result == VoiceActivityDetectorResult.SPEECH:
-            self._wave_file.writeframes(frames[0].frame_data)
+        self._wave_file.writeframes(frames[0].frame_data)
