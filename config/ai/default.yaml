@@ -7,7 +7,7 @@ stt:
   buffer_min_words_size: 5
   buffer_timeout_seconds: 0.5
 translate:
-  llm_call_timeout: 15
+  llm_call_timeout: 30
   context_window: 4
   max_gate_size_words: 15
   forced_line_end: "..."
@@ -50,9 +50,9 @@ translate:
   correction_template: |-
     I want you to act as a skilled reviewer.
     I will provide you with:
-    - previous part of the phrase
-    - current part of the phrase
-    - language of the phrase
+    - Previous part of the phrase
+    - Active part of the phrase
+    - Language of the phrase
     
     Your task is to:
     1. Fix grammar inside active part of the phrase without changing the phrase too much
@@ -60,38 +60,50 @@ translate:
     3. Return only reviewed active phrase part
     4. Add only basic punctuation like dots or commas if needed, no stars, no brackets
     
-    # Previous part: 
+    # Previous part
     {translated_context}
     
-    # Active part: 
+    # Active part
     {active_part}
     
-    # Language:
+    # Language
     {lang_to}
   gate_template: |-
     You are an experienced simultaneous interpreter with 20 years of professional practice. 
     Analyze the context and the spoken part of a phrase to determine:
-    1. Whether the thought is complete or requires continuation.    
-    2. Decide whether to “translate” or “wait.”
+    1. Whether the thought or it's part is complete or requires continuation.    
+    2. Decide whether to "translate" or "wait"
     
     Write your response by using only one of two words:
-    - “translate” if can proceed with translation
-    - “wait” if the phrase requires continuation
+    - "translate" if can proceed with translation
+    - "wait" if the phrase requires continuation
     
-    # Original context (source language): 
+    # Original context (source language)
     {source_context}
     
-    #Translated context (target language): 
+    #Translated context (target language)
     {translated_context}
     
-    # Source language: 
+    # Source language
     {lang_from}
     
-    # Target language: 
+    # Target language
     {lang_to}
     
-    # Next part to translate (source language): 
+    # Text
     {text}
+  gate_partial_template: |-
+    Analyze the text and context below. Follow these rules:  
+    1. If a partial phrase CAN be translated confidently (enough context) → Write translation in line 1.  
+    2. If the continuation needs more context → Keep original text in line 2.  
+    3. Response format: ONLY 2 lines separated by \n. No explanations.  
+
+    Examples:  
+    Input: "The patient has [unclear]... and requires immediate surgery"  
+    Output: The patient requires urgent surgery\n[unclear]...  
+
+    Text: "{user_text}"  
+    Context: "{context}"
 tts:
   gap_size_bytes: 12000
   voice_map:
