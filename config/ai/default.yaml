@@ -7,7 +7,7 @@ stt:
   buffer_min_words_size: 5
   buffer_timeout_seconds: 0.5
 translate:
-  llm_call_timeout: 30
+  llm_call_timeout: 120
   context_window: 4
   max_gate_size_words: 15
   forced_line_end: "..."
@@ -93,17 +93,13 @@ translate:
     # Text
     {text}
   gate_partial_template: |-
-    Analyze the text and context below. Follow these rules:  
-    1. If a partial phrase CAN be translated confidently (enough context) → Write translation in line 1.  
-    2. If the continuation needs more context → Keep original text in line 2.  
-    3. Response format: ONLY 2 lines separated by \n. No explanations.  
+    Analyze the Text and Context below. Follow these rules:
+    1. If Text CAN be translated confidently without sentence ending → Write translation in line 1.
+    2. If the continuation needs more Context → Keep original Text in line 2.
+    3. Response format: ONLY 2 lines separated by \n. No explanations.
 
-    Examples:  
-    Input: "The patient has [unclear]... and requires immediate surgery"  
-    Output: The patient requires urgent surgery\n[unclear]...  
-
-    Text: "{user_text}"  
-    Context: "{context}"
+    Text: "{text}"
+    Context: "{source_context}"
 tts:
   gap_size_bytes: 12000
   voice_map:

@@ -42,13 +42,13 @@ nodes:
 edges:
 - - input_file_0_ru
   - resampler_input_0_ru
-- - resampler_output_1
-  - output_file_1_en
-- - mixer_1_en
-  - resampler_output_1
-- - converter_0_ru_en
-  - mixer_1_en
+# - - resampler_input_0_ru
+#   - output_file_mic
 - - resampler_input_0_ru
   - converter_0_ru_en
-- - resampler_input_0_ru
-  - output_file_mic
+- - converter_0_ru_en
+  - mixer_1_en
+- - mixer_1_en
+  - resampler_output_1
+- - resampler_output_1
+  - output_file_1_en

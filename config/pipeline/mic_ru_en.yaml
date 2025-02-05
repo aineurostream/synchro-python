@@ -2,7 +2,7 @@
 nodes:
 - name: input_mic_0_ru
   node_type: input_channel
-  device: 2 # <-- This device should be set for microphone input
+  device: 0 # <-- This device should be set for microphone input
   channel: 1 # <-- Always set to 1 for microphone input
   stream:
     language: ru
@@ -35,7 +35,7 @@ nodes:
     rate: 44100 # <-- !!! Must be equal to resampler_output_1 rate
 - name: output_channel_1_en
   node_type: output_channel
-  device: 9 # <-- This device should be set for audio output
+  device: 1 # <-- This device should be set for audio output
   channel: 1 # <-- Always set to 1 for audio output
   stream:
     language: en
