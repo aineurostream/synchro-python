@@ -6,7 +6,7 @@ from threading import Thread
 
 from pydantic import BaseModel, ConfigDict
 
-from synchro.config.commons import MIN_STEP_LENGTH_SECS
+from synchro.config.commons import MIN_STEP_LENGTH_SECS, MIN_STEP_NON_GENERATING_SECS
 from synchro.config.settings import SettingsSchema
 from synchro.graph.graph_edge import GraphEdge
 from synchro.graph.graph_frame_container import GraphFrameContainer
@@ -58,7 +58,10 @@ class NodeExecutor(Thread):
             while self._running:
                 self.process_inputs()
                 self.process_outputs()
-                time.sleep(MIN_STEP_LENGTH_SECS)
+                if isinstance(self.node, ReceivingNodeMixin):
+                    time.sleep(MIN_STEP_NON_GENERATING_SECS)
+                else:
+                    time.sleep(MIN_STEP_LENGTH_SECS)  # Microphones or file inputs
 
     def process_outputs(self) -> None:
         if isinstance(self.node, EmittingNodeMixin):

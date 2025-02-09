@@ -45,6 +45,14 @@ class GraphFrameContainer(FrameContainer):
     source: str
     language: str
 
+    @property
+    def stream_config(self) -> StreamConfig:
+        return StreamConfig(
+            language=self.language,
+            audio_format=self.audio_format,
+            rate=self.rate,
+        )
+
     def __str__(self) -> str:
         return f"GFC({self.source}, {self.language}, {super().__str__()})"
 

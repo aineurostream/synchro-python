@@ -3,16 +3,7 @@ from typing import Literal, Self, cast
 
 import numpy as np
 import sounddevice as sd
-from pydub import AudioSegment, effects
 
-from synchro.audio.voice_activity_detector import (
-    VoiceActivityDetector,
-    VoiceActivityDetectorResult,
-)
-from synchro.config.commons import (
-    MIN_BUFFER_SIZE_SEC,
-    PREFERRED_BUFFER_SIZE_SEC,
-)
 from synchro.config.schemas import InputChannelStreamerNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
@@ -25,13 +16,6 @@ class ChannelInputNode(AbstractInputNode):
     ) -> None:
         super().__init__(config.name)
         self._config = config
-        # self._vad = VoiceActivityDetector(
-        #     sample_size_bytes=self._config.stream.audio_format.sample_size,
-        #     sample_rate=config.stream.rate,
-        #     min_buffer_size_sec=MIN_BUFFER_SIZE_SEC,
-        #     shrink_buffer_size_sec=PREFERRED_BUFFER_SIZE_SEC,
-        # )
-        self._vad = None
         self._stream: sd.InputStream | None = None
         self._incoming_buffer = b""
 
@@ -94,30 +78,4 @@ class ChannelInputNode(AbstractInputNode):
 
         read_bytes = self._incoming_buffer
         self._incoming_buffer = b""
-        if len(read_bytes) > 0:
-            read_bytes = self._normalize_audio(read_bytes)
-
-            if not self._vad:
-                return read_bytes
-
-            voice_result = self._vad.detect_voice(read_bytes)
-            if voice_result == VoiceActivityDetectorResult.SPEECH:
-                self._logger.debug("Detected speech: %d bytes", len(read_bytes))
-                return read_bytes
-        return b""
-
-    def _normalize_audio(self, audio: bytes) -> bytes:
-        audio_segment = AudioSegment(
-            audio,
-            frame_rate=self._config.stream.rate,
-            sample_width=self._config.stream.audio_format.sample_size,
-            channels=1,
-        )
-        audio_segment = effects.strip_silence(
-            audio_segment,
-            silence_len=300,
-            silence_thresh=-60,
-        )
-        audio_segment = effects.normalize(audio_segment, headroom=10.0)
-
-        return cast(bytes, audio_segment.raw_data)
+        return read_bytes
