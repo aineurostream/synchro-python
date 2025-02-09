@@ -2,6 +2,8 @@ from enum import Enum
 
 import numpy as np
 
+from synchro.audio.frame_container import FrameContainer
+
 DEFAULT_MINIMAL_EDGE = 1000
 
 
@@ -14,20 +16,22 @@ class VoiceActivityDetectorResult(str, Enum):
 class VoiceActivityDetector:
     def __init__(
         self,
-        sample_size_bytes: int = 2,
-        sample_rate: int = 44100,
         min_buffer_size_sec: float = 0.05,
         shrink_buffer_size_sec: float = 0.3,
     ) -> None:
         self._vad = None
-        self._sample_size_bytes = sample_size_bytes
-        self._sample_rate = sample_rate
         self._min_buffer_size_sec = min_buffer_size_sec
         self._shrink_buffer_size_sec = shrink_buffer_size_sec
         self._buffer: list[bytes] = []
+        self._sample_size_bytes = 2
+        self._sample_rate = 0
 
-    def detect_voice(self, audio_data: bytes) -> VoiceActivityDetectorResult:
-        self._buffer.append(audio_data)
+    def detect_voice(self, audio_data: FrameContainer) -> VoiceActivityDetectorResult:
+        self._buffer.append(audio_data.frame_data)
+
+        if self._sample_rate == 0:
+            self._sample_size_bytes = audio_data.audio_format.sample_size
+            self._sample_rate = audio_data.rate
 
         if self.stored_buffer_duration_sec < self._min_buffer_size_sec:
             return VoiceActivityDetectorResult.NOT_ENOUGH_INFO

@@ -23,6 +23,9 @@ class NodeType(str, Enum):
     CONVERTER_SEAMLESS = "converter_seamless"
     MIXER = "mixer"
     RESAMPLER = "resampler"
+    VAD = "vad"
+    NORMALIZER = "normalizer"
+    DENOISER = "denoiser"
     OUTPUT_FILE = "output_file"
 
 
@@ -69,6 +72,20 @@ class ResamplerNodeSchema(BaseNodeSchema):
     to_rate: int
 
 
+class VadNodeSchema(BaseNodeSchema):
+    node_type: Literal[NodeType.VAD] = NodeType.VAD
+
+
+class NormalizerNodeSchema(BaseNodeSchema):
+    node_type: Literal[NodeType.NORMALIZER] = NodeType.NORMALIZER
+    headroom: float = 10.0
+
+
+class DenoiserNodeSchema(BaseNodeSchema):
+    node_type: Literal[NodeType.DENOISER] = NodeType.DENOISER
+    threshold: float = 0.5
+
+
 class OutputFileNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.OUTPUT_FILE] = NodeType.OUTPUT_FILE
     path: Path
@@ -95,6 +112,9 @@ AllNodes = Annotated[
     # PROCESSORS
     Annotated[MixerNodeSchema, Tag(NodeType.MIXER)]
     | Annotated[ResamplerNodeSchema, Tag(NodeType.RESAMPLER)]
+    | Annotated[VadNodeSchema, Tag(NodeType.VAD)]
+    | Annotated[NormalizerNodeSchema, Tag(NodeType.NORMALIZER)]
+    | Annotated[DenoiserNodeSchema, Tag(NodeType.DENOISER)]
     |
     # OUTPUTS
     Annotated[OutputFileNodeSchema, Tag(NodeType.OUTPUT_FILE)]
@@ -112,6 +132,9 @@ AllNodeTypes = (
     | SeamlessConnectorNodeSchema
     | MixerNodeSchema
     | ResamplerNodeSchema
+    | VadNodeSchema
+    | NormalizerNodeSchema
+    | DenoiserNodeSchema
     | OutputFileNodeSchema
     | OutputChannelStreamerNodeSchema
 )

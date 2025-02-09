@@ -2,11 +2,6 @@ import wave
 from types import TracebackType
 from typing import Literal, Self
 
-from synchro.audio.voice_activity_detector import (
-    VoiceActivityDetector,
-    VoiceActivityDetectorResult,
-)
-from synchro.config.commons import MIN_BUFFER_SIZE_SEC, PREFERRED_BUFFER_SIZE_SEC
 from synchro.config.schemas import OutputFileNodeSchema
 from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.outputs.abstract_output_node import AbstractOutputNode
@@ -20,12 +15,6 @@ class FileOutputNode(AbstractOutputNode):
         super().__init__(config.name)
         self._config = config
         self._wave_file: wave.Wave_write | None = None
-        self._vad = VoiceActivityDetector(
-            sample_size_bytes=self._config.stream.audio_format.sample_size,
-            sample_rate=config.stream.rate,
-            min_buffer_size_sec=MIN_BUFFER_SIZE_SEC,
-            shrink_buffer_size_sec=PREFERRED_BUFFER_SIZE_SEC,
-        )
 
     def __enter__(self) -> Self:
         self._wave_file = wave.open(str(self._config.path), "w")
