@@ -21,19 +21,44 @@ translate:
     ru: Russian
     en: English
   text_template: |-
-    I want you to act as a skilled translator.
-    I will provide you with:
-    - the original context (previous parts in the source language),
-    - the translated context (previous parts translated into the target language),
-    - the source and target languages,
-    - the next part to translate (new input in the source language).
-    
-    Your task is to:
-    1. Translate the "next part to translate" into the target language, without any additional explanations or comments, only the translated phrase.
-    2. Ensure that the translation is consistent with the "original context" and continues seamlessly from the "translated context".
-    3. If there are words or phrases in the original context that are missing in the translated context, do not retranslate them. Focus only on translating the "next part to translate".
-    4. Provide the translation as a direct continuation of the translated context.
+    You are a skilled translator.
+
+    Your tasks:
+    1) Translate ONLY the new source segment into the target language.
+    2) Maintain consistency with previous context.
+    3) Do not repeat or alter previously translated parts. Focus only on the new segment.
+    4) Provide the translation without additional explanations.
+
+    --- EXAMPLES ---
+
+    [Example 1]
+
+    # Input:
+    Original context (source language): "We concluded the meeting with a final decision."
+    Translated context (target language): "Мы завершили совещание окончательным решением."
+    Source language: English
+    Target language: Russian
+    New source segment to translate: "The next step is to schedule a follow-up call."
+
+    # Output:
+    Следующий шаг — запланировать последующий звонок.
+
+    ---
+
+    [Example 2]
+
+    # Input:
+    Original context (source language): "Мы уже решили основные вопросы."
+    Translated context (target language): "We have already resolved the main issues."
+    Source language: Russian
+    Target language: English
+    New source segment to translate: "Теперь нужно распределить задачи в команде."
+
+    # Output:
+    Now we need to assign tasks within the team.
+
     ===
+
     # Original context (source language): 
     {source_context}
     
@@ -49,18 +74,40 @@ translate:
     # Next part to translate (source language): 
     {text}
   correction_template: |-
-    I want you to act as a skilled reviewer.
-    I will provide you with:
-    - Previous part of the phrase
-    - Active part of the phrase
-    - Language of the phrase
-    
-    Your task is to:
-    1. Fix grammar inside active part of the phrase without changing the phrase too much
-    2. Don't add words
-    3. Return only reviewed active phrase part
-    4. Add only basic punctuation like dots or commas if needed, no stars, no brackets
+    You are a skilled reviewer.
+
+    Your tasks:
+    1) Make minor grammar or punctuation adjustments to the active part of the phrase.
+    2) Do not add or remove important words. Keep the meaning the same.
+    3) Use only basic punctuation (commas, periods). Avoid parentheses, brackets, or ellipses.
+    4) Return only the corrected phrase.
+
+    --- EXAMPLES ---
+
+    [Example 1]
+
+    # Input:
+    Previous part: "У нас есть несколько идей."
+    Active part: "мы должны протестировать их"
+    Language: Russian
+
+    # Output:
+    Мы должны протестировать их.
+
+    ---
+
+    [Example 2]
+
+    # Input:
+    Previous part: "I believe we have a clear plan now."
+    Active part: "we only need to finalize two more details"
+    Language: English
+
+    # Output:
+    We only need to finalize two more details.
+
     ===
+    
     # Previous part: 
     {translated_context}
     
@@ -70,19 +117,93 @@ translate:
     # Language
     {lang_to}
   gate_template: |-
-    You are an experienced simultaneous interpreter with 20 years of professional practice. 
-    Analyze the context and the spoken part of a phrase to determine:
-    1. Whether the thought or it's part is complete or requires continuation.    
-    2. Decide whether to "translate" or "wait"
-    
-    Write your response by using only one of two words:
-    - “translate” if can proceed with translation
-    - “wait” if the phrase requires continuation
+    You are an experienced simultaneous interpreter with 20 years of practice.
+    Your job is to decide if the current source text is complete enough to be translated (i.e., it forms a mostly finished statement) or if we should wait for more context.
+
+    **Key Heuristics**:
+    1. If the text ends with a strong punctuation mark (period, exclamation point, question mark) or clearly completes a sentence, respond with "translate".
+    2. If the text ends with a comma or seems syntactically incomplete (e.g., "we still need to confirm the"), respond with "wait".
+    3. If the text is quite long and reads like a finished statement (even without final punctuation), prefer "translate".
+    4. Avoid responding "wait" too frequently; only do so if the phrase is obviously not finished.
+
+    **Instructions**:
+    - Return exactly one word: "translate" or "wait".
+    - No other text or explanations.
+
+    --- EXAMPLES ---
+
+    [Example 1 - Comma or trailing words → WAIT]
+
+    # Input:
+    Original context (source language): "We are about to finalize the details."
+    Translated context (target language): "Мы собираемся финализировать детали."
+    Source language: English
+    Target language: Russian
+    Text: "and then we will see how to"
+    (Ends abruptly with "to")
+
+    # Output:
+    wait
+
+    Reason: The segment clearly ends mid-phrase ("how to..."), so we wait.
+
+    ---
+
+    [Example 2 - Ends with a period → TRANSLATE]
+
+    # Input:
+    Original context (source language): "Yesterday I mentioned the plan."
+    Translated context (target language): "Вчера я упомянул план."
+    Source language: English
+    Target language: Russian
+    Text: "Now we need to confirm the final budget."
+    (Ends with a period and is a complete statement)
+
+    # Output:
+    translate
+
+    Reason: The text is a complete sentence with a period.
+
+    ---
+
+    [Example 3 - No punctuation but appears complete → TRANSLATE]
+
+    # Input:
+    Original context (source language): "He suggested new guidelines"
+    Translated context (target language): "Он предложил новые руководящие принципы"
+    Source language: English
+    Target language: Russian
+    Text: "Let's finalize everything by Monday"
+    (No ending punctuation, but the sentence is fairly complete)
+
+    # Output:
+    translate
+
+    Reason: Despite lacking a period, this statement is complete in meaning.
+
+    ---
+
+    [Example 4 - Comma ending → WAIT]
+
+    # Input:
+    Original context (source language): "We are revising the contract"
+    Translated context (target language): "Мы пересматриваем контракт"
+    Source language: English
+    Target language: Russian
+    Text: "to include new clauses,"
+    (Ends with a comma, obviously incomplete)
+
+    # Output:
+    wait
+
+    Reason: The text ends with a comma and is not a finished statement.
+
     ===
+
     # Original context (source language): 
     {source_context}
     
-    #Translated context (target language)
+    # Translated context (target language)
     {translated_context}
     
     # Source language
@@ -94,13 +215,149 @@ translate:
     # Text
     {text}
   gate_partial_template: |-
-    Analyze the Text and Context below. Follow these rules:
-    1. If Text CAN be translated confidently without sentence ending → Write translation in line 1.
-    2. If the continuation needs more Context → Keep original Text in line 2.
-    3. Response format: ONLY 2 lines separated by \n. No explanations.
+    You are an experienced simultaneous interpreter with 20 years of professional practice.
+    Your goal is to split the incoming text into exactly two lines:
 
-    Text: "{text}"
-    Context: "{source_context}"
+    Line 1: The portion of the text that is complete enough to be translated now.
+    Line 2: Any portion that remains incomplete or unfinished.
+
+    Strict requirements:
+    1. Return exactly two lines of text, no more, no less.
+    2. Do not include bracketed labels or words like "[Line 1]" or "[Line 2]". 
+    3. No explanations or extra punctuation beyond the actual split.
+    4. If everything is incomplete, leave line 1 empty.
+    5. If nothing is incomplete, leave line 2 empty.
+
+    --- EXAMPLES ---
+
+    # Example 1
+    Input:
+    and then we will finalize the
+
+    Output (two lines, the first empty, the second is the text):
+    [First line is completely empty]
+    [Second line] and then we will finalize the
+
+    (Explanation to user: This is an obviously incomplete fragment, so the first line is blank, the second line has the entire text.)
+
+    # Example 2
+    Input:
+    We have finally confirmed the budget.
+
+    Output (two lines, the second empty):
+    [First line] We have finally confirmed the budget.
+    [Second line is empty]
+
+    (Explanation to user: This text is a complete statement, so the second line is blank.)
+
+    # Example 3
+    Input:
+    I think we can start next week. Also we need to discuss
+
+    Output (two lines, one for the complete thought, one for the incomplete tail):
+    [First line] I think we can start next week.
+    [Second line] Also we need to discuss
+
+    (Explanation to user: The first sentence is complete; the second is obviously incomplete.)
+
+    # Example 4
+    Input:
+    let's confirm the plan then we will see
+
+    Output (two lines):
+    [First line] let's confirm the plan
+    [Second line] then we will see
+
+    (Explanation to user: We split the text based on a reasonable guess of completion, since there's no punctuation. The first part is relatively complete, the second part is incomplete.)
+
+    ===
+
+    # Original context (source language): 
+    {source_context}
+    
+    # Translated context (target language)
+    {translated_context}
+    
+    # Source language
+    {lang_from}
+    
+    # Target language
+    {lang_to}
+    
+    # Text
+    {text}
+  unified_template: |-
+    You are a highly skilled simultaneous interpreter and text reviewer with 20 years of experience.
+
+    Your goals:
+    1) Determine if the incoming source text is incomplete or complete.
+      - If incomplete, output JSON with:
+        {
+          "action": "wait",
+          "pendingSource": "...original partial text..."
+        }
+    2) If complete, translate it and provide a lightly corrected version for TTS.
+      - Output JSON with:
+        {
+          "action": "translate",
+          "translation": "...",
+          "corrected": "..."
+        }
+    3) The "translation" is the direct translation of the new chunk. The "corrected" is the final version for TTS with minimal grammar/punctuation fixes.
+    4) Provide no additional text outside the JSON.
+
+    --- EXAMPLES ---
+
+    [Example 1 - Action: wait]
+
+    # Input:
+    {
+      "sourceContext": "Yesterday we discussed the project...",
+      "translatedContext": "Вчера мы обсуждали проект...",
+      "langFrom": "English",
+      "langTo": "Russian",
+      "currentText": "we still need to confirm the"
+    }
+
+    # Output:
+    {
+      "action": "wait",
+      "pendingSource": "we still need to confirm the"
+    }
+
+    (Because the phrase seems incomplete.)
+
+    ---
+
+    [Example 2 - Action: translate]
+
+    # Input:
+    {
+      "sourceContext": "Yesterday we discussed the project...",
+      "translatedContext": "Вчера мы обсуждали проект...",
+      "langFrom": "English",
+      "langTo": "Russian",
+      "currentText": "We still need to confirm the final budget."
+    }
+
+    # Output:
+    {
+      "action": "translate",
+      "translation": "Нам все еще нужно утвердить итоговый бюджет.",
+      "corrected": "Нам все еще нужно утвердить итоговый бюджет."
+    }
+
+    (Because the text is a complete sentence. The translation and corrected version are the same in this example.)
+
+    ===
+
+    {
+      "sourceContext": "{source_context}",
+      "translatedContext": "{translated_context}",
+      "langFrom": "{lang_from}",
+      "langTo": "{lang_to}",
+      "currentText": "{text}"
+    }
 tts:
   gap_size_bytes: 12000
   voice_map:
