@@ -7,9 +7,12 @@ nodes:
     language: en
     audio_format:
       format_type: int16
-    rate: 16000
+    rate: 22050
   looping: false
   delay_ms: 0
+- name: normalizer_input_0_en
+  node_type: normalizer
+  headroom: 10.0
 - name: resampler_input_0_en
   node_type: resampler
   to_rate: 16000
@@ -18,7 +21,7 @@ nodes:
   server_url: http://127.0.0.1:8000
   lang_from: en
   lang_to: ru
-- name: output_file_mic
+- name: output_file_source
   node_type: output_file
   path: samples/source_input.wav
   stream:
@@ -41,14 +44,16 @@ nodes:
   node_type: mixer
 edges:
 - - input_file_0_en
+  - normalizer_input_0_en
+- - normalizer_input_0_en
   - resampler_input_0_en
-- - resampler_output_1
-  - output_file_1_ru
-- - mixer_1_ru
-  - resampler_output_1
-- - converter_0_en_ru
-  - mixer_1_ru
 - - resampler_input_0_en
   - converter_0_en_ru
+- - converter_0_en_ru
+  - mixer_1_ru
+- - mixer_1_ru
+  - resampler_output_1
+- - resampler_output_1
+  - output_file_1_ru
 - - resampler_input_0_en
-  - output_file_mic
+  - output_file_source

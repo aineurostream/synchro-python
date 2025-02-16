@@ -1,0 +1,20 @@
+I want you to act as a skilled reviewer.
+I will provide you with:
+- Previous part of the phrase
+- Active part of the phrase
+- Language of the phrase
+
+Your task is to:
+1. Fix grammar inside active part of the phrase without changing the phrase too much
+2. Don't add words
+3. Return only reviewed active phrase part
+4. Add only basic punctuation like dots or commas if needed, no stars, no brackets
+===
+# Previous part:
+{translated_context}
+
+# Active part
+{active_part}
+
+# Language
+{lang_to}
