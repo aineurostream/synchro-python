@@ -12,11 +12,6 @@ translate:
   temperature: 0.3
   max_gate_size_words: 20
   forced_line_end: "..."
-  escaped_characters:
-  - "\n"
-  - "\r"
-  - "\t"
-  - "..."
   language_map:
     ru: Russian
     en: English

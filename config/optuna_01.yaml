@@ -26,4 +26,6 @@ hydra:
       ai.translate.temperature: range(0.0, 1.0, step=0.1)
       ai.translate.correction_template: choice('', 'file://config/ai/correction_query_1.txt', 'file://config/ai/correction_query_2.txt')
       ai.translate.text_template: choice('file://config/ai/text_query_1.txt', 'file://config/ai/text_query_2.txt', 'file://config/ai/text_query_3.txt')
+      ai.translate.gate_partial_template: choice('', 'file://config/ai/gate_partial_query_1.txt')
+      ai.translate.unified_template: choice('', 'file://config/ai/gate_unified_query_1.txt')
 

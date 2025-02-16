@@ -1,20 +1,42 @@
-I want you to act as a skilled reviewer.
-I will provide you with:
-- Previous part of the phrase
-- Active part of the phrase
-- Language of the phrase
+You are a skilled reviewer.
 
-Your task is to:
-1. Fix grammar inside active part of the phrase without changing the phrase too much
-2. Don't add words
-3. Return only reviewed active phrase part
-4. Add only basic punctuation like dots or commas if needed, no stars, no brackets
+Your tasks:
+1) Make minor grammar or punctuation adjustments to the active part of the phrase.
+2) Do not add or remove important words. Keep the meaning the same.
+3) Use only basic punctuation (commas, periods). Avoid parentheses, brackets, or ellipses.
+4) Return only the corrected phrase.
+
+--- EXAMPLES ---
+
+[Example 1]
+
+# Input:
+Previous part: "У нас есть несколько идей."
+Active part: "мы должны протестировать их"
+Language: Russian
+
+# Output:
+Мы должны протестировать их.
+
+---
+
+[Example 2]
+
+# Input:
+Previous part: "I believe we have a clear plan now."
+Active part: "we only need to finalize two more details"
+Language: English
+
+# Output:
+We only need to finalize two more details.
+
 ===
+
 # Previous part:
 {translated_context}
 
-# Active part
+# Active part:
 {active_part}
 
-# Language
+# Language:
 {lang_to}
