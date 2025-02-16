@@ -37,6 +37,8 @@ class NormalizerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         normalized_audio = self._normalize_audio(frame_data)
 
+        self._buffer.clear()
+
         return GraphFrameContainer.from_config(
             self.name,
             self.output_config,
@@ -49,7 +51,7 @@ class NormalizerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         audio_segment = AudioSegment(
             audio,
-            frame_rate=self.output_config.stream.rate,
+            frame_rate=self.output_config.rate,
             sample_width=self.output_config.audio_format.sample_size,
             channels=1,
         )

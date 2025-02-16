@@ -7,9 +7,12 @@ nodes:
     language: ru
     audio_format:
       format_type: int16
-    rate: 16000
+    rate: 22050
   looping: false
   delay_ms: 0
+- name: normalizer_input_0_ru
+  node_type: normalizer
+  headroom: 5.0
 - name: resampler_input_0_ru
   node_type: resampler
   to_rate: 16000
@@ -41,9 +44,9 @@ nodes:
   node_type: mixer
 edges:
 - - input_file_0_ru
+  - normalizer_input_0_ru
+- - normalizer_input_0_ru
   - resampler_input_0_ru
-# - - resampler_input_0_ru
-#   - output_file_mic
 - - resampler_input_0_ru
   - converter_0_ru_en
 - - converter_0_ru_en
@@ -52,3 +55,5 @@ edges:
   - resampler_output_1
 - - resampler_output_1
   - output_file_1_en
+- - resampler_input_0_ru
+  - output_file_mic

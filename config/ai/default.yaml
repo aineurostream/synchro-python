@@ -5,12 +5,12 @@ stt:
   - субтитры делал
   - M.K.
   buffer_min_words_size: 5
-  buffer_timeout_seconds: 0.5
+  buffer_timeout_seconds: 2.5
 translate:
   llm_call_timeout: 120
-  context_window: 15
-  temperature: 0.8
-  max_gate_size_words: 15
+  context_window_words: 15
+  temperature: 0.3
+  max_gate_size_words: 20
   forced_line_end: "..."
   escaped_characters:
   - "\n"
@@ -62,16 +62,16 @@ translate:
     # Original context (source language): 
     {source_context}
     
-    # Translated context (target language): 
+    # Translated context (target language):
     {translated_context}
     
-    # Source language: 
+    # Source language:
     {lang_from}
     
-    # Target language: 
+    # Target language:
     {lang_to}
     
-    # Next part to translate (source language): 
+    # Next part to translate (source language):
     {text}
   correction_template: |-
     You are a skilled reviewer.
@@ -110,11 +110,11 @@ translate:
     
     # Previous part: 
     {translated_context}
-    
-    # Active part
+
+    # Active part:
     {active_part}
-    
-    # Language
+
+    # Language:
     {lang_to}
   gate_template: |-
     You are an experienced simultaneous interpreter with 20 years of practice.
@@ -203,16 +203,16 @@ translate:
     # Original context (source language): 
     {source_context}
     
-    # Translated context (target language)
+    # Translated context (target language):
     {translated_context}
     
-    # Source language
+    # Source language:
     {lang_from}
     
-    # Target language
+    # Target language:
     {lang_to}
     
-    # Text
+    # Next part to translate (source language):
     {text}
   gate_partial_template: |-
     You are an experienced simultaneous interpreter with 20 years of professional practice.

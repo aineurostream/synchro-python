@@ -1,7 +1,7 @@
 defaults:
   - ai: default
-  - pipeline: sample_01_file
-  - settings: sample_01_file
+  - pipeline: sample_en
+  - settings: sample_en
   - _self_
   - override hydra/sweeper: optuna
   - override hydra/sweeper/sampler: tpe
@@ -15,13 +15,15 @@ hydra:
     direction: maximize
     study_name: sample_01
     n_trials: 126
-    n_jobs: 6
+    n_jobs: 1
     params:
+      pipeline.nodes.1.headroom: range(2.0, 20.0, step=1.0)
       ai.stt.buffer_min_words_size: range(2, 8)
       ai.stt.buffer_timeout_seconds: range(0.5, 4, step=0.25)
-      ai.translate.context_window: range(6, 15)
-      ai.translate.gate_template: ''
+      ai.translate.context_window_words: range(5, 25)
+      ai.translate.max_gate_size_words: range(5, 25)
+      ai.translate.gate_template: choice('', 'file://config/ai/gate_query_1.txt', 'file://config/ai/gate_query_2.txt')
       ai.translate.temperature: range(0.0, 1.0, step=0.1)
-      ai.translate.correction_template: choice('', 'file://config/ai/correction_query_1.txt')
-      ai.translate.text_template: choice('file://config/ai/text_query_1.txt', 'file://config/ai/text_query_2.txt')
+      ai.translate.correction_template: choice('', 'file://config/ai/correction_query_1.txt', 'file://config/ai/correction_query_2.txt')
+      ai.translate.text_template: choice('file://config/ai/text_query_1.txt', 'file://config/ai/text_query_2.txt', 'file://config/ai/text_query_3.txt')
 
