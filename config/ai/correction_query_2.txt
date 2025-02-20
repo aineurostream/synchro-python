@@ -36,7 +36,7 @@ We only need to finalize two more details.
 {translated_context}
 
 # Active part:
-{active_part}
+{translated_text}
 
 # Language:
 {lang_to}

@@ -45,8 +45,6 @@ nodes:
 - name: resampler_output_1
   node_type: resampler
   to_rate: 44100 # <-- !!! resampler_output_1 rate
-- name: mixer_1_ru
-  node_type: mixer
 edges:
 - - input_mic_0_en
   - resampler_input_0_en
@@ -54,10 +52,8 @@ edges:
   - output_file_1_ru
 - - resampler_output_1
   - output_channel_1_ru
-- - mixer_1_ru
-  - resampler_output_1
 - - converter_0_en_ru
-  - mixer_1_ru
+  - resampler_output_1
 - - resampler_input_0_en
   - converter_0_en_ru
 - - resampler_input_0_en

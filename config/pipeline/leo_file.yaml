@@ -40,8 +40,6 @@ nodes:
 - name: resampler_output_1
   node_type: resampler
   to_rate: 44100
-- name: mixer_1_ru
-  node_type: mixer
 edges:
 - - input_file_0_en
   - normalizer_input_0_en
@@ -50,8 +48,6 @@ edges:
 - - resampler_input_0_en
   - converter_0_en_ru
 - - converter_0_en_ru
-  - mixer_1_ru
-- - mixer_1_ru
   - resampler_output_1
 - - resampler_output_1
   - output_file_1_ru

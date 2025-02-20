@@ -94,4 +94,4 @@ Reason: The text ends with a comma and is not a finished statement.
 {lang_to}
 
 # Next part to translate (source language):
-{text}
+{source_text}

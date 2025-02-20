@@ -111,105 +111,79 @@ translate:
 
     # Language:
     {lang_to}
-  gate_template: |-
-    You are an experienced simultaneous interpreter with 20 years of practice.
-    Your job is to decide if the current source text is complete enough to be translated (i.e., it forms a mostly finished statement) or if we should wait for more context.
+  gate_template: ""
+  gate_partial_template: |-
+    You are an experienced simultaneous interpreter with 20 years of professional practice.
+    Your goal is to split the incoming text into exactly two lines:
 
-    **Key Heuristics**:
-    1. If the text ends with a strong punctuation mark (period, exclamation point, question mark) or clearly completes a sentence, respond with "translate".
-    2. If the text ends with a comma or seems syntactically incomplete (e.g., "we still need to confirm the"), respond with "wait".
-    3. If the text is quite long and reads like a finished statement (even without final punctuation), prefer "translate".
-    4. Avoid responding "wait" too frequently; only do so if the phrase is obviously not finished.
+    Line 1: The portion of the text that is complete enough to be translated now.
+    Line 2: Any portion that remains incomplete or unfinished.
 
-    **Instructions**:
-    - Return exactly one word: "translate" or "wait".
-    - No other text or explanations.
+    Strict requirements:
+    1. Return exactly two lines of text, no more, no less.
+    2. Do not include bracketed labels or words like "[Line 1]" or "[Line 2]". 
+    3. No explanations or extra punctuation beyond the actual split.
+    4. If everything is incomplete, leave line 1 empty.
+    5. If nothing is incomplete, leave line 2 empty.
 
     --- EXAMPLES ---
 
-    [Example 1 - Comma or trailing words → WAIT]
+    # Example 1
+    Input:
+    and then we will finalize the
 
-    # Input:
-    Original context (source language): "We are about to finalize the details."
-    Translated context (target language): "Мы собираемся финализировать детали."
-    Source language: English
-    Target language: Russian
-    Text: "and then we will see how to"
-    (Ends abruptly with "to")
+    Output (two lines, the first empty, the second is the text):
+    [First line is completely empty]
+    [Second line] and then we will finalize the
 
-    # Output:
-    wait
+    (Explanation to user: This is an obviously incomplete fragment, so the first line is blank, the second line has the entire text.)
 
-    Reason: The segment clearly ends mid-phrase ("how to..."), so we wait.
+    # Example 2
+    Input:
+    We have finally confirmed the budget.
 
-    ---
+    Output (two lines, the second empty):
+    [First line] We have finally confirmed the budget.
+    [Second line is empty]
 
-    [Example 2 - Ends with a period → TRANSLATE]
+    (Explanation to user: This text is a complete statement, so the second line is blank.)
 
-    # Input:
-    Original context (source language): "Yesterday I mentioned the plan."
-    Translated context (target language): "Вчера я упомянул план."
-    Source language: English
-    Target language: Russian
-    Text: "Now we need to confirm the final budget."
-    (Ends with a period and is a complete statement)
+    # Example 3
+    Input:
+    I think we can start next week. Also we need to discuss
 
-    # Output:
-    translate
+    Output (two lines, one for the complete thought, one for the incomplete tail):
+    [First line] I think we can start next week.
+    [Second line] Also we need to discuss
 
-    Reason: The text is a complete sentence with a period.
+    (Explanation to user: The first sentence is complete; the second is obviously incomplete.)
 
-    ---
+    # Example 4
+    Input:
+    let's confirm the plan then we will see
 
-    [Example 3 - No punctuation but appears complete → TRANSLATE]
+    Output (two lines):
+    [First line] let's confirm the plan
+    [Second line] then we will see
 
-    # Input:
-    Original context (source language): "He suggested new guidelines"
-    Translated context (target language): "Он предложил новые руководящие принципы"
-    Source language: English
-    Target language: Russian
-    Text: "Let's finalize everything by Monday"
-    (No ending punctuation, but the sentence is fairly complete)
-
-    # Output:
-    translate
-
-    Reason: Despite lacking a period, this statement is complete in meaning.
-
-    ---
-
-    [Example 4 - Comma ending → WAIT]
-
-    # Input:
-    Original context (source language): "We are revising the contract"
-    Translated context (target language): "Мы пересматриваем контракт"
-    Source language: English
-    Target language: Russian
-    Text: "to include new clauses,"
-    (Ends with a comma, obviously incomplete)
-
-    # Output:
-    wait
-
-    Reason: The text ends with a comma and is not a finished statement.
+    (Explanation to user: We split the text based on a reasonable guess of completion, since there's no punctuation. The first part is relatively complete, the second part is incomplete.)
 
     ===
 
     # Original context (source language): 
     {source_context}
     
-    # Translated context (target language):
+    # Translated context (target language)
     {translated_context}
     
-    # Source language:
+    # Source language
     {lang_from}
     
-    # Target language:
+    # Target language
     {lang_to}
     
-    # Next part to translate (source language):
+    # Text
     {source_text}
-  gate_partial_template: ""
   unified_template: ""
 tts:
   gap_size_bytes: 12000

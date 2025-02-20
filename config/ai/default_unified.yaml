@@ -1,19 +1,41 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 2.5
+translate:
+  llm_call_timeout: 120
+  context_window_words: 15
+  temperature: 0.3
+  max_gate_size_words: 20
+  forced_line_end: "..."
+  language_map:
+    ru: Russian
+    en: English
+  text_template: ""
+  correction_template: ""
+  gate_template: ""
+  gate_partial_template: ""
+  unified_template: |-
     You are a highly skilled simultaneous interpreter and text reviewer with 20 years of experience.
 
     Your goals:
     1) Determine if the incoming source text is incomplete or complete.
       - If incomplete, output JSON with:
-        {
+        {{
           "action": "wait",
           "pendingSource": "...original partial text..."
-        }
+        }}
     2) If complete, translate it and provide a lightly corrected version for TTS.
       - Output JSON with:
-        {
+        {{
           "action": "translate",
           "translation": "...",
           "corrected": "..."
-        }
+        }}
     3) The "translation" is the direct translation of the new chunk. The "corrected" is the final version for TTS with minimal grammar/punctuation fixes.
     4) Provide no additional text outside the JSON.
 
@@ -67,5 +89,14 @@
       "translatedContext": "{translated_context}",
       "langFrom": "{lang_from}",
       "langTo": "{lang_to}",
-      "currentText": "{text}"
+      "currentText": "{source_text}"
     }
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - piper
+    - ruslan
