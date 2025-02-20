@@ -101,19 +101,22 @@ def hydra_app(cfg: DictConfig) -> float:
 
     def node_event_callback(node_name: str, log: dict[str, Any]) -> None:
         action = log["context"].get("action")
-        if action == "got_translation":
+        generated_texts[node_name][KEY_CHANNEL_NAME] = log["id"]
+        if log["context"].get("sub_action") == "fail":
+            return
+        if action == "transcription":
             generated_texts[node_name][KEY_TRANSCRIBED_TEXT] += (
                 " " + log["context"]["text"]
             )
+        elif action == "translation":
             generated_texts[node_name][KEY_TRANSLATED_TEXT] += (
                 " " + log["context"]["translation"]
             )
-            generated_texts[node_name][KEY_CHANNEL_NAME] = log["id"]
-        elif action == "got_correction":
+        elif action == "correction":
             generated_texts[node_name][KEY_CORRECTED_TEXT] += (
                 " " + log["context"]["correction"]
             )
-        elif action == "synthesizing_text":
+        elif action == "synthesis":
             generated_texts[node_name][KEY_RESULTING_TEXT] += (
                 " " + log["context"]["text"]
             )

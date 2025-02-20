@@ -14,7 +14,7 @@ Your task is to:
 {translated_context}
 
 # Active part:
-{active_part}
+{translated_text}
 
 # Language:
 {lang_to}

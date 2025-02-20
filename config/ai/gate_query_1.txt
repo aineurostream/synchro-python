@@ -21,4 +21,4 @@ Write your response by using only one of two words:
 {lang_to}
 
 # Next part to translate (source language):
-{text}
+{source_text}

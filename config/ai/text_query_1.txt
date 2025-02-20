@@ -23,4 +23,4 @@ Your task is to:
 {lang_to}
 
 # Next part to translate (source language):
-{text}
+{source_text}

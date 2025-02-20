@@ -49,4 +49,4 @@ Now we need to assign tasks within the team.
 {lang_to}
 
 # Next part to translate (source language):
-{text}
+{source_text}
