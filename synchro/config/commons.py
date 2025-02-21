@@ -9,12 +9,12 @@ MIN_WORKING_STEP_LENGTH_SECS = MIN_STEP_LENGTH_SECS * 2
 MIN_STEP_NON_GENERATING_SECS = MIN_STEP_LENGTH_SECS / 30.0
 
 PREFERRED_BUFFER_SIZE_SEC = 0.2
+LONG_BUFFER_SIZE_SEC = 2.0
 MIN_BUFFER_SIZE_SEC = 0.03
 
 NodeEventsCallback = Callable[[str, dict], None]
 
 
 class StreamConfig(BaseModel):
-    language: str
     audio_format: AudioFormat
     rate: int

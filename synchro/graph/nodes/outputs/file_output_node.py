@@ -2,8 +2,8 @@ import wave
 from types import TracebackType
 from typing import Literal, Self
 
+from synchro.audio.frame_container import FrameContainer
 from synchro.config.schemas import OutputFileNodeSchema
-from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.outputs.abstract_output_node import AbstractOutputNode
 
 
@@ -17,11 +17,6 @@ class FileOutputNode(AbstractOutputNode):
         self._wave_file: wave.Wave_write | None = None
 
     def __enter__(self) -> Self:
-        self._wave_file = wave.open(str(self._config.path), "w")
-        self._wave_file.setnchannels(1)
-        self._wave_file.setsampwidth(self._config.stream.audio_format.sample_size)
-        self._wave_file.setframerate(self._config.stream.rate)
-
         return self
 
     def __exit__(
@@ -36,11 +31,10 @@ class FileOutputNode(AbstractOutputNode):
 
         return False
 
-    def put_data(self, frames: list[GraphFrameContainer]) -> None:
-        if len(frames) != 1:
-            raise ValueError("Expected one frame container")
-
+    def put_data(self, _source: str, data: FrameContainer) -> None:
         if self._wave_file is None:
-            raise RuntimeError("Audio stream is not open")
-
-        self._wave_file.writeframes(frames[0].frame_data)
+            self._wave_file = wave.open(str(self._config.path), "w")
+            self._wave_file.setnchannels(1)
+            self._wave_file.setsampwidth(data.audio_format.bytes_per_sample)
+            self._wave_file.setframerate(data.rate)
+        self._wave_file.writeframes(data.frame_data)

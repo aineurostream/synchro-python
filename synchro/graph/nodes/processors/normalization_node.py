@@ -3,11 +3,9 @@ from typing import cast
 
 from pydub import AudioSegment, effects
 
-from synchro.config.commons import (
-    StreamConfig,
-)
+from synchro.audio.frame_container import FrameContainer
+from synchro.config.commons import LONG_BUFFER_SIZE_SEC
 from synchro.config.schemas import NormalizerNodeSchema
-from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
 
 logger = logging.getLogger(__name__)
@@ -16,45 +14,38 @@ logger = logging.getLogger(__name__)
 class NormalizerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
     def __init__(self, config: NormalizerNodeSchema) -> None:
         super().__init__(config.name)
-        self._buffer: list[bytes] = []
         self._config = config
-        self.output_config: StreamConfig | None = None
+        self._buffer: FrameContainer | None = None
+        self._incoming_frames = 0
 
-    def put_data(self, data: list[GraphFrameContainer]) -> None:
-        if len(data) != 1:
-            raise ValueError(f"Expected one frame container, got {len(data)}")
-
-        if self.output_config is None:
-            self.output_config = data[0].stream_config
-
-        self._buffer.append(data[0].frame_data)
-
-    def get_data(self) -> GraphFrameContainer | None:
-        if not self._buffer or not self.output_config:
-            return None
-
-        frame_data = b"".join(self._buffer)
-
-        normalized_audio = self._normalize_audio(frame_data)
-
-        self._buffer.clear()
-
-        return GraphFrameContainer.from_config(
-            self.name,
-            self.output_config,
-            normalized_audio,
+    def put_data(self, _source: str, data: FrameContainer) -> None:
+        self._buffer = (
+            FrameContainer.from_other(data)
+            if self._buffer is None
+            else self._buffer.append(data)
         )
+        self._incoming_frames += data.length_frames
 
-    def _normalize_audio(self, audio: bytes) -> bytes:
-        if not self.output_config:
-            raise ValueError("Output config is required")
+    def get_data(self) -> FrameContainer | None:
+        if not self._buffer or self._incoming_frames == 0:
+            return None
+        normalized_audio = self._normalize_audio(self._buffer).get_end_frames(
+            self._incoming_frames,
+        )
+        self._buffer = self._buffer.get_end_seconds(LONG_BUFFER_SIZE_SEC)
+        self._incoming_frames = 0
 
+        return normalized_audio
+
+    def _normalize_audio(self, buffer: FrameContainer) -> FrameContainer:
         audio_segment = AudioSegment(
-            audio,
-            frame_rate=self.output_config.rate,
-            sample_width=self.output_config.audio_format.sample_size,
+            buffer.frame_data,
+            frame_rate=buffer.rate,
+            sample_width=buffer.audio_format.sample_size,
             channels=1,
         )
         audio_segment = effects.normalize(audio_segment, headroom=self._config.headroom)
-
-        return cast(bytes, audio_segment.raw_data)
+        return FrameContainer.from_config(
+            buffer,
+            cast(bytes, audio_segment.raw_data),
+        )

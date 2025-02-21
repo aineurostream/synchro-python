@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import Literal, Self
 
-from synchro.graph.graph_frame_container import GraphFrameContainer
+from synchro.audio.frame_container import FrameContainer
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +35,11 @@ class GraphNode(ABC):  # noqa: B024
 
 class EmittingNodeMixin(ABC):
     @abstractmethod
-    def get_data(self) -> GraphFrameContainer | None:
+    def get_data(self) -> FrameContainer | None:
         raise NotImplementedError
 
 
 class ReceivingNodeMixin(ABC):
     @abstractmethod
-    def put_data(self, data: list[GraphFrameContainer]) -> None:
+    def put_data(self, source: str, data: FrameContainer) -> None:
         raise NotImplementedError
