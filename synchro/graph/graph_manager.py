@@ -6,10 +6,10 @@ from threading import Thread
 
 from pydantic import BaseModel, ConfigDict
 
+from synchro.audio.frame_container import FrameContainer
 from synchro.config.commons import MIN_STEP_LENGTH_SECS, MIN_STEP_NON_GENERATING_SECS
 from synchro.config.settings import SettingsSchema
 from synchro.graph.graph_edge import GraphEdge
-from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
     EmittingNodeMixin,
     GraphNode,
@@ -23,9 +23,8 @@ logger = logging.getLogger(__name__)
 
 class EdgeQueue(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
     edge: GraphEdge
-    queue: Queue[GraphFrameContainer]
+    queue: Queue[FrameContainer]
 
     def __repr__(self) -> str:
         return f"-[{self.edge}]-"
@@ -66,26 +65,25 @@ class NodeExecutor(Thread):
     def process_outputs(self) -> None:
         if isinstance(self.node, EmittingNodeMixin):
             outgoing_data = self.node.get_data()
-            if outgoing_data is not None and len(outgoing_data) > 0:
+            if outgoing_data:
                 for out in self._outgoing:
-                    if len(outgoing_data) > 0:
-                        logger.debug(
-                            "Sending %s bytes %s",
-                            len(outgoing_data.frame_data),
-                            out.edge,
-                        )
-                        out.queue.put(outgoing_data)
+                    logger.debug(
+                        "Sending %s bytes %s",
+                        len(outgoing_data.frame_data),
+                        out.edge,
+                    )
+                    out.queue.put(outgoing_data)
 
     def process_inputs(self) -> None:
         if isinstance(self.node, ReceivingNodeMixin):
-            incoming_data: list[GraphFrameContainer] = []
             for inc in self._incoming:
                 with suppress(Empty):
-                    incoming_data.append(inc.queue.get(block=False))
-
-            if len(incoming_data) > 0 and sum(len(data) for data in incoming_data) > 0:
-                logger.debug("Received %s packages for %s", incoming_data, self.node)
-                self.node.put_data(incoming_data)
+                    incoming_data = inc.queue.get(block=False)
+                    if incoming_data:
+                        self.node.put_data(
+                            inc.edge.source,
+                            incoming_data,
+                        )
 
 
 class GraphManager:
@@ -146,17 +144,14 @@ class GraphManager:
                 self.stop()
 
             Thread(target=stop_execution).run()
-
         # Wait for interruption
         with suppress(KeyboardInterrupt):
             while self._executing:
                 time.sleep(0.1)
-
         self.stop()
+        logger.info("Synchro instance stopping")
         for thread in active_threads:
             thread.stop()
-        logger.info("Synchro instance stopping")
-
         logger.info("Waiting for threads to finish")
         for thread in active_threads:
             thread.join()

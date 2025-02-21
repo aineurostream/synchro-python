@@ -32,7 +32,12 @@ class CoreManager:
                 return file.read()
 
         translate_map = self._neuro_config["translate"]
-        swappable_keys = ["text_template", "correction_template", "gate_template", "gate_partial"]
+        swappable_keys = [
+            "text_template",
+            "correction_template",
+            "gate_template",
+            "gate_partial",
+        ]
         for key in swappable_keys:
             if key in translate_map and translate_map[key].startswith("file://"):
                 translate_map[key] = load_from_file(translate_map[key][7:])

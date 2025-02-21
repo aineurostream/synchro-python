@@ -6,11 +6,11 @@ from typing import Literal, Self
 import numpy as np
 import sounddevice as sd
 
+from synchro.audio.frame_container import FrameContainer
 from synchro.config.commons import (
     MIN_STEP_LENGTH_SECS,
 )
 from synchro.config.schemas import OutputChannelStreamerNodeSchema
-from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.nodes.outputs.abstract_output_node import AbstractOutputNode
 
 logger = logging.getLogger(__name__)
@@ -47,14 +47,6 @@ class ChannelOutputNode(AbstractOutputNode):
 
         device_info = sd.query_devices(self._config.device, "output")
         sample_rate = device_info["default_samplerate"]
-
-        if sample_rate != self._config.stream.rate:
-            self._logger.warning(
-                "Output device sample rate is %d, while expected %d",
-                sample_rate,
-                self._config.stream.rate,
-            )
-
         self._stream = sd.OutputStream(
             device=self._config.device,
             channels=self._config.channel,
@@ -63,10 +55,8 @@ class ChannelOutputNode(AbstractOutputNode):
             callback=callback,
         )
         self._stream.start()
-
         prefill_frames = int(self._config.stream.rate * PREFILL_SECONDS)
         self._out_buffer += np.zeros((prefill_frames,), dtype=np.int16).tobytes()
-
         return self
 
     def __exit__(
@@ -81,45 +71,35 @@ class ChannelOutputNode(AbstractOutputNode):
 
         return False
 
-    def put_data(self, frames: list[GraphFrameContainer]) -> None:
-        active_frame = frames[0]
+    def put_data(self, _source: str, data: FrameContainer) -> None:
         self._logger.info(
-            f"Writing {active_frame.length_frames()} frames to stream",
+            f"Writing {data.length_frames} frames to stream",
             extra={
-                "frames": active_frame.length_frames(),
-                "rate": active_frame.rate,
-                "length": active_frame.length_secs(),
+                "frames": data.length_frames,
+                "rate": data.rate,
+                "length": data.length_secs,
                 "event": "audio_write",
                 "node": self.name,
                 "node_type": "channel_output",
             },
         )
-
-        if len(frames) != 1:
-            raise ValueError("Expected one frame container")
-
         if self._stream is None:
             raise RuntimeError("Audio stream is not open")
-
         frames_per_buffer = int(
             self._config.stream.rate * MIN_STEP_LENGTH_SECS,
         )
-
-        if frames_per_buffer > active_frame.length_frames():
+        if frames_per_buffer > data.length_frames:
             raise ValueError(
-                f"Expected {frames_per_buffer} frames, "
-                f"got {active_frame.length_frames()}",
+                f"Expected {frames_per_buffer} frames, got {data.length_frames}",
             )
-
         current_emit_time = time.time()
         if self._last_time_emit > 0:
             time_diff = current_emit_time - self._last_time_emit
-            if time_diff > active_frame.length_secs():
+            if time_diff > data.length_secs:
                 self._logger.warning(
                     "Time diff is %.3f while expected %.3f",
                     time_diff,
-                    active_frame.length_secs(),
+                    data.length_secs,
                 )
-
-        self._out_buffer += active_frame.frame_data
+        self._out_buffer += data.frame_data
         self._last_time_emit = current_emit_time

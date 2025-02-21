@@ -3,11 +3,6 @@ nodes:
 - name: input_file_0_ru
   node_type: input_file
   path: samples/test_hfc_male.wav
-  stream:
-    language: ru
-    audio_format:
-      format_type: int16
-    rate: 22050
   looping: false
   delay_ms: 0
 - name: normalizer_input_0_ru
@@ -24,19 +19,9 @@ nodes:
 - name: output_file_mic
   node_type: output_file
   path: samples/source_input.wav
-  stream:
-    language: en
-    audio_format:
-      format_type: int16
-    rate: 16000
 - name: output_file_1_en
   node_type: output_file
   path: samples/translated_output.wav
-  stream:
-    language: en
-    audio_format:
-      format_type: int16
-    rate: 44100
 - name: resampler_output_1
   node_type: resampler
   to_rate: 44100

@@ -41,3 +41,6 @@ class AudioFormat(BaseModel):
 
     def __repr__(self) -> str:
         return str(self)
+
+
+DEFAULT_AUDIO_FORMAT = AudioFormat(format_type=AudioFormatType.INT_16)

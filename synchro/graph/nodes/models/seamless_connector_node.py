@@ -1,3 +1,4 @@
+import contextlib
 import uuid
 from types import TracebackType
 from typing import Any, Literal, Self
@@ -5,10 +6,10 @@ from typing import Any, Literal, Self
 from socketio import SimpleClient
 from socketio.exceptions import TimeoutError as SioTimeoutError
 
-from synchro.config.audio_format import AudioFormat, AudioFormatType
+from synchro.audio.frame_container import FrameContainer
+from synchro.config.audio_format import DEFAULT_AUDIO_FORMAT
 from synchro.config.commons import NodeEventsCallback, StreamConfig
 from synchro.config.schemas import SeamlessConnectorNodeSchema
-from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import (
     EmittingNodeMixin,
     GraphNode,
@@ -31,11 +32,15 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._config = config
         self._neuro_config = neuro_config
         self._client = SimpleClient()
-        self._buffer = b""
+        self._buffer_bytes = b""
         self._user_id = str(uuid.uuid4())
         self._room_id = str(uuid.uuid4())[:4]
         self._connected = False
         self._events_cb = events_cb
+        self._stream_config = StreamConfig(
+            audio_format=DEFAULT_AUDIO_FORMAT,
+            rate=DEFAULT_OUTPUT_RATE,
+        )
 
     def __enter__(self) -> Self:
         if self._client.connected:
@@ -77,27 +82,23 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
         return False
 
-    def put_data(self, data: list[GraphFrameContainer]) -> None:
-        if len(data) != 1:
-            raise ValueError("Expected one frame container")
-
-        samples = data[0].frame_data
+    def put_data(self, _source: str, data: FrameContainer) -> None:
+        samples = data.frame_data
         if len(samples) > 0:
-            self._buffer += samples
+            self._buffer_bytes += samples
 
-        if len(self._buffer) > 0 and self._connected:
+        if len(self._buffer_bytes) > 0 and self._connected:
             self._client.emit(
                 "incoming_audio",
-                self._buffer,
+                self._buffer_bytes,
             )
             self._logger.debug("Sent %d bytes to %s", len(samples), self._client.sid)
-            self._buffer = b""
+            self._buffer_bytes = b""
 
-    def get_data(self) -> GraphFrameContainer | None:
-        has_incoming_messages = True
+    def get_data(self) -> FrameContainer | None:
         audio_result = b""
-        while has_incoming_messages:
-            try:
+        with contextlib.suppress(SioTimeoutError):
+            while True:
                 received_message = self._client.receive(timeout=0.01)
                 if received_message[0] == "translation_speech":
                     self._logger.info(
@@ -119,27 +120,18 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                             log_body,
                         )
                 else:
-                    self._logger.debug(
-                        "ATG: Received non-audio message: %s",
+                    self._logger.warning(
+                        "ATG: Received unsupported non-audio message: %s",
                         received_message,
                     )
-            except SioTimeoutError:
-                has_incoming_messages = False
-
         if len(audio_result) > 0:
             self._logger.debug(
                 "Received %d bytes from %s",
                 len(audio_result),
                 self._client.sid,
             )
-
-        return GraphFrameContainer.from_config(
-            self.name,
-            StreamConfig(
-                language=self._config.lang_to,
-                audio_format=AudioFormat(format_type=AudioFormatType.INT_16),
-                rate=DEFAULT_OUTPUT_RATE,
-            ),
+        return FrameContainer.from_config(
+            self._stream_config,
             audio_result,
         )
 

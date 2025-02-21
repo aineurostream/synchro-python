@@ -11,8 +11,6 @@ from pydantic import (
     Tag,
 )
 
-from synchro.config.commons import StreamConfig
-
 EdgeRoute = tuple[str, str]
 
 
@@ -36,12 +34,10 @@ class BaseNodeSchema(BaseModel):
 class ChannelStreamerNodeSchema(BaseNodeSchema):
     device: int
     channel: int = 1
-    stream: StreamConfig
 
 
 class InputChannelStreamerNodeSchema(ChannelStreamerNodeSchema):
     node_type: Literal[NodeType.INPUT_CHANNEL] = NodeType.INPUT_CHANNEL
-    chunk_size: int = 1024
 
 
 class OutputChannelStreamerNodeSchema(ChannelStreamerNodeSchema):
@@ -51,7 +47,6 @@ class OutputChannelStreamerNodeSchema(ChannelStreamerNodeSchema):
 class InputFileStreamerNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.INPUT_FILE] = NodeType.INPUT_FILE
     path: FilePath
-    stream: StreamConfig
     looping: bool = True
     delay_ms: int = 0
 
@@ -89,7 +84,6 @@ class DenoiserNodeSchema(BaseNodeSchema):
 class OutputFileNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.OUTPUT_FILE] = NodeType.OUTPUT_FILE
     path: Path
-    stream: StreamConfig
 
 
 def get_node_discriminator_value(v: Any) -> str | None:  # noqa: ANN401
