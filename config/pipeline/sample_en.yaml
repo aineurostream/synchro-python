@@ -6,7 +6,7 @@ nodes:
   looping: false
 - name: normalizer_input_0_en
   node_type: normalizer
-  headroom: 5.0
+  headroom: 3.0
 - name: resampler_input_0_en
   node_type: resampler
   to_rate: 16000
