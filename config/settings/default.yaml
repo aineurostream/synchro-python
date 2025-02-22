@@ -3,7 +3,7 @@ limits:
   run_time_seconds: 15  # <-- Set 0 for unlimited time
 metrics:
   quality:
-  - node: converter_0_en_ru
+  - node: converter_0
     expected_transcription: "
     Attention all passengers, 
     the train to New York City will be departing from platform 5 in 10 minutes. 

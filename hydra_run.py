@@ -97,10 +97,13 @@ def hydra_app(cfg: DictConfig) -> float:
     settings = SettingsSchema.model_validate(settings_config)
     neural_config_dict = OmegaConf.to_container(neural_config)
 
-    generated_texts: dict[str, dict[str, str]] = defaultdict(lambda: defaultdict(str))
+    generated_texts: dict[str, dict[str, str]] = {}
 
     def node_event_callback(node_name: str, log: dict[str, Any]) -> None:
         action = log["context"].get("action")
+        if node_name not in generated_texts:
+            generated_texts[node_name] = defaultdict(str)
+
         generated_texts[node_name][KEY_CHANNEL_NAME] = log["id"]
         if log["context"].get("sub_action") == "fail":
             return
@@ -145,6 +148,9 @@ def hydra_app(cfg: DictConfig) -> float:
         )
 
     for quality_info in settings.metrics.quality:
+        if not quality_info.node in generated_texts:
+            raise ValueError(f"Node {quality_info.node} not found in generated texts: {generated_texts.keys()}")
+
         append_value(
             KEY_TRANSCRIBED_TEXT,
             quality_info.expected_transcription,

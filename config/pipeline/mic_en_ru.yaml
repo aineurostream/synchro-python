@@ -7,7 +7,7 @@ nodes:
 - name: resampler_input_0_en
   node_type: resampler
   to_rate: 16000
-- name: converter_0_en_ru
+- name: converter_0
   node_type: converter_seamless
   server_url: http://127.0.0.1:8000
   lang_from: en
@@ -28,13 +28,13 @@ nodes:
 edges:
 - - input_mic_0_en
   - resampler_input_0_en
-- - resampler_output_1
-  - output_file_1_ru
+- - resampler_input_0_en
+  - converter_0
+- - converter_0
+  - resampler_output_1
 - - resampler_output_1
   - output_channel_1_ru
-- - converter_0_en_ru
-  - resampler_output_1
-- - resampler_input_0_en
-  - converter_0_en_ru
+- - resampler_output_1
+  - output_file_1_ru
 - - resampler_input_0_en
   - output_file_mic
