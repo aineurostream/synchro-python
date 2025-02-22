@@ -10,11 +10,6 @@ Your task is to:
 3. Return only reviewed active phrase part
 4. Add only basic punctuation like dots or commas if needed, no stars, no brackets
 
-# Previous part:
-{translated_context}
-
-# Active part:
-{translated_text}
-
-# Language:
-{lang_to}
+# Previous part: "{translated_context}"
+# Active part: "{translated_text}""
+# Language: "{lang_to}"

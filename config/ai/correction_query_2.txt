@@ -32,11 +32,6 @@ We only need to finalize two more details.
 
 ===
 
-# Previous part:
-{translated_context}
-
-# Active part:
-{translated_text}
-
-# Language:
-{lang_to}
+# Previous part: "{translated_context}"
+# Active part: "{translated_text}""
+# Language: "{lang_to}"

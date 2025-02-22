@@ -10,17 +10,8 @@ Your task is to:
 3. If there are words or phrases in the original context that are missing in the translated context, do not retranslate them. Focus only on translating the "next part to translate".
 4. Provide the translation as a direct continuation of the translated context.
 
-# Original context (source language):
-{source_context}
-
-# Translated context (target language):
-{translated_context}
-
-# Source language:
-{lang_from}
-
-# Target language:
-{lang_to}
-
-# Next part to translate (source language):
-{source_text}
+# Source language: "{lang_from}"
+# Target language: "{lang_to}"
+# Original context (source language): "{source_context}"
+# Translated context (target language): "{translated_context}"
+# Next part to translate (source language): "{source_text}"
