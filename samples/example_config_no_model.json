@@ -4,15 +4,7 @@
       "name": "input_file_1",
       "node_type": "input_file",
       "path": "./samples/mozg_speaks.wav",
-      "looping": true,
-      "delay_ms": 0,
-      "stream": {
-        "language": "ru",
-        "rate": 16000,
-        "audio_format": {
-          "format_type": "int16"
-        }
-      }
+      "looping": true
     },
     {
       "name": "input_file_2",

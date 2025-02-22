@@ -4,15 +4,7 @@
             "name": "input_file_0_en",
             "node_type": "input_file",
             "path": "samples/lection_2.wav",
-            "stream": {
-                "language": "ru",
-                "audio_format": {
-                    "format_type": "int16"
-                },
-                "rate": 22050
-            },
-            "looping": true,
-            "delay_ms": 0
+            "looping": true
         },
         {
             "name": "converter_0_en_ru",

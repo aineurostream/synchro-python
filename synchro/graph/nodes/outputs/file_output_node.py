@@ -28,13 +28,12 @@ class FileOutputNode(AbstractOutputNode):
         if self._wave_file is not None:
             self._wave_file.close()
             self._wave_file = None
-
         return False
 
     def put_data(self, _source: str, data: FrameContainer) -> None:
         if self._wave_file is None:
             self._wave_file = wave.open(str(self._config.path), "w")
             self._wave_file.setnchannels(1)
-            self._wave_file.setsampwidth(data.audio_format.bytes_per_sample)
+            self._wave_file.setsampwidth(data.audio_format.sample_size)
             self._wave_file.setframerate(data.rate)
         self._wave_file.writeframes(data.frame_data)

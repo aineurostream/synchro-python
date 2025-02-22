@@ -17,9 +17,7 @@ class DenoiserNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
     def put_data(self, _source: str, data: FrameContainer) -> None:
         self._buffer = (
-            FrameContainer.from_other(data)
-            if self._buffer is None
-            else self._buffer.append(data)
+            data.clone() if self._buffer is None else self._buffer.append(data)
         )
 
     def get_data(self) -> FrameContainer | None:

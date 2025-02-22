@@ -4,7 +4,6 @@ nodes:
   node_type: input_file
   path: samples/sample_01.wav
   looping: false
-  delay_ms: 0
 - name: normalizer_input_0_en
   node_type: normalizer
   headroom: 5.0

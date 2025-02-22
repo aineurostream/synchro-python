@@ -6,7 +6,6 @@ import soxr
 from synchro.audio.frame_container import FrameContainer
 from synchro.config.commons import StreamConfig
 from synchro.config.schemas import ResamplerNodeSchema
-from synchro.graph.graph_frame_container import GraphFrameContainer
 from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
 
 INT16_MAX = 32767
@@ -22,12 +21,10 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
     def put_data(self, _source: str, data: FrameContainer) -> None:
         self._buffer = (
-            FrameContainer.from_other(data)
-            if self._buffer is None
-            else self._buffer.append(data)
+            data.clone() if self._buffer is None else self._buffer.append(data)
         )
 
-    def get_data(self) -> GraphFrameContainer | None:
+    def get_data(self) -> FrameContainer | None:
         if not self._buffer:
             return None
 
@@ -48,6 +45,7 @@ class ResampleNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             self._to_rate,
             self,
         )
+        self._buffer = self._buffer.to_empty()
         return FrameContainer.from_config(
             StreamConfig(rate=self._to_rate, audio_format=self._buffer.audio_format),
             converted_payload,

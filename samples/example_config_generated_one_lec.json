@@ -11,8 +11,7 @@
                 },
                 "rate": 22050
             },
-            "looping": true,
-            "delay_ms": 0
+            "looping": true
         },
         {
             "name": "resampler_input_0_ru",

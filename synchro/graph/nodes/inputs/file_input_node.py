@@ -21,7 +21,7 @@ class FileInputNode(AbstractInputNode):
         self._config = config
         self._wavefile_data: FrameContainer | None = None
         self._wavefile_index = 0
-        self._delay_left = self._config.delay_ms
+        self._delay_left = self._config.delay
         self._last_query = time.time()
 
     def __enter__(self) -> Self:
@@ -53,19 +53,19 @@ class FileInputNode(AbstractInputNode):
         if self._wavefile_data is None:
             return None
 
-        time_passed_ms = int((time.time() - self._last_query) * 1000)
+        time_passed = time.time() - self._last_query
 
         if self._delay_left > 0:
-            delay_duration_ms = min(self._delay_left, time_passed_ms)
-            delay_samples = int(delay_duration_ms * self._config.stream.rate // 1000)
-            delay_bytes = delay_samples * self._config.stream.audio_format.sample_size
-            self._delay_left -= delay_duration_ms
+            delay_duration = min(self._delay_left, time_passed)
+            delay_samples = int(delay_duration * self._wavefile_data.rate)
+            delay_bytes = delay_samples * self._wavefile_data.audio_format.sample_size
+            self._delay_left -= delay_duration
             self._last_query = time.time()
             return self._wavefile_data.with_new_data(b"\x00" * delay_bytes)
 
-        time_passed_samples = int(time_passed_ms * self._config.stream.rate // 1000)
+        time_passed_samples = int(time_passed * self._wavefile_data.rate)
         time_passed_bytes = (
-            time_passed_samples * self._config.stream.audio_format.sample_size
+            time_passed_samples * self._wavefile_data.audio_format.sample_size
         )
         self._last_query = time.time()
 
@@ -78,11 +78,11 @@ class FileInputNode(AbstractInputNode):
         if not_enough_data and self._config.looping:
             logger.info("Looping the file")
             bytes_left = time_passed_bytes - len(data_to_send)
-            data_to_send += self._wavefile_data.frame_data[0:bytes_left]
+            data_to_send += self._wavefile_data.frame_data[:bytes_left]
             self._wavefile_index = bytes_left
         elif not_enough_data:
             self._wavefile_data = None
+            self._wavefile_index = 0
             return None
 
-        logger.info("Sending %d bytes", len(data_to_send))
         return self._wavefile_data.with_new_data(data_to_send)
