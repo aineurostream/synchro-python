@@ -19,7 +19,7 @@
             "to_rate": 22050
         },
         {
-            "name": "converter_0_ru_en",
+            "name": "converter_0",
             "node_type": "converter_seamless",
             "server_url": "http://localhost:8000/",
             "from_language": "ru",
@@ -110,16 +110,16 @@
             "output_file_0_en"
         ],
         [
-            "converter_0_ru_en",
+            "converter_0",
             "mixer_1_en"
         ],
         [
-            "converter_0_ru_en",
+            "converter_0",
             "mixer_0_en"
         ],
         [
             "resampler_input_0_ru",
-            "converter_0_ru_en"
+            "converter_0"
         ],
         [
             "resampler_input_0_ru",

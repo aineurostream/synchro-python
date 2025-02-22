@@ -3,6 +3,6 @@ limits:
   run_time_seconds: 30  # <-- Set 0 for unlimited time
 metrics:
   quality:
-  - node: converter_0_ru_en
+  - node: converter_0
     expected_transcription: ""
     expected_translation: ""

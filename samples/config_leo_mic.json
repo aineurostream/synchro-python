@@ -32,7 +32,7 @@
       "to_rate": 16000
     },
     {
-      "name": "converter_0_en_ru",
+      "name": "converter_0",
       "node_type": "converter_seamless",
       "server_url": "http://127.0.0.1:8000",
       "log_file": "leo_mic.log",
@@ -95,12 +95,12 @@
       "output_file_0_ru"
     ],
     [
-      "converter_0_en_ru",
+      "converter_0",
       "mixer_1_ru"
     ],
     [
       "resampler_input_0_en",
-      "converter_0_en_ru"
+      "converter_0"
     ],
     [
       "resampler_input_0_en",

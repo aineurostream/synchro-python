@@ -7,7 +7,7 @@
             "looping": true
         },
         {
-            "name": "converter_0_en_ru",
+            "name": "converter_0",
             "node_type": "converter_seamless",
             "server_url": "https://3642-91-73-240-61.ngrok-free.app",
             "from_language": "ru",
@@ -41,12 +41,12 @@
             "output_file_0_ru"
         ],
         [
-            "converter_0_en_ru",
+            "converter_0",
             "mixer_1_ru"
         ],
         [
             "input_file_0_en",
-            "converter_0_en_ru"
+            "converter_0"
         ],
         [
             "mixer_1_ru",

@@ -3,7 +3,7 @@ limits:
   run_time_seconds: 45  # <-- Set 0 for unlimited time
 metrics:
   quality:
-  - node: converter_0_en_ru
+  - node: converter_0
     expected_transcription:  |- 
       if by some chance you haven 't seen that in your store yet 
       you can rest assured that one day soon you will and what 
