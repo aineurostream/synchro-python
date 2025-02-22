@@ -48,7 +48,7 @@ class InputFileStreamerNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.INPUT_FILE] = NodeType.INPUT_FILE
     path: FilePath
     looping: bool = True
-    delay_ms: int = 0
+    delay: float = 0
 
 
 class SeamlessConnectorNodeSchema(BaseNodeSchema):
@@ -69,6 +69,7 @@ class ResamplerNodeSchema(BaseNodeSchema):
 
 class VadNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.VAD] = NodeType.VAD
+    threshold: int = 1000
 
 
 class NormalizerNodeSchema(BaseNodeSchema):

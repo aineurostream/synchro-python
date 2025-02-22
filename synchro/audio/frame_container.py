@@ -20,7 +20,7 @@ class FrameContainer(StreamConfig):
         return len(self.frame_data) // self.audio_format.sample_size
 
     def __bool__(self) -> bool:
-        return not self.frame_data
+        return len(self.frame_data) > 0
 
     def __repr__(self) -> str:
         return str(self)
@@ -58,6 +58,12 @@ class FrameContainer(StreamConfig):
             frame_data=self.frame_data,
         )
 
+    def get_config(self) -> StreamConfig:
+        return StreamConfig(
+            audio_format=self.audio_format,
+            rate=self.rate,
+        )
+
     def append(self, other: "FrameContainer") -> "FrameContainer":
         if self.audio_format != other.audio_format:
             raise ValueError("Audio formats are different")
@@ -90,7 +96,7 @@ class FrameContainer(StreamConfig):
 
     def get_end_frames(self, frames_count: int) -> "FrameContainer":
         n = frames_count * self.audio_format.sample_size
-        return FrameContainer.from_config(self, self.frame_data[n:])
+        return FrameContainer.from_config(self, self.frame_data[-n:])
 
     def get_end_seconds(self, seconds: float) -> "FrameContainer":
         seconds_in_bytes = self._seconds_to_bytes(seconds)

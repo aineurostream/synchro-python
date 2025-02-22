@@ -26,6 +26,7 @@ class ChannelOutputNode(AbstractOutputNode):
     ) -> None:
         super().__init__(config.name)
         self._config = config
+        self._sample_rate = 0
         self._stream: sd.OutputStream | None = None
         self._last_time_emit = 0.0
         self._out_buffer = b""
@@ -46,16 +47,16 @@ class ChannelOutputNode(AbstractOutputNode):
             self._out_buffer = outgoing_buffer[available_size:].tobytes()
 
         device_info = sd.query_devices(self._config.device, "output")
-        sample_rate = device_info["default_samplerate"]
+        self._sample_rate = device_info["default_samplerate"]
         self._stream = sd.OutputStream(
             device=self._config.device,
             channels=self._config.channel,
-            samplerate=sample_rate,
+            samplerate=self._sample_rate,
             dtype=self._config.stream.audio_format.numpy_format,
             callback=callback,
         )
         self._stream.start()
-        prefill_frames = int(self._config.stream.rate * PREFILL_SECONDS)
+        prefill_frames = int(self._sample_rate * PREFILL_SECONDS)
         self._out_buffer += np.zeros((prefill_frames,), dtype=np.int16).tobytes()
         return self
 
@@ -72,6 +73,13 @@ class ChannelOutputNode(AbstractOutputNode):
         return False
 
     def put_data(self, _source: str, data: FrameContainer) -> None:
+        if data.rate != self._sample_rate:
+            self._logger.warning(
+                "Data rate is %d, expected %d",
+                data.rate,
+                self._sample_rate,
+            )
+
         self._logger.info(
             f"Writing {data.length_frames} frames to stream",
             extra={
