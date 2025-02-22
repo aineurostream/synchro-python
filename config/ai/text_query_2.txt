@@ -36,17 +36,8 @@ Now we need to assign tasks within the team.
 
 ===
 
-# Original context (source language):
-{source_context}
-
-# Translated context (target language):
-{translated_context}
-
-# Source language:
-{lang_from}
-
-# Target language:
-{lang_to}
-
-# Next part to translate (source language):
-{source_text}
+# Source language: "{lang_from}"
+# Target language: "{lang_to}"
+# Original context (source language): "{source_context}"
+# Translated context (target language): "{translated_context}"
+# Next part to translate (source language): "{source_text}"
