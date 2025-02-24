@@ -37,6 +37,7 @@ class CoreManager:
             "correction_template",
             "gate_template",
             "gate_partial",
+            "unified_template",
         ]
         for key in swappable_keys:
             if key in translate_map and translate_map[key].startswith("file://"):

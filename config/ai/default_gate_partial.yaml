@@ -4,70 +4,35 @@ stt:
   - субтитры сделал
   - субтитры делал
   - M.K.
-  buffer_min_words_size: 5
-  buffer_timeout_seconds: 2.5
+  buffer_min_words_size: 2
+  buffer_timeout_seconds: 3.0
 translate:
   llm_call_timeout: 120
-  context_window_words: 15
+  context_window_words: 24
   temperature: 0.3
-  max_gate_size_words: 20
+  max_gate_size_words: 12
   forced_line_end: "..."
   language_map:
     ru: Russian
     en: English
   text_template: |-
-    You are a skilled translator.
-
-    Your tasks:
-    1) Translate ONLY the new source segment into the target language.
-    2) Maintain consistency with previous context.
-    3) Do not repeat or alter previously translated parts. Focus only on the new segment.
-    4) Provide the translation without additional explanations.
-
-    --- EXAMPLES ---
-
-    [Example 1]
-
-    # Input:
-    Original context (source language): "We concluded the meeting with a final decision."
-    Translated context (target language): "Мы завершили совещание окончательным решением."
-    Source language: English
-    Target language: Russian
-    New source segment to translate: "The next step is to schedule a follow-up call."
-
-    # Output:
-    Следующий шаг — запланировать последующий звонок.
-
-    ---
-
-    [Example 2]
-
-    # Input:
-    Original context (source language): "Мы уже решили основные вопросы."
-    Translated context (target language): "We have already resolved the main issues."
-    Source language: Russian
-    Target language: English
-    New source segment to translate: "Теперь нужно распределить задачи в команде."
-
-    # Output:
-    Now we need to assign tasks within the team.
-
-    ===
-
-    # Original context (source language): 
-    {source_context}
+    I want you to act as a skilled translator. I will provide you with:
+    - the original context (previous parts in the source language),
+    - the translated context (previous parts translated into the target language),
+    - the source and target languages,
+    - the next part to translate (new input in the source language).
     
-    # Translated context (target language):
-    {translated_context}
+    Your task is to:
+    1. Translate the "next part to translate" into the target language, without any additional explanations or comments, only the translated phrase.
+    2. Ensure that the translation is consistent with the "original context" and continues seamlessly from the "translated context".
+    3. If there are words or phrases in the original context that are missing in the translated context, do not retranslate them. Focus only on translating the "next part to translate".
+    4. Provide the translation as a direct continuation of the translated context.
     
-    # Source language:
-    {lang_from}
-    
-    # Target language:
-    {lang_to}
-    
-    # Next part to translate (source language):
-    {source_text}
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
   correction_template: |-
     You are a skilled reviewer.
 
@@ -82,9 +47,9 @@ translate:
     [Example 1]
 
     # Input:
-    Previous part: "У нас есть несколько идей."
-    Active part: "мы должны протестировать их"
-    Language: Russian
+    # Previous part: "У нас есть несколько идей."
+    # Active part: "мы должны протестировать их"
+    # Language: Russian
 
     # Output:
     Мы должны протестировать их.
@@ -94,23 +59,18 @@ translate:
     [Example 2]
 
     # Input:
-    Previous part: "I believe we have a clear plan now."
-    Active part: "we only need to finalize two more details"
-    Language: English
+    # Previous part: "I believe we have a clear plan now."
+    # Active part: "we only need to finalize two more details"
+    # Language: English
 
     # Output:
     We only need to finalize two more details.
 
-    ===
+    --- INPUTS ---
     
-    # Previous part: 
-    {translated_context}
-
-    # Active part:
-    {translated_text}
-
-    # Language:
-    {lang_to}
+    # Previous part: "{translated_context}"
+    # Active part: "{translated_text}"
+    # Language: "{lang_to}"
   gate_template: ""
   gate_partial_template: |-
     You are an experienced simultaneous interpreter with 20 years of professional practice.
@@ -130,21 +90,21 @@ translate:
 
     # Example 1
     Input:
-    and then we will finalize the
+    # Next part to translate (source language): "and then we will finalize the"
 
     Output (two lines, the first empty, the second is the text):
-    [First line is completely empty]
-    [Second line] and then we will finalize the
+    # Translation: ""
+    # Leftover: "and then we will finalize the"
 
     (Explanation to user: This is an obviously incomplete fragment, so the first line is blank, the second line has the entire text.)
 
     # Example 2
     Input:
-    We have finally confirmed the budget.
+    # Next part to translate (source language): "We have finally confirmed the budget."
 
     Output (two lines, the second empty):
-    [First line] We have finally confirmed the budget.
-    [Second line is empty]
+    # Translation: "We have finally confirmed the budget."
+    # Leftover: ""
 
     (Explanation to user: This text is a complete statement, so the second line is blank.)
 
@@ -160,30 +120,21 @@ translate:
 
     # Example 4
     Input:
-    let's confirm the plan then we will see
+    # Next part to translate (source language): "let's confirm the plan then we will see"
 
     Output (two lines):
-    [First line] let's confirm the plan
-    [Second line] then we will see
+    # Translation: "let's confirm the plan"
+    # Leftover: "then we will see"
 
     (Explanation to user: We split the text based on a reasonable guess of completion, since there's no punctuation. The first part is relatively complete, the second part is incomplete.)
 
     ===
 
-    # Original context (source language): 
-    {source_context}
-    
-    # Translated context (target language)
-    {translated_context}
-    
-    # Source language
-    {lang_from}
-    
-    # Target language
-    {lang_to}
-    
-    # Text
-    {source_text}
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
   unified_template: ""
 tts:
   gap_size_bytes: 12000
