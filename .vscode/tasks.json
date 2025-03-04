@@ -1,0 +1,156 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Python File",
+            "type": "shell",
+            "command": "poetry run python ${file}",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "play",
+                "color": "terminal.ansiGreen"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#B4F8C8",
+                }
+            }
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "poetry run pytest pytests/",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "beaker",
+                "color": "terminal.ansiBlue"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#A0E7E5"
+                }
+            }
+        },
+        {
+            "label": "Run Specific Test",
+            "type": "shell",
+            "command": "poetry run pytest ${input:testPath}",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "microscope",
+                "color": "terminal.ansiCyan"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#B4C8EA"
+                }
+            }
+        },
+        {
+            "label": "Run Pre-commit Hooks",
+            "type": "shell",
+            "command": "pre-commit run --all-files",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "check",
+                "color": "terminal.ansiYellow"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#FBE7C6"
+                }
+            }
+        },
+        {
+            "label": "Run Hydra Script",
+            "type": "shell",
+            "command": "poetry run python hydra_run.py",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "gear",
+                "color": "terminal.ansiMagenta"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#FFCAD4"
+                }
+            }
+        },
+        {
+            "label": "Install Dependencies",
+            "type": "shell",
+            "command": "poetry install",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "package",
+                "color": "terminal.ansiBlue"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#D8E2DC"
+                }
+            }
+        },
+        {
+            "label": "Update Dependencies",
+            "type": "shell",
+            "command": "poetry update",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "arrow-up",
+                "color": "terminal.ansiCyan"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#E2F0CB"
+                }
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testPath",
+            "description": "Path to test file or directory",
+            "default": "pytests/",
+            "type": "promptString"
+        }
+    ]
+} 
