@@ -84,11 +84,7 @@ def generate_report_on_bleu(
     }
 
 
-@hydra.main(version_base=None, config_path="config", config_name="config")
-def hydra_app(cfg: DictConfig) -> float:
-    hydra_dir: str = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-    """Start an instance of the Synchro application"""
-
+def initialize_configs(cfg: DictConfig) -> tuple[ProcessingGraphConfig, SettingsSchema, Any]:
     pipeline_config = cast(DictConfig, cfg["pipeline"])
     neural_config = cast(DictConfig, cfg["ai"])
     settings_config = cast(DictConfig, cfg["settings"])
@@ -96,81 +92,47 @@ def hydra_app(cfg: DictConfig) -> float:
     core_config = ProcessingGraphConfig.model_validate(pipeline_config)
     settings = SettingsSchema.model_validate(settings_config)
     neural_config_dict = OmegaConf.to_container(neural_config)
+    
+    return core_config, settings, neural_config_dict
 
-    generated_texts: dict[str, dict[str, str]] = {}
 
+def create_node_event_callback(generated_texts: dict[str, dict[str, str]]):
     def node_event_callback(node_name: str, log: dict[str, Any]) -> None:
-        action = log["context"].get("action")
+        context = log["context"]
+        action = context.get("action")
+
         if node_name not in generated_texts:
             generated_texts[node_name] = defaultdict(str)
 
         generated_texts[node_name][KEY_CHANNEL_NAME] = log["id"]
-        if log["context"].get("sub_action") == "fail":
+        if context.get("sub_action") == "fail":
             return
-        if action == "transcription":
-            generated_texts[node_name][KEY_TRANSCRIBED_TEXT] += (
-                " " + log["context"]["text"]
-            )
-        elif action == "translation":
-            generated_texts[node_name][KEY_TRANSLATED_TEXT] += (
-                " " + log["context"]["translation"]
-            )
-        elif action == "correction":
-            generated_texts[node_name][KEY_CORRECTED_TEXT] += (
-                " " + log["context"]["correction"]
-            )
-        elif action == "synthesis":
-            generated_texts[node_name][KEY_RESULTING_TEXT] += (
-                " " + log["context"]["text"]
-            )
 
-    from synchro.core import CoreManager
+        action_mapping = {
+            "transcription": (KEY_TRANSCRIBED_TEXT, "text"),
+            "translation": (KEY_TRANSLATED_TEXT, "translation"),
+            "correction": (KEY_CORRECTED_TEXT, "correction"),
+            "synthesis": (KEY_RESULTING_TEXT, "text"),
+        }
 
-    core = CoreManager(core_config, neural_config_dict, settings, node_event_callback)
-    core.run()
+        if action in action_mapping:
+            key, field = action_mapping[action]
+            if field in context:
+                generated_texts[node_name][key] += " " + context[field]
+    
+    return node_event_callback
 
-    persist_files(core_config, hydra_dir)
 
-    # Calculating BLEU
+def calculate_quality_metrics(
+    generated_texts: dict[str, dict[str, str]],
+    settings: SettingsSchema,
+    hydra_dir: str
+) -> float:
     total_bleu_score = 0.0
-    quality_store: dict[str, dict[str, str | dict[str, str | float]]] = defaultdict(
-        dict,
-    )
-
-    def append_value(
-        mode: str,
-        expected: str,
-        quality_info: QualityInfo,
-    ) -> None:
-        quality_store[quality_info.node][mode] = generate_report_on_bleu(
-            expected,
-            generated_texts[quality_info.node][mode],
-        )
-
+    quality_store: dict[str, dict[str, str | dict[str, str | float]]] = defaultdict(dict)
+    
     for quality_info in settings.metrics.quality:
-        if not quality_info.node in generated_texts:
-            raise ValueError(f"Node {quality_info.node} not found in generated texts: {generated_texts.keys()}")
-
-        append_value(
-            KEY_TRANSCRIBED_TEXT,
-            quality_info.expected_transcription,
-            quality_info,
-        )
-        append_value(
-            KEY_TRANSLATED_TEXT,
-            quality_info.expected_translation,
-            quality_info,
-        )
-        append_value(
-            KEY_CORRECTED_TEXT,
-            quality_info.expected_translation,
-            quality_info,
-        )
-        append_value(
-            KEY_RESULTING_TEXT,
-            quality_info.expected_translation,
-            quality_info,
-        )
+        append_quality_values(quality_info, generated_texts, quality_store)
         quality_store[quality_info.node][KEY_CHANNEL_NAME] = generated_texts[
             quality_info.node
         ][KEY_CHANNEL_NAME]
@@ -182,8 +144,92 @@ def hydra_app(cfg: DictConfig) -> float:
 
     with open(os.path.join(hydra_dir, "meta_store.json"), "w") as meta_file:
         json.dump(quality_store, meta_file, indent=4, ensure_ascii=False)
-
+        
     return total_bleu_score
+
+
+def append_quality_values(
+    quality_info: QualityInfo,
+    generated_texts: dict[str, dict[str, str]],
+    quality_store: dict[str, dict[str, str | dict[str, str | float]]],
+) -> None:
+    append_value(
+        KEY_TRANSCRIBED_TEXT,
+        quality_info.expected_transcription,
+        quality_info,
+        generated_texts,
+        quality_store,
+    )
+    append_value(
+        KEY_TRANSLATED_TEXT,
+        quality_info.expected_translation,
+        quality_info,
+        generated_texts,
+        quality_store,
+    )
+    append_value(
+        KEY_CORRECTED_TEXT,
+        quality_info.expected_translation,
+        quality_info,
+        generated_texts,
+        quality_store,
+    )
+    append_value(
+        KEY_RESULTING_TEXT,
+        quality_info.expected_translation,
+        quality_info,
+        generated_texts,
+        quality_store,
+    )
+
+
+def append_value(
+    mode: str,
+    expected: str,
+    quality_info: QualityInfo,
+    generated_texts: dict[str, dict[str, str]],
+    quality_store: dict[str, dict[str, str | dict[str, str | float]]],
+) -> None:
+    node = quality_info.node
+
+    if node not in generated_texts:
+        available_nodes = ", ".join(list(generated_texts.keys()))
+        raise ValueError(
+            f"Node '{node}' not found in generated_texts. "
+            f"Available nodes: [{available_nodes}]",
+        )
+
+    node_texts = generated_texts[node]
+    if mode not in node_texts:
+        return
+
+    try:
+        quality_store[node][mode] = generate_report_on_bleu(
+            expected,
+            node_texts[mode],
+        )
+    except Exception as e:
+        raise RuntimeError(
+            "Failed to calculate BLEU score for "
+            f"node '{node}', mode '{mode}': {e!s}",
+        ) from e
+
+
+@hydra.main(version_base=None, config_path="config", config_name="config")
+def hydra_app(cfg: DictConfig) -> float:
+    hydra_dir: str = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+    
+    core_config, settings, neural_config_dict = initialize_configs(cfg)
+    generated_texts: dict[str, dict[str, str]] = {}
+    node_event_callback = create_node_event_callback(generated_texts)
+    
+    from synchro.core import CoreManager
+    core = CoreManager(core_config, neural_config_dict, settings, node_event_callback)
+    core.run()
+
+    persist_files(core_config, hydra_dir)
+    
+    return calculate_quality_metrics(generated_texts, settings, hydra_dir)
 
 
 if __name__ == "__main__":
