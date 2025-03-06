@@ -1,5 +1,5 @@
 defaults:
-  - ai: default
+  - ai: default_unified
   - pipeline: sample_en
   - settings: sample_en
   - _self_
@@ -18,12 +18,13 @@ hydra:
     n_jobs: 1
     params:
       # pipeline.nodes.1.headroom: range(1.0, 20.0, step=0.25)
-      # ai.stt.buffer_min_words_size: range(2, 8)
-      # ai.stt.buffer_timeout_seconds: range(0.5, 4, step=0.25)
-      # ai.translate.context_window_words: range(5, 25)
+      ai.stt.buffer_min_words_size: range(2, 16)
+      ai.stt.buffer_timeout_seconds: range(0.5, 5, step=0.25)
+      ai.translate.context_window_words: range(2, 32)
       # ai.translate.max_gate_size_words: range(5, 25)
-      ai.translate.gate_template: choice('', 'file://config/ai/gate_query_1.txt', 'file://config/ai/gate_query_2.txt')
-      # ai.translate.temperature: range(0.0, 1.0, step=0.1)
-      ai.translate.correction_template: choice('', 'file://config/ai/correction_query_1.txt', 'file://config/ai/correction_query_2.txt')
-      ai.translate.text_template: choice('file://config/ai/text_query_1.txt', 'file://config/ai/text_query_2.txt', 'file://config/ai/text_query_3.txt')
+      ai.translate.temperature: range(0.0, 1.0, step=0.1)
+      #ai.translate.gate_template: choice('', 'file://config/ai/gate_query_1.txt', 'file://config/ai/gate_query_2.txt')
+      #ai.translate.correction_template: choice('', 'file://config/ai/correction_query_1.txt', 'file://config/ai/correction_query_2.txt')
+      #ai.translate.text_template: choice('file://config/ai/text_query_1.txt', 'file://config/ai/text_query_2.txt', 'file://config/ai/text_query_3.txt')
+      ai.translate.unified_template: choice('file://config/ai/unified_query_1.txt', 'file://config/ai/unified_query_2.txt', 'file://config/ai/unified_query_3.txt')
 

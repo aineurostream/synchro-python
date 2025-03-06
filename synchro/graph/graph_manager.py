@@ -2,7 +2,7 @@ import logging
 import time
 from contextlib import suppress
 from queue import Empty, Queue
-from threading import Thread
+from threading import Thread, Lock
 
 from pydantic import BaseModel, ConfigDict
 
@@ -93,21 +93,25 @@ class GraphManager:
         edges: list[GraphEdge],
         settings: SettingsSchema,
     ) -> None:
-        self._nodes = {node.name: node for node in nodes}
-        self._edges = edges
-        self._settings = settings
-        self._executing = False
+        self._nodes: dict[str, GraphNode] = {node.name: node for node in nodes}
+        self._edges: list[GraphEdge] = edges
+        self._settings: SettingsSchema = settings
+        self._executing: bool = False
+        self._lock: Lock = Lock()
+        self._active_threads: list[NodeExecutor] = []
 
     def execute(self) -> None:
-        if self._executing:
-            raise RuntimeError("Graph is already executing")
-        self._executing = True
+        with self._lock:
+            if self._executing:
+                raise RuntimeError("Graph is already executing")
+            self._executing = True
+        
         logger.info("Starting Synchro graph execution")
-        active_threads: list[NodeExecutor] = []
+        self._active_threads: list[NodeExecutor] = []
 
         def activate_thread(created_thread: NodeExecutor) -> None:
             created_thread.start()
-            active_threads.append(created_thread)
+            self._active_threads.append(created_thread)
             logger.info("Executing of node %s started", created_thread.node.name)
 
         queued_edges = {
@@ -144,18 +148,21 @@ class GraphManager:
                 self.stop()
 
             Thread(target=stop_execution).run()
-        # Wait for interruption
+        
         with suppress(KeyboardInterrupt):
             while self._executing:
                 time.sleep(0.1)
         self.stop()
-        logger.info("Synchro instance stopping")
-        for thread in active_threads:
-            thread.stop()
-        logger.info("Waiting for threads to finish")
-        for thread in active_threads:
-            thread.join()
-        logger.info("All threads completed - finishing instance execution")
-
+        
     def stop(self) -> None:
-        self._executing = False
+        with self._lock:
+            logger.info("Synchro instance stopping")
+            self._executing = False
+            for thread in self._active_threads:
+                thread.stop()
+            for thread in self._active_threads:
+                thread.join()
+                
+            self._active_threads.clear()
+            
+            logger.info("All threads completed - finishing instance execution")

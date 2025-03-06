@@ -7,6 +7,7 @@ import numpy as np
 import sounddevice as sd
 
 from synchro.audio.frame_container import FrameContainer
+from synchro.config.audio_format import DEFAULT_AUDIO_FORMAT
 from synchro.config.commons import (
     MIN_STEP_LENGTH_SECS,
 )
@@ -52,7 +53,7 @@ class ChannelOutputNode(AbstractOutputNode):
             device=self._config.device,
             channels=self._config.channel,
             samplerate=self._sample_rate,
-            dtype=self._config.stream.audio_format.numpy_format,
+            dtype=DEFAULT_AUDIO_FORMAT.numpy_format,
             callback=callback,
         )
         self._stream.start()
