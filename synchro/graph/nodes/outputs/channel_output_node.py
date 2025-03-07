@@ -44,7 +44,14 @@ class ChannelOutputNode(AbstractOutputNode):
 
             outgoing_buffer = np.frombuffer(self._out_buffer, dtype=np.int16)
             available_size = min(frames, outgoing_buffer.size)
-            out_data[:available_size, 0] = outgoing_buffer[:available_size]
+            if available_size > 0:
+                out_data[:available_size, self._config.channel - 1] = outgoing_buffer[
+                    :available_size
+                ]
+                if available_size < frames:
+                    out_data[available_size:, self._config.channel - 1] = 0
+            else:
+                out_data[:, self._config.channel - 1] = 0
             self._out_buffer = outgoing_buffer[available_size:].tobytes()
 
         device_info = sd.query_devices(self._config.device, "output")
@@ -82,7 +89,8 @@ class ChannelOutputNode(AbstractOutputNode):
             )
 
         self._logger.info(
-            f"Writing {data.length_frames} frames to stream",
+            "Writing %d frames to stream",
+            data.length_frames,
             extra={
                 "frames": data.length_frames,
                 "rate": data.rate,
@@ -95,7 +103,7 @@ class ChannelOutputNode(AbstractOutputNode):
         if self._stream is None:
             raise RuntimeError("Audio stream is not open")
         frames_per_buffer = int(
-            self._config.stream.rate * MIN_STEP_LENGTH_SECS,
+            self._sample_rate * MIN_STEP_LENGTH_SECS,
         )
         if frames_per_buffer > data.length_frames:
             raise ValueError(

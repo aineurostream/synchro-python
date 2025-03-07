@@ -4,6 +4,9 @@ nodes:
   node_type: input_channel
   device: 0 # <-- This device should be set for microphone input
   channel: 1 # <-- Always set to 1 for microphone input
+- name: normalizer_input_0_ru
+  node_type: normalizer
+  headroom: 3.75
 - name: resampler_input_0_ru
   node_type: resampler
   to_rate: 16000
@@ -27,6 +30,8 @@ nodes:
   to_rate: 44100 # <-- !!! resampler_output_1 rate
 edges:
 - - input_mic_0_ru
+  - normalizer_input_0_ru
+- - normalizer_input_0_ru
   - resampler_input_0_ru
 - - resampler_output_1
   - output_file_1_en
