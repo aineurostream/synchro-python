@@ -85,7 +85,7 @@
             }
         },
         {
-            "label": "Run Hydra Script",
+            "label": "Run Hydra Script Simple",
             "type": "shell",
             "command": "poetry run python hydra_run.py",
             "group": "none",
@@ -101,6 +101,46 @@
             "options": {
                 "statusbar": {
                     "color": "#FFCAD4"
+                }
+            }
+        },
+        {
+            "label": "Run Hydra with mic",
+            "type": "shell",
+            "command": "poetry run python hydra_run.py --config-name=mic_01 pipeline.nodes.0.device=9 pipeline.nodes.6.device=9",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "zap",
+                "color": "terminal.ansiGreen"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#C7CEEA"
+                }
+            }
+        },
+        {
+            "label": "Run Grid Search with optuna",
+            "type": "shell",
+            "command": "poetry run python hydra_run.py --config-name=optuna_01",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "search",
+                "color": "terminal.ansiMagenta"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#F0DBDB"
                 }
             }
         },
@@ -141,6 +181,26 @@
             "options": {
                 "statusbar": {
                     "color": "#E2F0CB"
+                }
+            }
+        },
+        {
+            "label": "List Audio Devices",
+            "type": "shell",
+            "command": "poetry run python -c \"import sounddevice as sd; print(sd.query_devices())\"",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "mic",
+                "color": "terminal.ansiYellow"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#FFD6BA"
                 }
             }
         }
