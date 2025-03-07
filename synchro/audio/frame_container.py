@@ -49,7 +49,7 @@ class FrameContainer(StreamConfig):
 
     @property
     def is_empty(self) -> bool:
-        return bool(self)
+        return not bool(self)
 
     def clone(self) -> "FrameContainer":
         return FrameContainer(

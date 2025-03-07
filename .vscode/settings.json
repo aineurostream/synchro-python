@@ -1,0 +1,7 @@
+{
+    "python.analysis.inlayHints.callArgumentNames": "all",
+    "python.analysis.regenerateStdLibIndices": true,
+    "python.analysis.userFileIndexingLimit": -1,
+    "python.missingPackage.severity": "Error",
+    "python.testing.pytestEnabled": true,
+}

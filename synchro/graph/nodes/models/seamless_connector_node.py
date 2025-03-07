@@ -1,7 +1,7 @@
 import contextlib
 import uuid
 from types import TracebackType
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, cast
 
 from socketio import SimpleClient
 from socketio.exceptions import TimeoutError as SioTimeoutError
@@ -136,4 +136,4 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         )
 
     def is_active(self) -> bool:
-        raise self._client.connected
+        return cast(bool, self._client.connected)
