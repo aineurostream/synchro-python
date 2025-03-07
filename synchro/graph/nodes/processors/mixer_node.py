@@ -29,7 +29,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         super().__init__(config.name)
         self._incoming_buffers: dict[str, InnerFrameHolder] = {}
         self._output_buffer: FrameContainer | None = None
-        self._inputs_count = 1
+        self._inputs_count = 0
         self._last_update_time = 0.0
 
     def put_data(self, source: str, data: FrameContainer) -> None:
@@ -43,6 +43,8 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             return
         if source not in self._incoming_buffers:
             self._incoming_buffers[source] = InnerFrameHolder(frame=data)
+
+        self._inputs_count = len(self._incoming_buffers)
         self._incoming_buffers[source].frame.append_inp(data)
 
     def get_data(self) -> FrameContainer | None:
@@ -63,11 +65,13 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._output_buffer = self._output_buffer.to_empty()
         return returning_frame
 
-    def mix_frames(self) -> bytes:
+    def mix_frames(self) -> bytes:  # noqa: C901
         if self._output_buffer is None:
             raise ValueError("Config is not set")
         if self._last_update_time == 0.0:
             self._last_update_time = time.time()
+        if self._inputs_count == 0:
+            return b""
 
         stream_start_frames = int(
             MIN_WORKING_STEP_LENGTH_SECS
@@ -107,7 +111,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             elif current_frame_length < stream_end_frames:
                 incoming_frame.streaming = False
 
-        selected_frame_containers = [
+        selected_frame_containers: list[FrameContainer] = [
             incoming_frame.frame
             for incoming_frame in self._incoming_buffers.values()
             if incoming_frame.streaming
@@ -128,7 +132,13 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                 selected_frame.get_begin_frames(batch_length_frames).frame_data,
                 dtype=self._output_buffer.audio_format.numpy_format,
             )
-            selected_frame.shrink_first_frames(batch_length_frames)
+
+        for ibuffer in self._incoming_buffers.values():
+            if ibuffer.streaming:
+                ibuffer.frame = ibuffer.frame.get_end_frames(
+                    ibuffer.frame.length_frames - batch_length_frames,
+                )
+
         audio_matrix = np.divide(audio_matrix, self._inputs_count)
         audio_matrix = np.sum(audio_matrix, axis=0)
 

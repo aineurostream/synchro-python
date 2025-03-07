@@ -2,7 +2,7 @@ import logging
 import time
 from contextlib import suppress
 from queue import Empty, Queue
-from threading import Thread, Lock
+from threading import Lock, Thread
 
 from pydantic import BaseModel, ConfigDict
 
@@ -42,6 +42,7 @@ class NodeExecutor(Thread):
         self._running = True
         self._incoming = incoming
         self._outgoing = outgoing
+        self.local_exception: Exception | None = None
         logger.debug(
             "NodeExecutor created for %s\n(incoming: %s, outgoing: %s)",
             node,
@@ -53,14 +54,19 @@ class NodeExecutor(Thread):
         self._running = False
 
     def run(self) -> None:
-        with self.node:
-            while self._running:
-                self.process_inputs()
-                self.process_outputs()
-                if isinstance(self.node, ReceivingNodeMixin):
-                    time.sleep(MIN_STEP_NON_GENERATING_SECS)
-                else:
-                    time.sleep(MIN_STEP_LENGTH_SECS)  # Microphones or file inputs
+        try:
+            with self.node:
+                while self._running:
+                    self.process_inputs()
+                    self.process_outputs()
+                    if isinstance(self.node, ReceivingNodeMixin):
+                        time.sleep(MIN_STEP_NON_GENERATING_SECS)
+                    else:
+                        time.sleep(MIN_STEP_LENGTH_SECS)
+        except Exception as e:
+            logger.exception("Exception in NodeExecutor for %s:", self.node.name)
+            self._running = False
+            self.local_exception = e
 
     def process_outputs(self) -> None:
         if isinstance(self.node, EmittingNodeMixin):
@@ -99,15 +105,27 @@ class GraphManager:
         self._executing: bool = False
         self._lock: Lock = Lock()
         self._active_threads: list[NodeExecutor] = []
+        self._exception_check_thread: Thread | None = None
+
+    def _check_for_exceptions(self) -> None:
+        while self._executing:
+            for thread in self._active_threads:
+                if thread.local_exception is not None:
+                    logger.error(
+                        "Exception detected in thread %s, stopping all execution",
+                        thread.name,
+                    )
+                    self.stop()
+                    raise thread.local_exception
+            time.sleep(0.1)
 
     def execute(self) -> None:
         with self._lock:
             if self._executing:
                 raise RuntimeError("Graph is already executing")
             self._executing = True
-        
+
         logger.info("Starting Synchro graph execution")
-        self._active_threads: list[NodeExecutor] = []
 
         def activate_thread(created_thread: NodeExecutor) -> None:
             created_thread.start()
@@ -121,6 +139,13 @@ class GraphManager:
             )
             for edge in self._edges
         }
+
+        self._exception_check_thread = Thread(
+            target=self._check_for_exceptions,
+            name="ExceptionChecker",
+        )
+        self._exception_check_thread.daemon = True
+        self._exception_check_thread.start()
 
         for node in self._nodes.values():
             incoming = [
@@ -148,12 +173,12 @@ class GraphManager:
                 self.stop()
 
             Thread(target=stop_execution).run()
-        
+
         with suppress(KeyboardInterrupt):
             while self._executing:
                 time.sleep(0.1)
         self.stop()
-        
+
     def stop(self) -> None:
         with self._lock:
             logger.info("Synchro instance stopping")
@@ -161,8 +186,8 @@ class GraphManager:
             for thread in self._active_threads:
                 thread.stop()
             for thread in self._active_threads:
-                thread.join()
-                
-            self._active_threads.clear()
-            
+                if thread.is_alive():
+                    thread.join(timeout=1.0)
+            self._active_threads = []
+
             logger.info("All threads completed - finishing instance execution")

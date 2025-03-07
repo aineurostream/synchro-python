@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 from collections import defaultdict
+from collections.abc import Callable
 from typing import Any, cast
 
 import hydra
@@ -84,7 +85,9 @@ def generate_report_on_bleu(
     }
 
 
-def initialize_configs(cfg: DictConfig) -> tuple[ProcessingGraphConfig, SettingsSchema, Any]:
+def initialize_configs(
+    cfg: DictConfig,
+) -> tuple[ProcessingGraphConfig, SettingsSchema, Any]:
     pipeline_config = cast(DictConfig, cfg["pipeline"])
     neural_config = cast(DictConfig, cfg["ai"])
     settings_config = cast(DictConfig, cfg["settings"])
@@ -92,11 +95,13 @@ def initialize_configs(cfg: DictConfig) -> tuple[ProcessingGraphConfig, Settings
     core_config = ProcessingGraphConfig.model_validate(pipeline_config)
     settings = SettingsSchema.model_validate(settings_config)
     neural_config_dict = OmegaConf.to_container(neural_config)
-    
+
     return core_config, settings, neural_config_dict
 
 
-def create_node_event_callback(generated_texts: dict[str, dict[str, str]]):
+def create_node_event_callback(
+    generated_texts: dict[str, dict[str, str]],
+) -> Callable[[str, dict[str, Any]], None]:
     def node_event_callback(node_name: str, log: dict[str, Any]) -> None:
         context = log["context"]
         action = context.get("action")
@@ -119,32 +124,34 @@ def create_node_event_callback(generated_texts: dict[str, dict[str, str]]):
             key, field = action_mapping[action]
             if field in context:
                 generated_texts[node_name][key] += " " + context[field]
-    
+
     return node_event_callback
 
 
 def calculate_quality_metrics(
     generated_texts: dict[str, dict[str, str]],
     settings: SettingsSchema,
-    hydra_dir: str
+    hydra_dir: str,
 ) -> float:
     total_bleu_score = 0.0
-    quality_store: dict[str, dict[str, str | dict[str, str | float]]] = defaultdict(dict)
-    
+    quality_store: dict[str, dict[str, str | dict[str, str | float]]] = defaultdict(
+        dict,
+    )
+
     for quality_info in settings.metrics.quality:
         append_quality_values(quality_info, generated_texts, quality_store)
         quality_store[quality_info.node][KEY_CHANNEL_NAME] = generated_texts[
             quality_info.node
         ][KEY_CHANNEL_NAME]
 
-        total_bleu_score += (
-            quality_store[quality_info.node][KEY_RESULTING_TEXT]["bleu_score"]  # type: ignore
-            * quality_info.weight
-        )
+        resulting_part = quality_store[quality_info.node][KEY_RESULTING_TEXT]
+        if isinstance(resulting_part, dict):
+            score = resulting_part["bleu_score"]
+            total_bleu_score += float(score) * quality_info.weight
 
     with open(os.path.join(hydra_dir, "meta_store.json"), "w") as meta_file:
         json.dump(quality_store, meta_file, indent=4, ensure_ascii=False)
-        
+
     return total_bleu_score
 
 
@@ -218,17 +225,18 @@ def append_value(
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def hydra_app(cfg: DictConfig) -> float:
     hydra_dir: str = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-    
+
     core_config, settings, neural_config_dict = initialize_configs(cfg)
     generated_texts: dict[str, dict[str, str]] = {}
     node_event_callback = create_node_event_callback(generated_texts)
-    
+
     from synchro.core import CoreManager
+
     core = CoreManager(core_config, neural_config_dict, settings, node_event_callback)
     core.run()
 
     persist_files(core_config, hydra_dir)
-    
+
     return calculate_quality_metrics(generated_texts, settings, hydra_dir)
 
 

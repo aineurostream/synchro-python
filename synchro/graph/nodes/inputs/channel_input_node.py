@@ -59,10 +59,11 @@ class ChannelInputNode(AbstractInputNode):
         if self._stream:
             self._stream.stop()
             self._stream.close()
+            self._incoming_buffer = None
 
         return False
 
-    def get_data(self) -> FrameContainer:
+    def get_data(self) -> FrameContainer | None:
         if not self._stream:
             raise RuntimeError("Audio stream is not open")
         if self._incoming_buffer is None:

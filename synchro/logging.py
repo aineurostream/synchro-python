@@ -1,15 +1,22 @@
 import logging
+
 from pythonjsonlogger.json import JsonFormatter
 
 
 class CustomJsonFormatter(JsonFormatter):
-    def __init__(self, *args, **kwargs):
-        kwargs["json_ensure_ascii"] = False
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args: list, **kwargs: dict) -> None:  # type: ignore
+        super().__init__(*args, **kwargs, json_ensure_ascii=False)
 
 
 def setup_logging() -> None:
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    formatter = CustomJsonFormatter()
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.addHandler(handler)
+
+    for h in root_logger.handlers[:]:
+        if h is not handler:
+            root_logger.removeHandler(h)
