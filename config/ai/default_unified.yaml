@@ -59,12 +59,13 @@ translate:
     # Target language: "Russian"
     # Original context (source language): "Yesterday we discussed the project..."
     # Translated context (target language): "Вчера мы обсуждали проект..."
-    # Next part to translate (source language): "We still need to confirm the final budget."
+    # Next part to translate (source language): "We still need to confirm the final budget. In this"
     
     Output:
     # Action: "translate"
     # Translation: "Нам все еще нужно утвердить итоговый бюджет."
     # Corrected: "Нам все еще нужно утвердить итоговый бюджет."
+    # Leftover: "In this"
     
     ---
     
