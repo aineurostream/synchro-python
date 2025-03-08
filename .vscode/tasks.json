@@ -127,7 +127,7 @@
         {
             "label": "Run Grid Search with optuna",
             "type": "shell",
-            "command": "poetry run python hydra_run.py --config-name=optuna_01",
+            "command": "poetry run python hydra_run.py --multirun --config-name optuna_01",
             "group": "none",
             "presentation": {
                 "reveal": "always",
