@@ -21,13 +21,13 @@ translate:
     - the translated context (previous parts translated into the target language),
     - the source and target languages,
     - the next part to translate (new input in the source language).
-    
+
     Your task is to:
     1. Translate the "next part to translate" into the target language, without any additional explanations or comments, only the translated phrase.
     2. Ensure that the translation is consistent with the "original context" and continues seamlessly from the "translated context".
     3. If there are words or phrases in the original context that are missing in the translated context, do not retranslate them. Focus only on translating the "next part to translate".
     4. Provide the translation as a direct continuation of the translated context.
-    
+
     # Source language: "{lang_from}"
     # Target language: "{lang_to}"
     # Original context (source language): "{source_context}"
@@ -67,7 +67,7 @@ translate:
     We only need to finalize two more details.
 
     --- INPUTS ---
-    
+
     # Previous part: "{translated_context}"
     # Active part: "{translated_text}"
     # Language: "{lang_to}"
@@ -76,12 +76,12 @@ translate:
     Analyze the context and the spoken part of a phrase to determine:
     1. Whether the thought is complete or requires continuation.
     2. Decide whether to “translate” or “wait.”
-    
+
     Write your response by using only one of two words:
     - “translate” if can proceed with translation with decent quality
     - “translate” if there is more than one sentence in the phrase
     - “wait” if the phrase requires continuation
-    
+
     # Source language: "{lang_from}"
     # Target language: "{lang_to}"
     # Original context (source language): "{source_context}"

@@ -145,46 +145,6 @@
             }
         },
         {
-            "label": "Install Dependencies",
-            "type": "shell",
-            "command": "poetry install",
-            "group": "none",
-            "presentation": {
-                "reveal": "always",
-                "panel": "new"
-            },
-            "problemMatcher": [],
-            "icon": {
-                "id": "package",
-                "color": "terminal.ansiBlue"
-            },
-            "options": {
-                "statusbar": {
-                    "color": "#D8E2DC"
-                }
-            }
-        },
-        {
-            "label": "Update Dependencies",
-            "type": "shell",
-            "command": "poetry update",
-            "group": "none",
-            "presentation": {
-                "reveal": "always",
-                "panel": "new"
-            },
-            "problemMatcher": [],
-            "icon": {
-                "id": "arrow-up",
-                "color": "terminal.ansiCyan"
-            },
-            "options": {
-                "statusbar": {
-                    "color": "#E2F0CB"
-                }
-            }
-        },
-        {
             "label": "List Audio Devices",
             "type": "shell",
             "command": "poetry run python -c \"import sounddevice as sd; print(sd.query_devices())\"",
@@ -213,4 +173,4 @@
             "type": "promptString"
         }
     ]
-} 
+}
