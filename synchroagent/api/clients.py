@@ -130,8 +130,7 @@ async def update_client(
     if not existing_client:
         raise NotFoundError("Client not found")
 
-    update_data = client_data.model_dump(exclude_unset=True)
-    updated_client = client_registry.update(client_id, update_data)
+    updated_client = client_registry.update(client_id, client_data)
 
     if not updated_client:
         raise BadRequestError("Failed to update client")

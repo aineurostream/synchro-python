@@ -150,10 +150,7 @@ def sample_config():
 
 @pytest.fixture()
 def temp_db_path():
-    fd, path = tempfile.mkstemp()
-    os.close(fd)
-    yield path
-    os.unlink(path)
+    return ":memory:"
 
 
 @pytest.fixture()
@@ -182,7 +179,7 @@ def test_app_config(temp_db_path, temp_outputs_dir, temp_reports_dir):
 def integration_client(test_app_config, monkeypatch):
     monkeypatch.setattr("synchroagent.api.deps.default_config", test_app_config)
 
-    db_path = "synchroagent.db"
+    db_path = test_app_config.db_path
     if os.path.exists(db_path):
         os.remove(db_path)
 

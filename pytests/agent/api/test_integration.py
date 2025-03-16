@@ -1,6 +1,10 @@
+import time
+
+
 def test_create_and_get_config(integration_client):
+    timestamp = int(time.time())
     config_data = {
-        "name": "Integration Test Config",
+        "name": f"Integration Test Config {timestamp}",
         "content": {"test_key": "test_value"},
         "description": "Config for integration testing",
     }
@@ -12,13 +16,14 @@ def test_create_and_get_config(integration_client):
 
     get_response = integration_client.get(f"/api/configs/{config_id}")
     assert get_response.status_code == 200
-    assert get_response.json()["name"] == "Integration Test Config"
+    assert get_response.json()["name"] == f"Integration Test Config {timestamp}"
     assert get_response.json()["content"] == {"test_key": "test_value"}
 
 
 def test_create_and_get_client(integration_client):
+    timestamp = int(time.time())
     config_data = {
-        "name": "Client Test Config",
+        "name": f"Client Test Config {timestamp}",
         "content": {"test_key": "test_value"},
     }
 
@@ -28,7 +33,7 @@ def test_create_and_get_client(integration_client):
     config_id = config_response.json()["id"]
 
     client_data = {
-        "name": "Integration Test Client",
+        "name": f"Integration Test Client {timestamp}",
         "description": "Client for integration testing",
         "config_id": config_id,
     }
@@ -40,13 +45,14 @@ def test_create_and_get_client(integration_client):
 
     get_response = integration_client.get(f"/api/clients/{client_id}")
     assert get_response.status_code == 200
-    assert get_response.json()["name"] == "Integration Test Client"
+    assert get_response.json()["name"] == f"Integration Test Client {timestamp}"
     assert get_response.json()["config_id"] == config_id
 
 
 def test_client_config_relationship(integration_client):
+    timestamp = int(time.time())
     config_data = {
-        "name": "Relationship Test Config",
+        "name": f"Relationship Test Config {timestamp}",
         "content": {"test_key": "test_value"},
     }
 
@@ -54,7 +60,7 @@ def test_client_config_relationship(integration_client):
     config_id = config_response.json()["id"]
 
     client_data = {
-        "name": "Relationship Test Client",
+        "name": f"Relationship Test Client {timestamp}",
         "config_id": config_id,
     }
 
@@ -71,8 +77,9 @@ def test_client_config_relationship(integration_client):
 
 
 def test_config_validation(integration_client):
+    timestamp = int(time.time())
     config_data = {
-        "name": "Validation Test Config",
+        "name": f"Validation Test Config {timestamp}",
         "content": {"test_key": "test_value"},
     }
 
@@ -92,8 +99,9 @@ def test_config_validation(integration_client):
 
 
 def test_full_client_lifecycle(integration_client):
+    timestamp = int(time.time())
     config_data = {
-        "name": "Lifecycle Test Config",
+        "name": f"Lifecycle Test Config {timestamp}",
         "content": {"test_key": "test_value"},
     }
 
@@ -101,7 +109,7 @@ def test_full_client_lifecycle(integration_client):
     config_id = config_response.json()["id"]
 
     client_data = {
-        "name": "Lifecycle Test Client",
+        "name": f"Lifecycle Test Client {timestamp}",
         "config_id": config_id,
     }
 
@@ -109,7 +117,7 @@ def test_full_client_lifecycle(integration_client):
     client_id = client_response.json()["id"]
 
     update_data = {
-        "name": "Updated Lifecycle Client",
+        "name": f"Updated Lifecycle Client {timestamp}",
         "description": "Updated description",
     }
 
@@ -118,7 +126,7 @@ def test_full_client_lifecycle(integration_client):
         json=update_data,
     )
     assert update_response.status_code == 200
-    assert update_response.json()["name"] == "Updated Lifecycle Client"
+    assert update_response.json()["name"] == f"Updated Lifecycle Client {timestamp}"
 
     all_clients_response = integration_client.get("/api/clients")
     assert all_clients_response.status_code == 200
