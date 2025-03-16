@@ -19,6 +19,10 @@ requests = "2.32.3"
 soxr = "0.5.0.post1"
 pydub = "0.25.1"
 python-json-logger = "3.2.1"
+fastapi = "0.115.11"
+python-dotenv = "1.0.1"
+httpx = "0.28.1"
+uvicorn = "0.34.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.4.0"
@@ -57,14 +61,19 @@ build-backend = "poetry.core.masonry.api"
 line-length = 88
 indent-width = 4
 
-# Assume Python 3.8
+# Assume Python 3.11
 target-version = "py311"
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
     "D",
+    "TD",
+    "FIX",
     "S311",
+    "S603",
+    "S608", # TODO: Remove this
+    "PLR0913",
     "ANN101",
     "ANN102",
     "PGH003",
@@ -96,4 +105,4 @@ docstring-code-line-length = "dynamic"
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
 
 [tool.ruff.lint.per-file-ignores]
-"**/{pytests,docs,tools}/*" = ["S101", "ANN", "ARG", "PTH", "PERF", "PLR2004"]
+"**/{pytests,docs,tools}/*" = ["S101", "S108", "SLF001", "PLR0913", "TRY301", "ANN", "ARG", "PTH", "PERF", "PLR2004"]

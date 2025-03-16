@@ -4,13 +4,13 @@ stt:
   - субтитры сделал
   - субтитры делал
   - M.K.
-  buffer_min_words_size: 15
+  buffer_min_words_size: 5
   buffer_timeout_seconds: 1.0
 translate:
   llm_call_timeout: 120
   context_window_words: 30
-  temperature: 0.3
-  max_gate_size_words: 12
+  temperature: 0.1
+  max_gate_size_words: 30
   forced_line_end: "..."
   language_map:
     ru: Russian
@@ -34,41 +34,41 @@ translate:
         # Corrected: "...correction of the translated text..."
     3) The "translation" is the direct translation of the new chunk.
     4) The "corrected" is the final version for TTS with minimal grammar/punctuation fixes.
-    
+
     --- EXAMPLES ---
-    
+
     [Example 1 - Action: wait]
-    
+
     Input:
     # Source language: "English"
     # Target language: "Russian"
     # Original context (source language): "Yesterday we discussed the project..."
     # Translated context (target language): "Вчера мы обсуждали проект..."
     # Next part to translate (source language): "we still need to confirm the"
-    
+
     Output:
     # Action: "wait"
     # Leftover: "we still need to confirm the"
-    
+
     ---
-    
+
     [Example 2 - Action: translate]
-    
+
     Input:
     # Source language: "English"
     # Target language: "Russian"
     # Original context (source language): "Yesterday we discussed the project..."
     # Translated context (target language): "Вчера мы обсуждали проект..."
     # Next part to translate (source language): "We still need to confirm the final budget. In this"
-    
+
     Output:
     # Action: "translate"
     # Translation: "Нам все еще нужно утвердить итоговый бюджет."
     # Corrected: "Нам все еще нужно утвердить итоговый бюджет."
     # Leftover: "In this"
-    
+
     ---
-    
+
     Actual input for AI:
     # Source language: "{lang_from}"
     # Target language: "{lang_to}"

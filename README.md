@@ -21,6 +21,28 @@ poetry install
 ```
 Poetry will install all dependencies from `pyproject.toml`.
 
+### Environment Variables and Configuration
+The application supports configuration through environment variables. You can set these variables directly in your environment or use a `.env` file.
+
+1. Copy the example environment file:
+```bash
+cp .env.example .env
+```
+
+2. Edit the `.env` file to customize your configuration:
+```
+# Database configuration
+AGNT_DB_PATH=synchroagent.db
+
+# Directory configurations
+AGNT_REPORTS_DIR=reports
+AGNT_OUTPUTS_DIR=outputs
+
+# Script paths
+AGNT_HYDRA_SCRIPT=hydra_run.py
+AGNT_SYNCHRO_REPORT_SCRIPT=../synchro_reporter.git/report.py
+```
+
 ### Step 2. Get devices info
 ```bash
 poetry run python3 -m sounddevice
