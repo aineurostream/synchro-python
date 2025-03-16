@@ -71,4 +71,4 @@ Actual input for AI:
 # Target language: "{lang_to}"
 # Original context (source language): "{source_context}"
 # Translated context (target language): "{translated_context}"
-# Next part to translate (source language): "{source_text}" 
+# Next part to translate (source language): "{source_text}"
