@@ -1,6 +1,8 @@
 import subprocess
 from unittest.mock import MagicMock, mock_open, patch
 
+import pytest
+
 from synchroagent.logic.report_manager import ReportManager
 
 
@@ -22,9 +24,9 @@ class TestReportManager:
     ):
         mock_client_run_registry.get_by_id.return_value = None
 
-        result = report_manager.generate_report(1)
+        with pytest.raises(ValueError, match="Client run not found"):
+            report_manager.generate_report(1)
 
-        assert result is None
         mock_client_run_registry.get_by_id.assert_called_once_with(1)
 
     def test_generate_report_no_output_dir(
@@ -36,9 +38,9 @@ class TestReportManager:
         run_without_output = sample_client_run_stopped.copy(update={"output_dir": None})
         mock_client_run_registry.get_by_id.return_value = run_without_output
 
-        result = report_manager.generate_report(1)
+        with pytest.raises(ValueError, match="Client run has no output directory"):
+            report_manager.generate_report(1)
 
-        assert result is None
         mock_client_run_registry.get_by_id.assert_called_once_with(1)
 
     @patch.object(ReportManager, "_generate_report_file")
@@ -52,9 +54,9 @@ class TestReportManager:
         mock_client_run_registry.get_by_id.return_value = sample_client_run_stopped
         mock_generate_file.return_value = None
 
-        result = report_manager.generate_report(1)
+        with pytest.raises(ValueError, match="Failed to generate report file"):
+            report_manager.generate_report(1)
 
-        assert result is None
         mock_generate_file.assert_called_once_with(
             1,
             sample_client_run_stopped.output_dir,
@@ -108,9 +110,9 @@ class TestReportManager:
         mock_client_run_registry.get_by_id.return_value = sample_client_run_stopped
         mock_generate_file.return_value = "/tmp/test_reports/report_1_.html"
 
-        result = report_manager.generate_report(1)
+        with pytest.raises(ValueError, match="Failed to read report file"):
+            report_manager.generate_report(1)
 
-        assert result is None
         mock_generate_file.assert_called_once_with(
             1,
             sample_client_run_stopped.output_dir,
