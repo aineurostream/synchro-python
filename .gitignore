@@ -27,7 +27,6 @@ share/python-wheels/
 MANIFEST
 
 test
-1
 
 
 # PyInstaller
@@ -116,7 +115,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-
+.env
 .venv
 .speech.env
 env/
@@ -164,3 +163,14 @@ samples/output_chunks/
 
 translated_output.wav
 source_input.wav
+
+.vscode/
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/launch.json
+
+# SQLite
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

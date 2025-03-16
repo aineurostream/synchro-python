@@ -5,13 +5,13 @@ metrics:
   quality:
   - node: converter_0
     expected_transcription: "
-    Attention all passengers, 
-    the train to New York City will be departing from platform 5 in 10 minutes. 
-    Please ensure you have all your belongings with you before boarding. 
+    Attention all passengers,
+    the train to New York City will be departing from platform 5 in 10 minutes.
+    Please ensure you have all your belongings with you before boarding.
     "
     expected_translation: "
-    Вниманию всех пассажиров, 
-    поезд до города Нью-Йорка отправится с площадки 5 через 10 минут. 
-    Пожалуйста, убедитесь, что у вас есть все необходимые вещи 
-    с собой перед посадкой. 
+    Вниманию всех пассажиров,
+    поезд до города Нью-Йорка отправится с площадки 5 через 10 минут.
+    Пожалуйста, убедитесь, что у вас есть все необходимые вещи
+    с собой перед посадкой.
     "

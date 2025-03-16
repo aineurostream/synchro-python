@@ -15,39 +15,39 @@
     4) The "corrected" is the final version for TTS with minimal grammar/punctuation fixes.
     5) The "leftover" is the part that should not yet be translated.
     --- EXAMPLES ---
-    
+
     [Example 1 - Action: wait]
-    
+
     Input:
     # Source language: "English"
     # Target language: "Russian"
     # Original context (source language): "Yesterday we discussed the project..."
     # Translated context (target language): "Вчера мы обсуждали проект..."
     # Next part to translate (source language): "we still need to confirm the"
-    
+
     Output:
     # Action: "wait"
     # Leftover: "we still need to confirm the"
-    
+
     ---
-    
+
     [Example 2 - Action: translate]
-    
+
     Input:
     # Source language: "English"
     # Target language: "Russian"
     # Original context (source language): "Yesterday we discussed the project..."
     # Translated context (target language): "Вчера мы обсуждали проект..."
     # Next part to translate (source language): "We still need to confirm the final budget. In this"
-    
+
     Output:
     # Action: "translate"
     # Translation: "Нам все еще нужно утвердить итоговый бюджет."
     # Corrected: "Нам все еще нужно утвердить итоговый бюджет."
     # Leftover: "In this"
-    
+
     ---
-    
+
     Actual input for AI:
     # Source language: "{lang_from}"
     # Target language: "{lang_to}"

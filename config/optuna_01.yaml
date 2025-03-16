@@ -27,4 +27,3 @@ hydra:
       #ai.translate.correction_template: choice('', 'file://config/ai/correction_query_1.txt', 'file://config/ai/correction_query_2.txt')
       #ai.translate.text_template: choice('file://config/ai/text_query_1.txt', 'file://config/ai/text_query_2.txt', 'file://config/ai/text_query_3.txt')
       ai.translate.unified_template: choice('file://config/ai/unified_query_1.txt', 'file://config/ai/unified_query_2.txt', 'file://config/ai/unified_query_3.txt', 'file://config/ai/unified_query_4.txt', 'file://config/ai/unified_query_5.txt', 'file://config/ai/unified_query_6.txt', 'file://config/ai/unified_query_7.txt', 'file://config/ai/unified_query_8.txt', 'file://config/ai/unified_query_9.txt', 'file://config/ai/unified_query_10.txt', 'file://config/ai/unified_query_11.txt')
-
