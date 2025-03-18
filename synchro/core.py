@@ -28,8 +28,8 @@ class CoreManager:
     def preprocess_neuro_config(self) -> None:
         # Preprocess neuro config
         def load_from_file(file_path: str) -> str:
-            with open(file_path) as file:
-                return file.read()
+            with open(file_path, "r") as fp:
+                return fp.read()
 
         translate_map = self._neuro_config["translate"]
         swappable_keys = [
