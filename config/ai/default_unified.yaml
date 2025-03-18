@@ -84,3 +84,5 @@ tts:
     ru:
     - piper
     - ruslan
+  hints:
+    audio_speed: 2.0

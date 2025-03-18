@@ -99,5 +99,4 @@ tts:
     - piper
     - ruslan
   hints:
-    length_scale: 1.0,
-    speech_rate: 1.25,
+    audio_speed: 2.0
