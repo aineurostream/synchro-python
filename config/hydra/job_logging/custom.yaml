@@ -12,6 +12,7 @@ handlers:
     class: logging.FileHandler
     formatter: json
     filename: ${hydra.runtime.output_dir}/${hydra.job.name}.log
+    encoding: utf-8
 root:
   level: DEBUG
   handlers:

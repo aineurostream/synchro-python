@@ -42,8 +42,8 @@ def start(
     cli_echo_title("Starting Synchro instance")
 
     with (
-        open(pipeline) as graph_config_file,
-        open(neuro) as neuro_config_file,
+        open(pipeline, "r") as graph_config_file,
+        open(neuro, "r") as neuro_config_file,
     ):
         core_config = ProcessingGraphConfig.model_validate_json(
             graph_config_file.read(),
