@@ -106,9 +106,12 @@ class ChannelOutputNode(AbstractOutputNode):
             self._sample_rate * MIN_STEP_LENGTH_SECS,
         )
         if frames_per_buffer > data.length_frames:
-            raise ValueError(
-                f"Expected {frames_per_buffer} frames, got {data.length_frames}",
+            self._logger.warning(
+                "Expected %d frames, got %d",
+                frames_per_buffer,
+                data.length_frames,
             )
+        
         current_emit_time = time.time()
         if self._last_time_emit > 0:
             time_diff = current_emit_time - self._last_time_emit
