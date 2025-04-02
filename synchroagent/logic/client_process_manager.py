@@ -64,11 +64,11 @@ class ClientProcessManager:
             status=RunStatus.CREATED,
         )
 
-        client_run_id = self.client_run_registry.create(client_run_create)
-        if not client_run_id:
+        client_run = self.client_run_registry.create(client_run_create)
+        if not client_run:
             raise RuntimeError("Failed to create client run record")
 
-        return client_run_id
+        return client_run.id
 
     def _start_process(
         self,
@@ -138,7 +138,7 @@ class ClientProcessManager:
         try:
             os.killpg(os.getpgid(client_run.pid), signal.SIGTERM)
             logger.info(f"Sent SIGTERM to client run {run_id} (PID: {client_run.pid})")
-            self.client_run_registry.update_status(run_id, RunStatus.STOPPED)
+            self.client_run_registry.update_run_status(client_run, RunStatus.STOPPED)
             updated_run = self.client_run_registry.get_by_id(run_id)
 
             if not updated_run:
@@ -148,7 +148,7 @@ class ClientProcessManager:
 
         except ProcessLookupError as e:
             logger.warning(f"Process {client_run.pid} not found, marking as stopped")
-            self.client_run_registry.update_status(run_id, RunStatus.STOPPED)
+            self.client_run_registry.update_run_status(client_run, RunStatus.STOPPED)
 
             updated_run = self.client_run_registry.get_by_id(run_id)
             if not updated_run:
@@ -177,7 +177,10 @@ class ClientProcessManager:
             os.kill(client_run.pid, 0)
         except ProcessLookupError:
             if client_run.status == RunStatus.RUNNING:
-                self.client_run_registry.update_status(run_id, RunStatus.STOPPED)
+                self.client_run_registry.update_run_status(
+                    client_run,
+                    RunStatus.STOPPED,
+                )
             return False
         except Exception:
             logger.exception(f"Error checking process status for run {run_id}")

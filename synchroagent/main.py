@@ -1,5 +1,6 @@
 import logging
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,7 +8,7 @@ from synchroagent.api import clients, configs
 from synchroagent.config import default_config
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("synchroagent")
@@ -33,8 +34,6 @@ app.include_router(configs.router, prefix="/api/configs", tags=["configs"])
 
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(
         "synchroagent.main:app",
         host=default_config.api_host,

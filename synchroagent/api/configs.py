@@ -84,16 +84,12 @@ async def get_config(
 @router.put("/{config_id}")
 async def update_config(
     config_id: Annotated[int, Path(ge=1)],
-    config_data: ConfigUpdate,
+    update_data: ConfigUpdate,
     config_registry: Annotated[ConfigRegistry, Depends(get_config_registry_dep)],
 ) -> ConfigResponse:
     existing_config = config_registry.get_by_id(config_id)
     if not existing_config:
         raise NotFoundError("Configuration not found")
-
-    update_data = config_data.model_dump(exclude_unset=True)
-    if update_data:
-        update_data["updated_at"] = get_datetime_iso()
 
     updated_config = config_registry.update(config_id, update_data)
 
