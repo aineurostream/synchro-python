@@ -54,6 +54,13 @@ class ClientRunRegistry(
             model.model_dump(mode="json", exclude_unset=True, exclude_none=True),
         )
 
+    def update_run_status(
+        self,
+        run: ClientRunSchema,
+        status: RunStatus,
+    ) -> ClientRunSchema | None:
+        return self.update_status(run.id, status)
+
     def update_status(self, run_id: int, status: RunStatus) -> ClientRunSchema | None:
         data = {"status": status.value}
         if status in (RunStatus.FAILED, RunStatus.STOPPED):

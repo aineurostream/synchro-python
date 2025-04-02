@@ -111,7 +111,7 @@ class ChannelOutputNode(AbstractOutputNode):
                 frames_per_buffer,
                 data.length_frames,
             )
-        
+
         current_emit_time = time.time()
         if self._last_time_emit > 0:
             time_diff = current_emit_time - self._last_time_emit

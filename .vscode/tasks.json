@@ -163,6 +163,26 @@
                     "color": "#FFD6BA"
                 }
             }
+        },
+        {
+            "label": "Run Agent",
+            "type": "shell",
+            "command": "poetry run python3 -m synchroagent.main",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "robot",
+                "color": "terminal.ansiBlue"
+            },
+            "options": {
+                "statusbar": {
+                    "color": "#B4E4FF"
+                }
+            }
         }
     ],
     "inputs": [

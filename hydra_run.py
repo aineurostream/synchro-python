@@ -149,7 +149,11 @@ def calculate_quality_metrics(
             score = resulting_part["bleu_score"]
             total_bleu_score += float(score) * quality_info.weight
 
-    with open(os.path.join(hydra_dir, "meta_store.json"), "w", encoding="utf-8") as meta_file:
+    with open(
+        os.path.join(hydra_dir, "meta_store.json"),
+        "w",
+        encoding="utf-8",
+    ) as meta_file:
         json.dump(quality_store, meta_file, indent=4, ensure_ascii=False)
 
     return total_bleu_score
