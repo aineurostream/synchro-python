@@ -71,7 +71,8 @@
             "group": "test",
             "presentation": {
                 "reveal": "always",
-                "panel": "new"
+                "panel": "dedicated",
+                "clear": true
             },
             "problemMatcher": [],
             "icon": {
