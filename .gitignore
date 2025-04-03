@@ -160,6 +160,8 @@ outputs/
 reports/
 multirun/
 samples/output_chunks/
+# Agent config files
+agent_*.yaml
 
 translated_output.wav
 source_input.wav

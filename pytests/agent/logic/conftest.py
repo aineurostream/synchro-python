@@ -42,15 +42,33 @@ def mock_report_registry():
 
 
 @pytest.fixture()
+def mock_log_manager():
+    manager = MagicMock()
+    manager.collect_logs.return_value = 123
+    return manager
+
+
+@pytest.fixture()
+def mock_report_manager():
+    manager = MagicMock()
+    manager.generate_report.return_value = 456
+    return manager
+
+
+@pytest.fixture()
 def client_process_manager(
     mock_client_registry,
     mock_client_run_registry,
     mock_config_registry,
+    mock_log_manager,
+    mock_report_manager,
 ):
     return ClientProcessManager(
         client_registry=mock_client_registry,
         client_run_registry=mock_client_run_registry,
         config_registry=mock_config_registry,
+        log_manager=mock_log_manager,
+        report_manager=mock_report_manager,
         outputs_dir="/tmp/test_outputs",
     )
 

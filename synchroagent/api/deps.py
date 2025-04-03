@@ -52,23 +52,6 @@ def get_log_registry_dep() -> LogRegistry:
     return get_log_registry()
 
 
-def get_client_process_manager(
-    client_registry: Annotated[ClientRegistry, Depends(get_client_registry_dep)],
-    client_run_registry: Annotated[
-        ClientRunRegistry,
-        Depends(get_client_run_registry_dep),
-    ],
-    config_registry: Annotated[ConfigRegistry, Depends(get_config_registry_dep)],
-    app_config: Annotated[AppConfig, Depends(get_app_config)],
-) -> ClientProcessManager:
-    return ClientProcessManager(
-        client_registry=client_registry,
-        client_run_registry=client_run_registry,
-        config_registry=config_registry,
-        outputs_dir=app_config.outputs_dir,
-    )
-
-
 def get_log_manager(
     log_registry: Annotated[LogRegistry, Depends(get_log_registry_dep)],
     client_run_registry: Annotated[
@@ -96,4 +79,25 @@ def get_report_manager(
         client_run_registry=client_run_registry,
         client_registry=client_registry,
         reports_dir=app_config.reports_dir,
+    )
+
+
+def get_client_process_manager(
+    client_registry: Annotated[ClientRegistry, Depends(get_client_registry_dep)],
+    client_run_registry: Annotated[
+        ClientRunRegistry,
+        Depends(get_client_run_registry_dep),
+    ],
+    config_registry: Annotated[ConfigRegistry, Depends(get_config_registry_dep)],
+    app_config: Annotated[AppConfig, Depends(get_app_config)],
+    log_manager: Annotated[LogManager, Depends(get_log_manager)],
+    report_manager: Annotated[ReportManager, Depends(get_report_manager)],
+) -> ClientProcessManager:
+    return ClientProcessManager(
+        client_registry=client_registry,
+        client_run_registry=client_run_registry,
+        config_registry=config_registry,
+        log_manager=log_manager,
+        report_manager=report_manager,
+        outputs_dir=app_config.outputs_dir,
     )
