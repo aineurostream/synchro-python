@@ -23,7 +23,7 @@ class ReportManager:
         self.client_run_registry = client_run_registry
         self.client_registry = client_registry
         self.reports_dir = reports_dir or default_config.reports_dir
-        self.synchro_report_script = default_config.synchro_report_script
+        self.synchro_report = default_config.synchro_report_script
         Path(self.reports_dir).mkdir(parents=True, exist_ok=True)
 
     def generate_report(self, client_run_id: int) -> ReportSchema:
@@ -65,9 +65,9 @@ class ReportManager:
         return final_report
 
     def _generate_report_file(self, client_run_id: int, output_dir: str) -> str | None:
-        report_script_path = Path(self.synchro_report_script).resolve()
-        if not report_script_path.is_file():
-            logger.error(f"Report script not found: {report_script_path}")
+        report_generator_path = Path(self.synchro_report)
+        if not report_generator_path.is_dir():
+            logger.error(f"Report generator not found: {report_generator_path}")
             return None
 
         report_filename = f"report_{client_run_id}_.html"
@@ -76,12 +76,15 @@ class ReportManager:
         try:
             subprocess.run(
                 [  # noqa: S607
+                    "poetry",
+                    "run",
                     "python3",
-                    str(report_script_path),
+                    "reporter.py",
                     "generate",
                     output_dir,
                     str(report_path),
                 ],
+                cwd=Path(report_generator_path),
                 check=True,
                 text=True,
                 capture_output=True,
@@ -92,8 +95,8 @@ class ReportManager:
                 return None
 
             return str(report_path)
-        except subprocess.CalledProcessError:
-            logger.exception("Report generation failed")
+        except subprocess.CalledProcessError as e:
+            logger.exception("Report generation failed: %s, %s", e.stdout, e.stderr)
             return None
         except Exception:
             logger.exception("Error generating report")

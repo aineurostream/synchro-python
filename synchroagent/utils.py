@@ -32,5 +32,5 @@ def get_datetime_iso() -> str:
     return get_current_datetime().isoformat()
 
 
-def ensure_dir_exists(dir_path: str) -> None:
-    Path(dir_path).mkdir(parents=True, exist_ok=True)
+def ensure_dir_exists(dir_path: Path) -> None:
+    dir_path.mkdir(parents=True, exist_ok=True)

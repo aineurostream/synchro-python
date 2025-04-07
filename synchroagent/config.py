@@ -10,9 +10,9 @@ DEFAULT_DB_PATH = "synchroagent.db"
 DEFAULT_REPORTS_DIR = "reports"
 DEFAULT_HYDRA_SCRIPT = "hydra_run.py"
 DEFAULT_OUTPUTS_DIR = "outputs"
-DEFAULT_SYNCHRO_REPORT_SCRIPT = "../synchro_reporter.git/report.py"
+DEFAULT_SYNCHRO_REPORT = "../synchro_reporter"
 DEFAULT_API_HOST = "0.0.0.0"  # noqa: S104
-DEFAULT_API_PORT = 8000
+DEFAULT_API_PORT = 8001
 
 
 class AppConfig(BaseModel):
@@ -33,8 +33,8 @@ class AppConfig(BaseModel):
     )
     synchro_report_script: str = Field(
         default_factory=lambda: os.environ.get(
-            "AGNT_SYNCHRO_REPORT_SCRIPT",
-            DEFAULT_SYNCHRO_REPORT_SCRIPT,
+            "AGNT_SYNCHRO_REPORT",
+            DEFAULT_SYNCHRO_REPORT,
         ),
     )
     api_host: str = Field(
