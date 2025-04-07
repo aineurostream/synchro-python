@@ -51,7 +51,7 @@ class ClientProcessManager:
         self.process_monitor.set_process_completed_callback(self._on_process_completed)
         self.process_monitor.start()
 
-        ensure_dir_exists(self.outputs_dir)
+        ensure_dir_exists(Path(self.outputs_dir))
 
     def _validate_client_and_config(
         self,
@@ -148,11 +148,16 @@ class ClientProcessManager:
         config_filename = self._save_config_to_file(config, client_run_id)
         config_name = config_filename.split(".")[0]
 
+        run_output_dir = Path(self.outputs_dir) / str(client_run_id)
+        ensure_dir_exists(run_output_dir)
+
         python_executable = "python"
         cmd = [
             python_executable,
             str(hydra_script_path),
             f"pipeline={config_name}",
+            f"hydra.run.dir={run_output_dir}",
+            "--config-name=agent",
         ]
 
         try:
@@ -169,6 +174,7 @@ class ClientProcessManager:
             client_run_update = ClientRunUpdate(
                 pid=process.pid,
                 status=RunStatus.RUNNING,
+                output_dir=str(run_output_dir),
             )
 
             self.client_run_registry.update(client_run_id, client_run_update)

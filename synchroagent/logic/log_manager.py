@@ -28,7 +28,7 @@ class LogManager:
         if not output_dir.exists():
             raise ValueError(f"Output directory not found: {output_dir}")
 
-        log_file = Path(output_dir) / ".hydra" / "hydra.log"
+        log_file = Path(output_dir) / "hydra_run.log"
         if not log_file.exists():
             raise ValueError(f"No log file found in {output_dir}")
         log_contents = self._read_log_file(log_file)
@@ -38,13 +38,13 @@ class LogManager:
             log_type=LogType.APPLICATION,
         )
 
-        log_id = self.log_registry.create(log_create)
-        if not log_id:
+        log = self.log_registry.create(log_create)
+        if not log:
             raise ValueError("Failed to create log record in database")
-        client_run_update = ClientRunUpdate(log_id=log_id)
+        client_run_update = ClientRunUpdate(log_id=log.id)
         self.client_run_registry.update(client_run_id, client_run_update)
 
-        return log_id
+        return log.id
 
     def _read_log_file(self, log_file: Path) -> str:
         try:
