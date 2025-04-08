@@ -5,9 +5,6 @@ import numpy as np
 from pydantic import BaseModel
 
 from synchro.audio.frame_container import FrameContainer
-from synchro.config.commons import (
-    MIN_WORKING_STEP_LENGTH_SECS,
-)
 from synchro.config.schemas import MixerNodeSchema
 from synchro.graph.graph_node import (
     EmittingNodeMixin,
@@ -15,8 +12,8 @@ from synchro.graph.graph_node import (
     ReceivingNodeMixin,
 )
 
-MAX_MIXING_LENGTH_MULT = 3
-MIN_MIXING_LENGTH_MULT = 1
+MAX_MIXING_LENGTH_MULT = 3.0
+MIN_MIXING_LENGTH_MULT = 1.0
 
 
 class InnerFrameHolder(BaseModel):
@@ -31,6 +28,7 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._output_buffer: FrameContainer | None = None
         self._inputs_count = 0
         self._last_update_time = 0.0
+        self._config = config
 
     def put_data(self, source: str, data: FrameContainer) -> None:
         if self._output_buffer is None:
@@ -74,19 +72,19 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             return b""
 
         stream_start_frames = int(
-            MIN_WORKING_STEP_LENGTH_SECS
+            self._config.min_working_step_length_secs
             * MAX_MIXING_LENGTH_MULT
             * self._output_buffer.rate,
         )
 
         stream_end_frames = int(
-            MIN_WORKING_STEP_LENGTH_SECS
+            self._config.min_working_step_length_secs
             * MIN_MIXING_LENGTH_MULT
             * self._output_buffer.rate,
         )
 
         batch_length_frames = int(
-            MIN_WORKING_STEP_LENGTH_SECS * self._output_buffer.rate,
+            self._config.min_working_step_length_secs * self._output_buffer.rate,
         )
 
         current_time = time.time()

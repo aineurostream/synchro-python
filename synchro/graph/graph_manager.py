@@ -7,7 +7,6 @@ from threading import Lock, Thread
 from pydantic import BaseModel, ConfigDict
 
 from synchro.audio.frame_container import FrameContainer
-from synchro.config.commons import MIN_STEP_LENGTH_SECS, MIN_STEP_NON_GENERATING_SECS
 from synchro.config.settings import SettingsSchema
 from synchro.graph.graph_edge import GraphEdge
 from synchro.graph.graph_node import (
@@ -33,12 +32,14 @@ class EdgeQueue(BaseModel):
 class NodeExecutor(Thread):
     def __init__(
         self,
+        settings: SettingsSchema,
         node: GraphNode,
         incoming: list[EdgeQueue],
         outgoing: list[EdgeQueue],
     ) -> None:
         super().__init__(name=node.name)
         self.node = node
+        self._settings = settings
         self._running = True
         self._incoming = incoming
         self._outgoing = outgoing
@@ -60,9 +61,9 @@ class NodeExecutor(Thread):
                     self.process_inputs()
                     self.process_outputs()
                     if isinstance(self.node, ReceivingNodeMixin):
-                        time.sleep(MIN_STEP_NON_GENERATING_SECS)
+                        time.sleep(self._settings.input_interval_secs)
                     else:
-                        time.sleep(MIN_STEP_LENGTH_SECS)
+                        time.sleep(self._settings.processor_interval_secs)
         except Exception as e:
             logger.exception("Exception in NodeExecutor for %s:", self.node.name)
             self._running = False
@@ -158,7 +159,7 @@ class GraphManager:
                 for edge in self._edges
                 if edge.source == node.name
             ]
-            activate_thread(NodeExecutor(node, incoming, outgoing))
+            activate_thread(NodeExecutor(self._settings, node, incoming, outgoing))
 
         run_time_limit = self._settings.limits.run_time_seconds
         if run_time_limit > 0:

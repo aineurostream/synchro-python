@@ -20,6 +20,8 @@ class MetricsSchema(BaseModel):
 
 class SettingsSchema(BaseModel):
     name: str
+    input_interval_secs: Annotated[float, Field(default=0.3)]
+    processor_interval_secs: Annotated[float, Field(default=0.016)]
     limits: Annotated[
         SettingsLimitSchema,
         Field(default_factory=SettingsLimitSchema),

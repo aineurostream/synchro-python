@@ -60,6 +60,7 @@ class SeamlessConnectorNodeSchema(BaseNodeSchema):
 
 class MixerNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.MIXER] = NodeType.MIXER
+    min_working_step_length_secs: float = 1.0
 
 
 class ResamplerNodeSchema(BaseNodeSchema):

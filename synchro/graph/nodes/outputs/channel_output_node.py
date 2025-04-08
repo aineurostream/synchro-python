@@ -8,9 +8,6 @@ import sounddevice as sd
 
 from synchro.audio.frame_container import FrameContainer
 from synchro.config.audio_format import DEFAULT_AUDIO_FORMAT
-from synchro.config.commons import (
-    MIN_STEP_LENGTH_SECS,
-)
 from synchro.config.schemas import OutputChannelStreamerNodeSchema
 from synchro.graph.nodes.outputs.abstract_output_node import AbstractOutputNode
 
@@ -24,13 +21,16 @@ class ChannelOutputNode(AbstractOutputNode):
     def __init__(
         self,
         config: OutputChannelStreamerNodeSchema,
+        output_interval_secs: float = 0.016,
     ) -> None:
         super().__init__(config.name)
         self._config = config
+        self._output_interval_secs = output_interval_secs
         self._sample_rate = 0
         self._stream: sd.OutputStream | None = None
         self._last_time_emit = 0.0
         self._out_buffer = b""
+        self._output_interval_secs = output_interval_secs
 
     def __enter__(self) -> Self:
         def callback(
@@ -103,7 +103,7 @@ class ChannelOutputNode(AbstractOutputNode):
         if self._stream is None:
             raise RuntimeError("Audio stream is not open")
         frames_per_buffer = int(
-            self._sample_rate * MIN_STEP_LENGTH_SECS,
+            self._sample_rate * self._output_interval_secs,
         )
         if frames_per_buffer > data.length_frames:
             self._logger.warning(

@@ -144,7 +144,7 @@ def calculate_quality_metrics(
             quality_info.node
         ][KEY_CHANNEL_NAME]
 
-        resulting_part = quality_store[quality_info.node][KEY_RESULTING_TEXT]
+        resulting_part = quality_store[quality_info.node].get(KEY_RESULTING_TEXT)
         if isinstance(resulting_part, dict):
             score = resulting_part["bleu_score"]
             total_bleu_score += float(score) * quality_info.weight
