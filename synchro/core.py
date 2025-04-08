@@ -47,6 +47,7 @@ class CoreManager:
         logger.info("Starting Synchro instance")
 
         nodes, edges = GraphInitializer(
+            self._settings,
             self._pipeline_config,
             self._neuro_config,
             self._events_cb,

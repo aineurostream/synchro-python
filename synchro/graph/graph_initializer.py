@@ -18,6 +18,7 @@ from synchro.config.schemas import (
     SeamlessConnectorNodeSchema,
     VadNodeSchema,
 )
+from synchro.config.settings import SettingsSchema
 from synchro.graph.graph_edge import GraphEdge
 from synchro.graph.graph_node import GraphNode
 from synchro.graph.nodes.inputs.channel_input_node import ChannelInputNode
@@ -37,10 +38,12 @@ logger = logging.getLogger(__name__)
 class GraphInitializer:
     def __init__(
         self,
+        settings: SettingsSchema,
         config: ProcessingGraphConfig,
         neuro_config: dict[str, Any],
         events_cb: NodeEventsCallback | None = None,
     ) -> None:
+        self._settings = settings
         self._config = config
         self._neuro_config = neuro_config
         self._events_cb = events_cb
@@ -61,7 +64,7 @@ class GraphInitializer:
         self,
         config: OutputChannelStreamerNodeSchema,
     ) -> ChannelOutputNode:
-        return ChannelOutputNode(config)
+        return ChannelOutputNode(config, self._settings.input_interval_secs)
 
     def _create_file_output_node(
         self,
