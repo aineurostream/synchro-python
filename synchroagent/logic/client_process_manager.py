@@ -1,7 +1,7 @@
 import logging
 import os
-import signal
 import subprocess
+import time
 import uuid
 from pathlib import Path
 
@@ -27,6 +27,8 @@ from synchroagent.logic.report_manager import ReportManager
 from synchroagent.utils import ensure_dir_exists
 
 logger = logging.getLogger(__name__)
+
+WAIT_TIMEOUT_SECONDS = 10
 
 
 class ClientProcessManager:
@@ -202,7 +204,7 @@ class ClientProcessManager:
             logger.exception(f"Failed to start client {client_id}")
             raise
 
-    def stop_client_run(self, run_id: int) -> ClientRunSchema:
+    def stop_client_run(self, run_id: int) -> ClientRunSchema:  # noqa: C901
         client_run = self.client_run_registry.get_by_id(run_id)
         if not client_run:
             raise ValueError(f"Client run not found: {run_id}")
@@ -214,8 +216,25 @@ class ClientProcessManager:
             raise ValueError(f"Client run has no process ID: {run_id}")
 
         try:
-            os.killpg(os.getpgid(client_run.pid), signal.SIGTERM)
-            logger.info(f"Sent SIGTERM to client run {run_id} (PID: {client_run.pid})")
+            stop_flag_file = (
+                Path(client_run.output_dir or "").resolve().joinpath("stop.flag")
+            )
+            stop_flag_file.touch()
+            logger.info(
+                f"Created stop flag file at {stop_flag_file.resolve().as_posix()} "
+                f"for client run {run_id}",
+            )
+
+            wait_time: float = 0
+            while self.check_process_status(run_id):
+                logger.info(f"Waiting for client run {run_id} to stop")
+                time.sleep(0.1)
+                wait_time += 0.1
+                if wait_time > WAIT_TIMEOUT_SECONDS:
+                    raise RuntimeError(  # noqa: TRY301
+                        f"Client run {run_id} did not stop after 10 seconds",
+                    )
+
             self.client_run_registry.update_run_status(client_run, RunStatus.STOPPED)
             updated_run = self.client_run_registry.get_by_id(run_id)
 

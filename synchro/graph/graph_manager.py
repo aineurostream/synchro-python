@@ -1,6 +1,7 @@
 import logging
 import time
 from contextlib import suppress
+from pathlib import Path
 from queue import Empty, Queue
 from threading import Lock, Thread
 
@@ -56,11 +57,12 @@ class NodeExecutor(Thread):
 
     def run(self) -> None:
         try:
+            emitting_only_node = not isinstance(self.node, ReceivingNodeMixin)
             with self.node:
                 while self._running:
                     self.process_inputs()
                     self.process_outputs()
-                    if isinstance(self.node, ReceivingNodeMixin):
+                    if emitting_only_node:
                         time.sleep(self._settings.input_interval_secs)
                     else:
                         time.sleep(self._settings.processor_interval_secs)
@@ -99,6 +101,7 @@ class GraphManager:
         nodes: list[GraphNode],
         edges: list[GraphEdge],
         settings: SettingsSchema,
+        working_dir: str | None = None,
     ) -> None:
         self._nodes: dict[str, GraphNode] = {node.name: node for node in nodes}
         self._edges: list[GraphEdge] = edges
@@ -107,6 +110,7 @@ class GraphManager:
         self._lock: Lock = Lock()
         self._active_threads: list[NodeExecutor] = []
         self._exception_check_thread: Thread | None = None
+        self._working_dir: str | None = working_dir
 
     def _check_for_exceptions(self) -> None:
         while self._executing:
@@ -175,12 +179,27 @@ class GraphManager:
 
             Thread(target=stop_execution).run()
 
+        stop_flag_file = Path(self._working_dir or "").joinpath("stop.flag").resolve()
+        logger.info("Stop flag file: %s", stop_flag_file.absolute().as_posix())
         with suppress(KeyboardInterrupt):
             while self._executing:
                 time.sleep(0.1)
+                if stop_flag_file.exists():
+                    logger.info(
+                        "Stopping Synchro instance due to stop flag %s",
+                        stop_flag_file.resolve().as_posix(),
+                    )
+                    self.stop()
+
         self.stop()
+        logger.info("Synchro instance stopped")
+        if stop_flag_file.exists():
+            stop_flag_file.unlink()
 
     def stop(self) -> None:
+        if not self._executing:
+            return
+
         with self._lock:
             logger.info("Synchro instance stopping")
             self._executing = False

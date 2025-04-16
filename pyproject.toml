@@ -7,7 +7,7 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 pydantic = "2.10.6"
 click = "8.1.8"
 sounddevice = "0.5.1"
@@ -37,6 +37,12 @@ hydra-optuna-sweeper = "1.2.0"
 hydra-joblib-launcher = "1.2.0"
 nltk = "3.9.1"
 jiwer = "3.0.5"
+
+[tool.poetry.group.reporter.dependencies]
+jinja2 = "3.1.5"
+pyyaml = "6.0.2"
+matplotlib = "3.10.0"
+networkx = "3.4.2"
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"

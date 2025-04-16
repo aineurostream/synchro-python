@@ -34,7 +34,10 @@ class ReportManager:
         if not client_run.output_dir:
             raise ValueError(f"Client run has no output directory: {client_run_id}")
 
-        report_path = self._generate_report_file(client_run_id, client_run.output_dir)
+        report_path = self._generate_report_file(
+            client_run_id,
+            Path(client_run.output_dir).resolve(),
+        )
         if not report_path:
             raise ValueError(
                 f"Failed to generate report file for client run: {client_run_id}",
@@ -64,26 +67,33 @@ class ReportManager:
 
         return final_report
 
-    def _generate_report_file(self, client_run_id: int, output_dir: str) -> str | None:
+    def _generate_report_file(self, client_run_id: int, output_dir: Path) -> str | None:
         report_generator_path = Path(self.synchro_report)
         if not report_generator_path.is_dir():
             logger.error(f"Report generator not found: {report_generator_path}")
             return None
 
         report_filename = f"report_{client_run_id}_.html"
-        report_path = Path(self.reports_dir) / report_filename
+        report_path = Path(self.reports_dir).resolve() / report_filename
 
         try:
+            report_generation_command = [
+                "poetry",
+                "run",
+                "python3",
+                "reporter.py",
+                "report",
+                "generate",
+                str(output_dir),
+                str(report_path),
+            ]
+            logger.info(
+                "Running report generation command: "
+                f"{' '.join(report_generation_command)}",
+            )
+
             subprocess.run(
-                [  # noqa: S607
-                    "poetry",
-                    "run",
-                    "python3",
-                    "reporter.py",
-                    "generate",
-                    output_dir,
-                    str(report_path),
-                ],
+                report_generation_command,
                 cwd=Path(report_generator_path),
                 check=True,
                 text=True,

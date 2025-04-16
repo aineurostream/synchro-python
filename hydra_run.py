@@ -52,8 +52,11 @@ def persist_files(pipeline: ProcessingGraphConfig, hydra_dir: str) -> None:
     for node in pipeline.nodes:
         node_name: str = node.name
         file_path: str = ""
-        if isinstance(node, InputFileStreamerNodeSchema | OutputFileNodeSchema):
+        if isinstance(node, InputFileStreamerNodeSchema):
             file_path = cast(str, node.path)
+        elif isinstance(node, OutputFileNodeSchema):
+            file_path = os.path.join(hydra_dir, node.path)
+
         if file_path:
             shutil.copy(
                 file_path,
@@ -236,7 +239,13 @@ def hydra_app(cfg: DictConfig) -> float:
 
     from synchro.core import CoreManager
 
-    core = CoreManager(core_config, neural_config_dict, settings, node_event_callback)
+    core = CoreManager(
+        pipeline_config=core_config,
+        neuro_config=neural_config_dict,
+        settings=settings,
+        events_cb=node_event_callback,
+        working_dir=hydra_dir,
+    )
     core.run()
 
     persist_files(core_config, hydra_dir)

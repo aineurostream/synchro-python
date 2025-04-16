@@ -1,0 +1,5 @@
+name: Default
+input_interval_secs: 0.3
+processor_interval_secs: 0.016
+limits:
+  run_time_seconds: 0  # <-- Set 0 for unlimited time
