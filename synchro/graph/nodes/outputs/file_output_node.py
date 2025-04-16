@@ -1,4 +1,5 @@
 import wave
+from pathlib import Path
 from types import TracebackType
 from typing import Literal, Self
 
@@ -11,10 +12,12 @@ class FileOutputNode(AbstractOutputNode):
     def __init__(
         self,
         config: OutputFileNodeSchema,
+        working_dir: Path | None = None,
     ) -> None:
         super().__init__(config.name)
         self._config = config
         self._wave_file: wave.Wave_write | None = None
+        self._working_dir = working_dir
 
     def __enter__(self) -> Self:
         return self
@@ -32,7 +35,8 @@ class FileOutputNode(AbstractOutputNode):
 
     def put_data(self, _source: str, data: FrameContainer) -> None:
         if self._wave_file is None:
-            self._wave_file = wave.open(str(self._config.path), "w")
+            file_path = Path(self._working_dir or "").joinpath(self._config.path)
+            self._wave_file = wave.open(str(file_path), "w")
             self._wave_file.setnchannels(1)
             self._wave_file.setsampwidth(data.audio_format.sample_size)
             self._wave_file.setframerate(data.rate)

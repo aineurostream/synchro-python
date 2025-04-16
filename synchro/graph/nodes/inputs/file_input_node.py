@@ -23,6 +23,8 @@ class FileInputNode(AbstractInputNode):
         self._wavefile_index = 0
         self._delay_left = self._config.delay
         self._last_query = time.time()
+        # Minimum chunk size (10ms of audio)
+        self._min_chunk_ms = 10
 
     def __enter__(self) -> Self:
         wavefile = wave.open(str(self._config.path), "r")
@@ -51,6 +53,7 @@ class FileInputNode(AbstractInputNode):
 
     def get_data(self) -> FrameContainer | None:
         if self._wavefile_data is None:
+            logger.info("No data to send - all sent and loop is not enabled")
             return None
 
         time_passed = time.time() - self._last_query
@@ -81,8 +84,10 @@ class FileInputNode(AbstractInputNode):
             data_to_send += self._wavefile_data.frame_data[:bytes_left]
             self._wavefile_index = bytes_left
         elif not_enough_data:
-            self._wavefile_data = None
-            self._wavefile_index = 0
-            return None
-
-        return self._wavefile_data.with_new_data(data_to_send)
+            logger.info("No enough data to send - sending remaining data")
+        data_frame = self._wavefile_data.with_new_data(data_to_send)
+        logger.info(
+            f"File sending {len(data_to_send)} bytes "
+            f"({time_passed:.2f} seconds ({data_frame.length_secs:.2f})",
+        )
+        return data_frame

@@ -4,9 +4,6 @@ nodes:
   node_type: input_file
   path: samples/test_hfc_male.wav
   looping: false
-- name: vad_input_0_en
-  node_type: vad
-  threshold: 1000
 - name: normalizer_input_0_en
   node_type: normalizer
   headroom: 10.0
@@ -18,7 +15,10 @@ nodes:
   server_url: http://127.0.0.1:8000
   lang_from: en
   lang_to: ru
-- name: output_file_source
+- name: source_input_raw
+  node_type: output_file
+  path: samples/source_input_raw.wav
+- name: source_input
   node_type: output_file
   path: samples/source_input.wav
 - name: output_file_1_ru
@@ -29,8 +29,6 @@ nodes:
   to_rate: 44100
 edges:
 - - input_file_0_en
-  - vad_input_0_en
-- - vad_input_0_en
   - normalizer_input_0_en
 - - normalizer_input_0_en
   - resampler_input_0_en
@@ -40,5 +38,7 @@ edges:
   - resampler_output_1
 - - resampler_output_1
   - output_file_1_ru
+- - input_file_0_en
+  - source_input_raw
 - - resampler_input_0_en
-  - output_file_source
+  - source_input

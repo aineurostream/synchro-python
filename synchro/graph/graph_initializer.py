@@ -1,6 +1,7 @@
 import logging
 import typing
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from synchro.config.commons import NodeEventsCallback
@@ -34,6 +35,8 @@ from synchro.graph.nodes.processors.vad_node import VadNode
 
 logger = logging.getLogger(__name__)
 
+WORKING_DIR_KEY = "WORKING_DIR"
+
 
 class GraphInitializer:
     def __init__(
@@ -42,11 +45,13 @@ class GraphInitializer:
         config: ProcessingGraphConfig,
         neuro_config: dict[str, Any],
         events_cb: NodeEventsCallback | None = None,
+        working_dir: str | None = None,
     ) -> None:
         self._settings = settings
         self._config = config
         self._neuro_config = neuro_config
         self._events_cb = events_cb
+        self._working_dir = working_dir
 
     def _create_channel_input_node(
         self,
@@ -70,7 +75,7 @@ class GraphInitializer:
         self,
         config: OutputFileNodeSchema,
     ) -> FileOutputNode:
-        return FileOutputNode(config)
+        return FileOutputNode(config, Path(self._working_dir or ""))
 
     def _create_seamless_connector_node(
         self,

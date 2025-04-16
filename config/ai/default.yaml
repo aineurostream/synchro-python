@@ -99,4 +99,4 @@ tts:
     - piper
     - ruslan
   hints:
-    audio_speed: 2.0
+    audio_speed: 1.0

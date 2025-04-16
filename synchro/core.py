@@ -17,12 +17,13 @@ class CoreManager:
         neuro_config: dict[str, Any],
         settings: SettingsSchema,
         events_cb: NodeEventsCallback | None = None,
+        working_dir: str | None = None,
     ) -> None:
         self._pipeline_config = pipeline_config
         self._neuro_config = neuro_config
         self._settings = settings
         self._events_cb = events_cb
-
+        self._working_dir = working_dir
         self.preprocess_neuro_config()
 
     def preprocess_neuro_config(self) -> None:
@@ -45,14 +46,15 @@ class CoreManager:
 
     def run(self) -> None:
         logger.info("Starting Synchro instance")
-
+        logger.info("Working directory: %s", self._working_dir)
         nodes, edges = GraphInitializer(
             self._settings,
             self._pipeline_config,
             self._neuro_config,
             self._events_cb,
+            self._working_dir,
         ).build()
-        full_graph = GraphManager(nodes, edges, self._settings)
+        full_graph = GraphManager(nodes, edges, self._settings, self._working_dir)
         full_graph.execute()
 
         logger.info("Stopping Synchro instance")
