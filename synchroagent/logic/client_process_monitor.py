@@ -174,9 +174,9 @@ class ClientProcessMonitor(threading.Thread):
                     if not line:
                         break
                     lines.append(line)
-                    if len(lines) > MAX_LINES_PER_READ: 
+                    if len(lines) > MAX_LINES_PER_READ:
                         break
-                        
+
                 output = "".join(lines)
         except Exception:
             logger.exception("Error reading from pipe")
