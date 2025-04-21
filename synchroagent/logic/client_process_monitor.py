@@ -27,6 +27,8 @@ class ProcessInfo:
 
 ProcessCompletedCallback = Callable[[int, int], None]
 
+MAX_LINES_PER_READ = 3
+
 
 class ClientProcessMonitor(threading.Thread):
     def __init__(
@@ -84,6 +86,7 @@ class ClientProcessMonitor(threading.Thread):
             with self.lock:
                 for run_id, process_info in list(self.processes.items()):
                     try:
+                        logger.debug(f"Monitoring process {run_id}")
                         self._monitor_process(process_info)
                     except Exception:
                         logger.exception("Error monitoring process %d", run_id)
@@ -107,10 +110,10 @@ class ClientProcessMonitor(threading.Thread):
 
     def _monitor_process(self, process_info: ProcessInfo) -> None:
         exit_code = process_info.process.poll()
-
         self._read_process_output(process_info)
 
         if exit_code is not None:
+            logger.debug(f"Process {process_info.run_id} exit code: {exit_code}")
             self._store_process_outputs(process_info)
             self._handle_process_exit(process_info, exit_code)
 
@@ -133,10 +136,11 @@ class ClientProcessMonitor(threading.Thread):
         """
 
         if process_info.process.stdout:
+            logger.debug(f"Reading stdout for run {process_info.run_id}")
             output = self._read_pipe_nonblocking(process_info.process.stdout)
             if output:
                 process_info.stdout_buffer += output
-                logger.debug(f"STDOUT for run {process_info.run_id}: {output}")
+                logger.debug(f"STDOUT for run {process_info.run_id}: {output[:50]}...")
 
                 event_bus.emit(
                     LogEventSchema(
@@ -150,7 +154,7 @@ class ClientProcessMonitor(threading.Thread):
             output = self._read_pipe_nonblocking(process_info.process.stderr)
             if output:
                 process_info.stderr_buffer += output
-                logger.debug(f"STDERR for run {process_info.run_id}:\n{output}")
+                logger.debug(f"STDERR for run {process_info.run_id}:\n{output[:50]}...")
 
                 event_bus.emit(
                     LogEventSchema(
@@ -164,9 +168,16 @@ class ClientProcessMonitor(threading.Thread):
         output = ""
         try:
             if select.select([pipe], [], [], 0)[0]:
-                data = pipe.read()
-                if data:
-                    output = data
+                lines = []
+                while select.select([pipe], [], [], 0)[0]:
+                    line = pipe.readline()
+                    if not line:
+                        break
+                    lines.append(line)
+                    if len(lines) > MAX_LINES_PER_READ: 
+                        break
+                        
+                output = "".join(lines)
         except Exception:
             logger.exception("Error reading from pipe")
 

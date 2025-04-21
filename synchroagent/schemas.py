@@ -45,7 +45,7 @@ class Client(BaseModel):
 
 class BaseEventSchema(BaseModel):
     event_type: str
-    run_id: int
+    run_id: int | None = Field(default=None)
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
