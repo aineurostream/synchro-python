@@ -32,12 +32,13 @@ class EventBus:
     def emit(self, data: BaseEventSchema) -> None:
         handlers = []
         with self._lock:
-            handlers.extend(self._subscribers.get(data.event_type, []))
-            handlers.extend(self._subscribers.get("*", []))
+            event_handlers = self._subscribers.get(data.event_type, [])
+            wildcard_handlers = self._subscribers.get("*", [])
+            handlers.extend(event_handlers)
+            handlers.extend(wildcard_handlers)
 
         for handler in handlers:
             try:
-                logger.debug(f"Emitting event {data.event_type} to handler: {handler}")
                 handler(data)
             except Exception:
                 logger.exception(f"Error in event handler for {data.event_type}")

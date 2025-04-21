@@ -163,8 +163,7 @@ class ClientProcessManager:
                 stderr=subprocess.PIPE,
                 text=True,
                 start_new_session=True,
-                bufsize=1,
-                universal_newlines=True,
+                bufsize=0,
             )
 
             client_run_update = ClientRunUpdate(
