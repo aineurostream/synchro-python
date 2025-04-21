@@ -123,16 +123,10 @@ class ClientProcessManager:
             log_id = self.log_manager.collect_logs(run_id)
             logger.info(f"Collected logs for run {run_id}, log_id={log_id}")
 
-            report_id = self.report_manager.generate_report(
+            report = self.report_manager.generate_report(
                 run_id,
             )
-            logger.info(f"Generated report for run {run_id}, report_id={report_id}")
-
-            self.client_run_registry.update(
-                run_id,
-                ClientRunUpdate(report_id=report_id),
-            )
-
+            logger.info(f"Generated report for run {run_id}, report_id={report.id}")
         except Exception:
             logger.exception(
                 f"Unexpected error in process completed callback for run {run_id}",

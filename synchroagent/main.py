@@ -4,7 +4,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from synchroagent.api import clients, configs
+from synchroagent.api import clients, configs, events
 from synchroagent.config import default_config
 
 logging.basicConfig(
@@ -31,6 +31,7 @@ app.add_middleware(
 
 app.include_router(clients.router, prefix="/api/clients", tags=["clients"])
 app.include_router(configs.router, prefix="/api/configs", tags=["configs"])
+app.include_router(events.router, prefix="/api/events", tags=["events"])
 
 
 if __name__ == "__main__":

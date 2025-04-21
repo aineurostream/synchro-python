@@ -10,6 +10,8 @@ from typing import IO, Any
 
 from synchroagent.database.client_run_registry import ClientRunRegistry, ClientRunUpdate
 from synchroagent.database.models import RunStatus
+from synchroagent.logic.event_bus import event_bus
+from synchroagent.schemas import LogEventSchema
 
 logger = logging.getLogger(__name__)
 
@@ -134,15 +136,29 @@ class ClientProcessMonitor(threading.Thread):
             output = self._read_pipe_nonblocking(process_info.process.stdout)
             if output:
                 process_info.stdout_buffer += output
-
                 logger.debug(f"STDOUT for run {process_info.run_id}: {output}")
+
+                event_bus.emit(
+                    LogEventSchema(
+                        run_id=process_info.run_id,
+                        log_type="stdout",
+                        content=output,
+                    ),
+                )
 
         if process_info.process.stderr:
             output = self._read_pipe_nonblocking(process_info.process.stderr)
             if output:
                 process_info.stderr_buffer += output
+                logger.debug(f"STDERR for run {process_info.run_id}:\n{output}")
 
-                logger.debug(f"STDERR for run {process_info.run_id}: {output}")
+                event_bus.emit(
+                    LogEventSchema(
+                        run_id=process_info.run_id,
+                        log_type="stderr",
+                        content=output,
+                    ),
+                )
 
     def _read_pipe_nonblocking(self, pipe: IO[Any]) -> str:
         output = ""

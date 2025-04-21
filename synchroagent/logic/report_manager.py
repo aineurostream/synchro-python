@@ -54,14 +54,14 @@ class ReportManager:
             content=report_content,
         )
 
-        report_id = self.report_registry.create(report_create)
-        if not report_id:
+        report = self.report_registry.create(report_create)
+        if not report:
             raise ValueError("Failed to create report record in database")
 
-        client_run_update = ClientRunUpdate(report_id=report_id)
+        client_run_update = ClientRunUpdate(report_id=report.id)
         self.client_run_registry.update(client_run_id, client_run_update)
 
-        final_report = self.report_registry.get_by_id(report_id)
+        final_report = self.report_registry.get_by_id(report.id)
         if not final_report:
             raise ValueError("Failed to get report from database")
 

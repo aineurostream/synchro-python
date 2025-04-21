@@ -183,7 +183,7 @@ class GraphManager:
         logger.info("Stop flag file: %s", stop_flag_file.absolute().as_posix())
         with suppress(KeyboardInterrupt):
             while self._executing:
-                time.sleep(0.1)
+                time.sleep(0.5)
                 if stop_flag_file.exists():
                     logger.info(
                         "Stopping Synchro instance due to stop flag %s",

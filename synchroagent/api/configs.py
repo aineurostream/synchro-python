@@ -1,5 +1,6 @@
 from typing import Annotated, Any, cast
 
+import sounddevice as sd
 from fastapi import APIRouter, Depends, Path, status
 from pydantic import BaseModel
 
@@ -37,6 +38,14 @@ class ConfigResponse(BaseModel):
 class ValidationResponse(BaseModel):
     message: str
     config_id: int | None = None
+
+
+class SoundDeviceInfo(BaseModel):
+    name: str
+    max_input_channels: int
+    max_output_channels: int
+    default_samplerate: float
+    device_id: int
 
 
 @router.get("")
@@ -144,3 +153,22 @@ async def validate_config_content(
     _config_data: dict[str, Any],
 ) -> ValidationResponse:
     return ValidationResponse(message="Configuration content is valid")
+
+
+@router.get("/device/sound-devices", status_code=status.HTTP_200_OK)
+async def get_sound_devices() -> list[SoundDeviceInfo]:
+    devices = sd.query_devices()
+    result = []
+
+    for i, device in enumerate(devices):
+        result.append(
+            SoundDeviceInfo(
+                name=device["name"],
+                max_input_channels=device["max_input_channels"],
+                max_output_channels=device["max_output_channels"],
+                default_samplerate=device["default_samplerate"],
+                device_id=i,
+            ),
+        )
+
+    return result

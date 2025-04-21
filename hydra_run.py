@@ -52,10 +52,14 @@ def persist_files(pipeline: ProcessingGraphConfig, hydra_dir: str) -> None:
     for node in pipeline.nodes:
         node_name: str = node.name
         file_path: str = ""
+
         if isinstance(node, InputFileStreamerNodeSchema):
             file_path = cast(str, node.path)
         elif isinstance(node, OutputFileNodeSchema):
-            file_path = os.path.join(hydra_dir, node.path)
+            node_path = str(node.path)
+            if "$WORKING_DIR" in node_path:
+                node_path = node_path.replace("$WORKING_DIR", hydra_dir)
+            file_path = node_path
 
         if file_path:
             shutil.copy(
