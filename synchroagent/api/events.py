@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import suppress
 
@@ -6,8 +7,7 @@ from fastapi import APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
 
 from synchroagent.logic.event_bus import event_bus
-from synchroagent.schemas import BaseEventSchema, LogEventSchema
-import logging
+from synchroagent.schemas import BaseEventSchema
 
 router = APIRouter(tags=["events"])
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ async def stream_events(request: Request) -> EventSourceResponse:
                     logger.info("Client disconnected, stopping event stream")
                     break
                 with suppress(asyncio.QueueEmpty):
-                    logger.debug(f"Waiting for event from queue")                    
+                    logger.debug("Waiting for event from queue")
                     event: BaseEventSchema = queue.get_nowait()
                     logger.debug(f"Sending event to client: {event.event_type}")
                     yield {
