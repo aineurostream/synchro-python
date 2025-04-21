@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import UUID4, BaseModel, Field
 
@@ -40,3 +41,15 @@ class Client(BaseModel):
     end_time: datetime | None = None
     output_dir: str | None = None
     report_path: str | None = None
+
+
+class BaseEventSchema(BaseModel):
+    event_type: str
+    run_id: int
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class LogEventSchema(BaseEventSchema):
+    event_type: Literal["process.output"] = "process.output"
+    log_type: Literal["stdout", "stderr"]
+    content: str
