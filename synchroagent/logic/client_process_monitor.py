@@ -27,14 +27,12 @@ class ProcessInfo:
 
 ProcessCompletedCallback = Callable[[int, int], None]
 
-MAX_LINES_PER_READ = 3
-
 
 class ClientProcessMonitor(threading.Thread):
     def __init__(
         self,
         client_run_registry: ClientRunRegistry,
-        poll_interval: float = 1.0,
+        poll_interval: float = 0.1,
     ) -> None:
         """Initialize the process monitor.
 
@@ -139,49 +137,46 @@ class ClientProcessMonitor(threading.Thread):
             logger.debug(f"Reading stdout for run {process_info.run_id}")
             output = self._read_pipe_nonblocking(process_info.process.stdout)
             if output:
-                process_info.stdout_buffer += output
+                process_info.stdout_buffer += "".join(output)
                 logger.debug(f"STDOUT for run {process_info.run_id}: {output[:50]}...")
 
-                event_bus.emit(
-                    LogEventSchema(
-                        run_id=process_info.run_id,
-                        log_type="stdout",
-                        content=output,
-                    ),
-                )
+                for line in output:
+                    event_bus.emit(
+                        LogEventSchema(
+                            run_id=process_info.run_id,
+                            log_type="stdout",
+                            content=line,
+                        ),
+                    )
 
         if process_info.process.stderr:
             output = self._read_pipe_nonblocking(process_info.process.stderr)
             if output:
-                process_info.stderr_buffer += output
+                process_info.stderr_buffer += "".join(output)
                 logger.debug(f"STDERR for run {process_info.run_id}:\n{output[:50]}...")
 
-                event_bus.emit(
-                    LogEventSchema(
-                        run_id=process_info.run_id,
-                        log_type="stderr",
-                        content=output,
-                    ),
-                )
+                for line in output:
+                    event_bus.emit(
+                        LogEventSchema(
+                            run_id=process_info.run_id,
+                            log_type="stderr",
+                            content=line,
+                        ),
+                    )
 
-    def _read_pipe_nonblocking(self, pipe: IO[Any]) -> str:
-        output = ""
+    def _read_pipe_nonblocking(self, pipe: IO[Any]) -> list[str]:
+        lines: list[str] = []
         try:
             if select.select([pipe], [], [], 0)[0]:
-                lines = []
                 while select.select([pipe], [], [], 0)[0]:
                     line = pipe.readline()
                     if not line:
                         break
                     lines.append(line)
-                    if len(lines) > MAX_LINES_PER_READ:
-                        break
-
-                output = "".join(lines)
         except Exception:
             logger.exception("Error reading from pipe")
 
-        return output
+        return lines
 
     def _store_process_outputs(self, process_info: ProcessInfo) -> None:
         run_id = process_info.run_id
