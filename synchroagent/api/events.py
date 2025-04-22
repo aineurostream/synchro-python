@@ -1,7 +1,6 @@
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
-from contextlib import suppress
 
 from fastapi import APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
@@ -27,20 +26,21 @@ async def stream_events(request: Request) -> EventSourceResponse:
 
         event_bus.subscribe("*", on_event)
         logger.info("Subscribed to events for streaming")
-
         try:
             while True:
                 if await request.is_disconnected():
                     logger.info("Client disconnected, stopping event stream")
                     break
-                with suppress(asyncio.QueueEmpty):
+                try:
                     logger.debug("Waiting for event from queue")
                     event: BaseEventSchema = queue.get_nowait()
                     logger.debug(f"Sending event to client: {event.event_type}")
                     yield {
-                        "event": event.event_type,
-                        "data": event.model_dump(mode="json"),
+                        "event": "message",
+                        "data": event.model_dump_json(),
                     }
+                except asyncio.QueueEmpty:
+                    await asyncio.sleep(0.25)
         finally:
             event_bus.unsubscribe("*", on_event)
             logger.info("Unsubscribed from events")

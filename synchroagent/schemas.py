@@ -52,4 +52,4 @@ class BaseEventSchema(BaseModel):
 class LogEventSchema(BaseEventSchema):
     event_type: Literal["process.output"] = "process.output"
     log_type: Literal["stdout", "stderr"]
-    content: str
+    content: dict

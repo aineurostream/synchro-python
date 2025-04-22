@@ -1,3 +1,4 @@
+import json
 import logging
 import queue
 import select
@@ -137,7 +138,9 @@ class ClientProcessMonitor(threading.Thread):
             logger.debug(f"Reading stdout for run {process_info.run_id}")
             output = self._read_pipe_nonblocking(process_info.process.stdout)
             if output:
-                process_info.stdout_buffer += "".join(output)
+                process_info.stdout_buffer += "".join(
+                    json.dumps(line) for line in output
+                )
                 logger.debug(f"STDOUT for run {process_info.run_id}: {output[:50]}...")
 
                 for line in output:
@@ -152,7 +155,9 @@ class ClientProcessMonitor(threading.Thread):
         if process_info.process.stderr:
             output = self._read_pipe_nonblocking(process_info.process.stderr)
             if output:
-                process_info.stderr_buffer += "".join(output)
+                process_info.stderr_buffer += "".join(
+                    json.dumps(line) for line in output
+                )
                 logger.debug(f"STDERR for run {process_info.run_id}:\n{output[:50]}...")
 
                 for line in output:
@@ -164,15 +169,15 @@ class ClientProcessMonitor(threading.Thread):
                         ),
                     )
 
-    def _read_pipe_nonblocking(self, pipe: IO[Any]) -> list[str]:
-        lines: list[str] = []
+    def _read_pipe_nonblocking(self, pipe: IO[Any]) -> list[dict]:
+        lines: list[dict] = []
         try:
             if select.select([pipe], [], [], 0)[0]:
                 while select.select([pipe], [], [], 0)[0]:
                     line = pipe.readline()
                     if not line:
                         break
-                    lines.append(line)
+                    lines.append(json.loads(line))
         except Exception:
             logger.exception("Error reading from pipe")
 
