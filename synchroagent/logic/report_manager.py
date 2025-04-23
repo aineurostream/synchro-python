@@ -78,6 +78,7 @@ class ReportManager:
 
         try:
             report_generation_command = [
+                "uvx",
                 "poetry",
                 "run",
                 "python3",

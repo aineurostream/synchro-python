@@ -149,6 +149,7 @@ class ClientProcessManager:
 
         python_executable = "python"
         cmd = [
+            "poetry", "run",
             python_executable,
             str(hydra_script_path),
             f"pipeline={config_name}",
@@ -157,6 +158,7 @@ class ClientProcessManager:
         ]
 
         try:
+            logger.info("Running subprocess: %s", " ".join(cmd))
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
