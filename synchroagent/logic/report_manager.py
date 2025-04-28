@@ -78,7 +78,7 @@ class ReportManager:
 
         try:
             report_generation_command = [
-                "poetry",
+                "uv",
                 "run",
                 "python3",
                 "reporter.py",

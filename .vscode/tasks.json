@@ -4,7 +4,7 @@
         {
             "label": "Run Python File",
             "type": "shell",
-            "command": "poetry run python ${file}",
+            "command": "uv run python ${file}",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -27,7 +27,7 @@
         {
             "label": "Run Tests",
             "type": "shell",
-            "command": "poetry run pytest pytests/",
+            "command": "uv run pytest pytests/",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -47,7 +47,7 @@
         {
             "label": "Run Specific Test",
             "type": "shell",
-            "command": "poetry run pytest ${input:testPath}",
+            "command": "uv run pytest ${input:testPath}",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -88,7 +88,7 @@
         {
             "label": "Run Hydra Script Simple",
             "type": "shell",
-            "command": "poetry run python hydra_run.py",
+            "command": "uv run python hydra_run.py",
             "group": "none",
             "presentation": {
                 "reveal": "always",
@@ -108,7 +108,7 @@
         {
             "label": "Run Hydra with mic",
             "type": "shell",
-            "command": "poetry run python hydra_run.py --config-name=mic_01 pipeline.nodes.0.device=9 pipeline.nodes.6.device=9",
+            "command": "uv run python hydra_run.py --config-name=mic_01 pipeline.nodes.0.device=9 pipeline.nodes.6.device=9",
             "group": "none",
             "presentation": {
                 "reveal": "always",
@@ -128,7 +128,7 @@
         {
             "label": "Run Grid Search with optuna",
             "type": "shell",
-            "command": "poetry run python hydra_run.py --multirun --config-name optuna_01",
+            "command": "uv run python hydra_run.py --multirun --config-name optuna_01",
             "group": "none",
             "presentation": {
                 "reveal": "always",
@@ -148,7 +148,7 @@
         {
             "label": "List Audio Devices",
             "type": "shell",
-            "command": "poetry run python -c \"import sounddevice as sd; print(sd.query_devices())\"",
+            "command": "uv run python -c \"import sounddevice as sd; print(sd.query_devices())\"",
             "group": "none",
             "presentation": {
                 "reveal": "always",
@@ -168,7 +168,7 @@
         {
             "label": "Run Agent",
             "type": "shell",
-            "command": "poetry run python3 -m synchroagent.main",
+            "command": "uv run python3 -m synchroagent.main",
             "group": "none",
             "presentation": {
                 "reveal": "always",
