@@ -150,6 +150,7 @@ class ClientProcessManager:
         python_executable = "python"
         cmd = [
             python_executable,
+            "-u",
             str(hydra_script_path),
             f"pipeline={config_name}",
             f"hydra.run.dir={run_output_dir}",
@@ -161,9 +162,9 @@ class ClientProcessManager:
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
+                text=False,
                 start_new_session=True,
-                bufsize=0,
+                bufsize=2 * 1024,
             )
 
             client_run_update = ClientRunUpdate(
