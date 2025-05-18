@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import queue
 import select
 import subprocess
@@ -7,7 +8,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import IO, Any
+from typing import IO
 
 from synchroagent.database.client_run_registry import ClientRunRegistry, ClientRunUpdate
 from synchroagent.database.models import RunStatus
@@ -21,8 +22,8 @@ logger = logging.getLogger(__name__)
 class ProcessInfo:
     run_id: int
     process: subprocess.Popen
-    stdout_buffer: str = ""
-    stderr_buffer: str = ""
+    stdout_buffer: bytes = b""
+    stderr_buffer: bytes = b""
     last_check_time: float = 0
 
 
@@ -33,7 +34,7 @@ class ClientProcessMonitor(threading.Thread):
     def __init__(
         self,
         client_run_registry: ClientRunRegistry,
-        poll_interval: float = 0.1,
+        poll_interval: float = 0.016,
     ) -> None:
         """Initialize the process monitor.
 
@@ -48,7 +49,7 @@ class ClientProcessMonitor(threading.Thread):
         self.process_queue: queue.Queue[ProcessInfo] = queue.Queue()
         self.running = True
         self.lock = threading.RLock()
-        self.completed_outputs: dict[int, dict[str, str]] = {}
+        self.completed_outputs: dict[int, dict[str, bytes]] = {}
 
         self.on_process_completed: ProcessCompletedCallback | None = None
 
@@ -128,70 +129,118 @@ class ClientProcessMonitor(threading.Thread):
             del self.processes[process_info.run_id]
 
     def _read_process_output(self, process_info: ProcessInfo) -> None:
-        """Read available output from process stdout/stderr.
-
-        Args:
-            process_info: Information about the process
-        """
-
-        if process_info.process.stdout:
-            logger.debug(f"Reading stdout for run {process_info.run_id}")
-            output = self._read_pipe_nonblocking(process_info.process.stdout)
-            if output:
-                process_info.stdout_buffer += "".join(
-                    json.dumps(line) for line in output
-                )
-                logger.debug(f"STDOUT for run {process_info.run_id}: {output[:50]}...")
-
-                for line in output:
-                    event_bus.emit(
-                        LogEventSchema(
-                            run_id=process_info.run_id,
-                            log_type="stdout",
-                            content=line,
+        stdout_pipe = process_info.process.stdout
+        if stdout_pipe:
+            try:
+                output_bytes = self._read_pipe_nonblocking(stdout_pipe)
+                if output_bytes:
+                    process_info.stdout_buffer += output_bytes
+                    logger.debug(
+                        (
+                            f"Read {len(output_bytes)} bytes from STDOUT for run "
+                            f"{process_info.run_id}",
                         ),
                     )
-
-        if process_info.process.stderr:
-            output = self._read_pipe_nonblocking(process_info.process.stderr)
-            if output:
-                process_info.stderr_buffer += "".join(
-                    json.dumps(line) for line in output
+            except Exception:
+                logger.exception(
+                    f"Error during stdout processing for run {process_info.run_id}",
                 )
-                logger.debug(f"STDERR for run {process_info.run_id}:\n{output[:50]}...")
 
-                for line in output:
-                    event_bus.emit(
-                        LogEventSchema(
-                            run_id=process_info.run_id,
-                            log_type="stderr",
-                            content=line,
+        stderr_pipe = process_info.process.stderr
+        if stderr_pipe:
+            try:
+                output_bytes = self._read_pipe_nonblocking(stderr_pipe)
+                if output_bytes:
+                    process_info.stderr_buffer += output_bytes
+                    logger.debug(
+                        (
+                            f"Read {len(output_bytes)} bytes from STDERR for run "
+                            f"{process_info.run_id}",
                         ),
                     )
+            except Exception:
+                logger.exception(
+                    f"Error during stderr processing for run {process_info.run_id}",
+                )
 
-    def _read_pipe_nonblocking(self, pipe: IO[Any]) -> list[dict]:
-        lines: list[dict] = []
+        self._parse_and_emit_log_lines(process_info, "stdout")
+        self._parse_and_emit_log_lines(process_info, "stderr")
+
+    def _read_pipe_nonblocking(self, pipe: IO[bytes]) -> bytes:
+        """Read available data from the pipe without blocking. Returns raw bytes."""
+        data = b""
         try:
-            if select.select([pipe], [], [], 0)[0]:
-                while select.select([pipe], [], [], 0)[0]:
-                    line = pipe.readline()
-                    if not line:
-                        break
-                    lines.append(json.loads(line))
+            if pipe.fileno() != -1 and select.select([pipe], [], [], 0.0)[0]:
+                chunk = os.read(pipe.fileno(), 16 * 1024)
+                data = chunk
+        except (BlockingIOError, InterruptedError):
+            pass
+        except BrokenPipeError:
+            logger.warning(f"Broken pipe when reading from fd {pipe.fileno()}")
+        except ValueError:
+            logger.warning(f"Attempted to read from closed pipe fd {pipe.fileno()}")
         except Exception:
-            logger.exception("Error reading from pipe")
+            logger.exception(f"Error reading from pipe fd {pipe.fileno()}")
+        return data
 
-        return lines
+    def _parse_and_emit_log_lines(
+        self,
+        process_info: ProcessInfo,
+        stream_type: str,
+    ) -> None:
+        buffer_attr = f"{stream_type}_buffer"
+        current_buffer: bytes = getattr(process_info, buffer_attr)
+
+        processed_buffer = bytearray()  # To store lines that are processed
+
+        temp_buffer = current_buffer
+        lines_found = False
+
+        while b"\n" in temp_buffer:
+            lines_found = True
+            line_bytes, temp_buffer = temp_buffer.split(b"\n", 1)
+            processed_buffer.extend(line_bytes + b"\n")
+
+            try:
+                line_str = line_bytes.decode("utf-8").strip()
+                if not line_str:
+                    continue
+                logger.debug(f"Processing line: {line_str[:100]}")
+                log_content_dict = json.loads(line_str)
+                event_bus.emit(
+                    LogEventSchema(
+                        run_id=process_info.run_id,
+                        log_type=stream_type,
+                        content=log_content_dict,
+                    ),
+                )
+                logger.debug(
+                    (
+                        f"{stream_type.upper()} for run {process_info.run_id} "
+                        f"(parsed): {str(log_content_dict)[:100]}...",
+                    ),
+                )
+            except Exception:
+                logger.exception(
+                    (
+                        f"Unexpected error parsing log line from {stream_type} for run "
+                        f"{process_info.run_id}",
+                    ),
+                )
+
+        if lines_found:
+            setattr(process_info, buffer_attr, temp_buffer)
 
     def _store_process_outputs(self, process_info: ProcessInfo) -> None:
         run_id = process_info.run_id
-
+        self._parse_and_emit_log_lines(process_info, "stdout")
+        self._parse_and_emit_log_lines(process_info, "stderr")
         self.completed_outputs[run_id] = {
             "stdout": process_info.stdout_buffer,
             "stderr": process_info.stderr_buffer,
         }
 
-        logger.info(f"Stored outputs for run {run_id}")
+        logger.info(f"Stored byte outputs for run {run_id}")
 
     def _handle_process_exit(self, process_info: ProcessInfo, exit_code: int) -> None:
         run_id = process_info.run_id
@@ -211,16 +260,26 @@ class ClientProcessMonitor(threading.Thread):
 
     def get_process_output(self, run_id: int) -> dict[str, str]:
         with self.lock:
-            if run_id in self.completed_outputs:
-                return self.completed_outputs[run_id]
-            if run_id in self.processes:
-                process_info = self.processes[run_id]
-                return {
-                    "stdout": process_info.stdout_buffer,
-                    "stderr": process_info.stderr_buffer,
-                }
+            stdout_str = ""
+            stderr_str = ""
 
-            return {"stdout": "", "stderr": ""}
+            if run_id in self.completed_outputs:
+                stdout_bytes = self.completed_outputs[run_id].get("stdout", b"")
+                stderr_bytes = self.completed_outputs[run_id].get("stderr", b"")
+                stdout_str = stdout_bytes.decode("utf-8", errors="replace")
+                stderr_str = stderr_bytes.decode("utf-8", errors="replace")
+            elif run_id in self.processes:
+                process_info = self.processes[run_id]
+                stdout_str = process_info.stdout_buffer.decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                stderr_str = process_info.stderr_buffer.decode(
+                    "utf-8",
+                    errors="replace",
+                )
+
+            return {"stdout": stdout_str, "stderr": stderr_str}
 
     def is_process_running(self, run_id: int) -> bool:
         with self.lock:
