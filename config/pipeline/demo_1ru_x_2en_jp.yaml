@@ -1,0 +1,80 @@
+nodes:
+  - name: input_channel_0_ru
+    node_type: input_channel
+    device: 10
+    channel: 1
+  - name: normalizer_input_0_ru
+    node_type: normalizer
+    headroom: 3
+  - name: vad_input_0_ru
+    node_type: vad
+    threshold: 1000
+  - name: resampler_input_0_ru
+    node_type: resampler
+    to_rate: 16000
+  - name: output_file_source_0
+    node_type: output_file
+    path: $WORKING_DIR/source_input_0.wav
+  - name: converter_0_to_en
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: en
+  - name: converter_0_to_ja
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: ja
+  - name: mixer_en_0
+    node_type: mixer
+  - name: resampler_output_converter_0_to_en_to_0
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_en_0
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_en_0.wav
+  - name: output_channel_en_0
+    node_type: output_channel
+    device: 11
+    channel: 1
+  - name: mixer_ja_1
+    node_type: mixer
+  - name: resampler_output_converter_0_to_ja_to_1
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_ja_1
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_ja_1.wav
+  - name: output_channel_ja_1
+    node_type: output_channel
+    device: 11
+    channel: 1
+edges:
+  - - input_channel_0_ru
+    - normalizer_input_0_ru
+  - - normalizer_input_0_ru
+    - vad_input_0_ru
+  - - vad_input_0_ru
+    - resampler_input_0_ru
+  - - input_channel_0_ru
+    - output_file_source_0
+  - - resampler_input_0_ru
+    - converter_0_to_en
+  - - resampler_input_0_ru
+    - converter_0_to_ja
+  - - converter_0_to_en
+    - resampler_output_converter_0_to_en_to_0
+  - - resampler_output_converter_0_to_en_to_0
+    - mixer_en_0
+  - - mixer_en_0
+    - output_file_en_0
+  - - mixer_en_0
+    - output_channel_en_0
+  - - converter_0_to_ja
+    - resampler_output_converter_0_to_ja_to_1
+  - - resampler_output_converter_0_to_ja_to_1
+    - mixer_ja_1
+  - - mixer_ja_1
+    - output_file_ja_1
+  - - mixer_ja_1
+    - output_channel_ja_1
