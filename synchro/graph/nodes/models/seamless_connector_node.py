@@ -119,11 +119,6 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                             self.name,
                             log_body,
                         )
-                else:
-                    self._logger.warning(
-                        "ATG: Received unsupported non-audio message: %s",
-                        received_message,
-                    )
         if len(audio_result) > 0:
             self._logger.debug(
                 "Received %d bytes from %s",
