@@ -1,0 +1,222 @@
+nodes:
+  - name: input_file_0_ru
+    node_type: input_file
+    path: samples/input_0_ru.wav
+    looping: false
+  - name: normalizer_input_0_ru
+    node_type: normalizer
+    headroom: 3
+  - name: vad_input_0_ru
+    node_type: vad
+    threshold: 1000
+  - name: resampler_input_0_ru
+    node_type: resampler
+    to_rate: 16000
+  - name: output_file_source_0
+    node_type: output_file
+    path: $WORKING_DIR/source_input_0.wav
+  - name: input_file_1_ru
+    node_type: input_file
+    path: samples/input_1_ru.wav
+    looping: false
+  - name: normalizer_input_1_ru
+    node_type: normalizer
+    headroom: 3
+  - name: vad_input_1_ru
+    node_type: vad
+    threshold: 1000
+  - name: resampler_input_1_ru
+    node_type: resampler
+    to_rate: 16000
+  - name: output_file_source_1
+    node_type: output_file
+    path: $WORKING_DIR/source_input_1.wav
+  - name: input_file_2_ru
+    node_type: input_file
+    path: samples/input_2_ru.wav
+    looping: false
+  - name: normalizer_input_2_ru
+    node_type: normalizer
+    headroom: 3
+  - name: vad_input_2_ru
+    node_type: vad
+    threshold: 1000
+  - name: resampler_input_2_ru
+    node_type: resampler
+    to_rate: 16000
+  - name: output_file_source_2
+    node_type: output_file
+    path: $WORKING_DIR/source_input_2.wav
+  - name: converter_0_to_en
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: en
+  - name: converter_1_to_en
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: en
+  - name: converter_2_to_en
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: en
+  - name: converter_0_to_ja
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: ja
+  - name: converter_1_to_ja
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: ja
+  - name: converter_2_to_ja
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: ja
+  - name: converter_0_to_zh
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: zh
+  - name: converter_1_to_zh
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: zh
+  - name: converter_2_to_zh
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: zh
+  - name: mixer_en_0
+    node_type: mixer
+  - name: resampler_output_converter_0_to_en_to_0
+    node_type: resampler
+    to_rate: 44100
+  - name: resampler_output_converter_1_to_en_to_0
+    node_type: resampler
+    to_rate: 44100
+  - name: resampler_output_converter_2_to_en_to_0
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_en_0
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_en_0.wav
+  - name: mixer_ja_1
+    node_type: mixer
+  - name: resampler_output_converter_0_to_ja_to_1
+    node_type: resampler
+    to_rate: 44100
+  - name: resampler_output_converter_1_to_ja_to_1
+    node_type: resampler
+    to_rate: 44100
+  - name: resampler_output_converter_2_to_ja_to_1
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_ja_1
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_ja_1.wav
+  - name: mixer_zh_2
+    node_type: mixer
+  - name: resampler_output_converter_0_to_zh_to_2
+    node_type: resampler
+    to_rate: 44100
+  - name: resampler_output_converter_1_to_zh_to_2
+    node_type: resampler
+    to_rate: 44100
+  - name: resampler_output_converter_2_to_zh_to_2
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_zh_2
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_zh_2.wav
+edges:
+  - - input_file_0_ru
+    - normalizer_input_0_ru
+  - - normalizer_input_0_ru
+    - vad_input_0_ru
+  - - vad_input_0_ru
+    - resampler_input_0_ru
+  - - input_file_0_ru
+    - output_file_source_0
+  - - input_file_1_ru
+    - normalizer_input_1_ru
+  - - normalizer_input_1_ru
+    - vad_input_1_ru
+  - - vad_input_1_ru
+    - resampler_input_1_ru
+  - - input_file_1_ru
+    - output_file_source_1
+  - - input_file_2_ru
+    - normalizer_input_2_ru
+  - - normalizer_input_2_ru
+    - vad_input_2_ru
+  - - vad_input_2_ru
+    - resampler_input_2_ru
+  - - input_file_2_ru
+    - output_file_source_2
+  - - resampler_input_0_ru
+    - converter_0_to_en
+  - - resampler_input_1_ru
+    - converter_1_to_en
+  - - resampler_input_2_ru
+    - converter_2_to_en
+  - - resampler_input_0_ru
+    - converter_0_to_ja
+  - - resampler_input_1_ru
+    - converter_1_to_ja
+  - - resampler_input_2_ru
+    - converter_2_to_ja
+  - - resampler_input_0_ru
+    - converter_0_to_zh
+  - - resampler_input_1_ru
+    - converter_1_to_zh
+  - - resampler_input_2_ru
+    - converter_2_to_zh
+  - - converter_0_to_en
+    - resampler_output_converter_0_to_en_to_0
+  - - converter_1_to_en
+    - resampler_output_converter_1_to_en_to_0
+  - - converter_2_to_en
+    - resampler_output_converter_2_to_en_to_0
+  - - resampler_output_converter_0_to_en_to_0
+    - mixer_en_0
+  - - resampler_output_converter_1_to_en_to_0
+    - mixer_en_0
+  - - resampler_output_converter_2_to_en_to_0
+    - mixer_en_0
+  - - mixer_en_0
+    - output_file_en_0
+  - - converter_0_to_ja
+    - resampler_output_converter_0_to_ja_to_1
+  - - converter_1_to_ja
+    - resampler_output_converter_1_to_ja_to_1
+  - - converter_2_to_ja
+    - resampler_output_converter_2_to_ja_to_1
+  - - resampler_output_converter_0_to_ja_to_1
+    - mixer_ja_1
+  - - resampler_output_converter_1_to_ja_to_1
+    - mixer_ja_1
+  - - resampler_output_converter_2_to_ja_to_1
+    - mixer_ja_1
+  - - mixer_ja_1
+    - output_file_ja_1
+  - - converter_0_to_zh
+    - resampler_output_converter_0_to_zh_to_2
+  - - converter_1_to_zh
+    - resampler_output_converter_1_to_zh_to_2
+  - - converter_2_to_zh
+    - resampler_output_converter_2_to_zh_to_2
+  - - resampler_output_converter_0_to_zh_to_2
+    - mixer_zh_2
+  - - resampler_output_converter_1_to_zh_to_2
+    - mixer_zh_2
+  - - resampler_output_converter_2_to_zh_to_2
+    - mixer_zh_2
+  - - mixer_zh_2
+    - output_file_zh_2
+
