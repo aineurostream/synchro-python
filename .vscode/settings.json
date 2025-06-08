@@ -4,4 +4,5 @@
     "python.analysis.userFileIndexingLimit": -1,
     "python.missingPackage.severity": "Error",
     "python.testing.pytestEnabled": true,
+    "makefile.configureOnOpen": false,
 }
