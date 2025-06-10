@@ -85,6 +85,44 @@ You can try run using microphone with russian-to-english translation:
 python hydra_run.py --config-name mic_01
 ```
 
+## Docker Usage
+
+### Build Docker Image
+
+```bash
+docker build -t synchro-client .
+```
+
+### Run with Default Settings
+
+```bash
+docker run --device /dev/snd synchro-client
+```
+
+**Note**: The `--device /dev/snd` flag is required to give the container access to the host's audio devices.
+
+### Run with Custom Configuration
+
+```bash
+docker run --device /dev/snd \
+  -e LANG_FROM=ru \
+  -e LANG_TO=en \
+  -e INPUT_DEVICE=1 \
+  -e OUTPUT_DEVICE=2 \
+  -e CONVERTER_SERVER=http://my-server:8000 \
+  synchro-client
+```
+
+### Additional Hydra Arguments
+
+You can pass additional Hydra configuration overrides as arguments:
+
+```bash
+docker run --device /dev/snd synchro-client \
+  hydra.run.dir=/app/custom_output \
+  hydra.job.name=my_translation_job
+```
+
 ## How to test
 
 ```bash
