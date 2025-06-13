@@ -35,8 +35,8 @@ edges:
   - resampler_input_0_ru
 - - resampler_output_1
   - output_file_1_en
-- - resampler_output_1
-  - output_channel_1_en
+# - - resampler_output_1
+#   - output_channel_1_en
 - - converter_0
   - resampler_output_1
 - - resampler_input_0_ru
