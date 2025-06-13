@@ -9,86 +9,71 @@ stt:
 translate:
   llm_call_timeout: 120
   context_window_words: 24
-  temperature: 0.3
-  max_gate_size_words: 12
-  forced_line_end: "..."
+  temperature: 0.1
   language_map:
     ru: Russian
     en: English
-  text_template: |-
-    I want you to act as a skilled translator. I will provide you with:
-    - the original context (previous parts in the source language),
-    - the translated context (previous parts translated into the target language),
-    - the source and target languages,
-    - the next part to translate (new input in the source language).
+  pipeline:
+    # - name: gate
+    #   cls: gate_step.GateStep
+    #   is_enabled: true  # default
+    #   template: |-
+    #     You are professional
+    #   params:
+    #     key1: value1
+    #     ...
+    - name: default_gate
+      cls: gate_step.GateStep
+      template: |-
+        You are an experienced simultaneous interpreter with 20 years of professional practice.
+        Analyze the context and the spoken part of a phrase to determine:
+        1. Whether the thought is complete or requires continuation.
+        2. Decide whether to "translate" or "wait"
 
-    Your task is to:
-    1. Translate the "next part to translate" into the target language, without any additional explanations or comments, only the translated phrase.
-    2. Ensure that the translation is consistent with the "original context" and continues seamlessly from the "translated context".
-    3. If there are words or phrases in the original context that are missing in the translated context, do not retranslate them. Focus only on translating the "next part to translate".
-    4. Provide the translation as a direct continuation of the translated context.
+        Write your response by using only one of two words:
+        - "translate" if can proceed with translation with decent quality
+        - "translate" if there is more than one sentence in the phrase
+        - "wait" if the phrase requires continuation
 
-    # Source language: "{lang_from}"
-    # Target language: "{lang_to}"
-    # Original context (source language): "{source_context}"
-    # Translated context (target language): "{translated_context}"
-    # Next part to translate (source language): "{source_text}"
-  correction_template: |-
-    You are a skilled reviewer.
+        # Source language: "{lang_from}"
+        # Target language: "{lang_to}"
+        # Original context (source language): "{source_context}"
+        # Translated context (target language): "{translated_context}"
+        # Next part to translate (source language): "{source_text}"
+    - name: default_translation
+      cls: translation_step.TranslationStep
+      template: |-
+        I want you to act as a skilled translator. I will provide you with:
+        - the original context (previous parts in the source language),
+        - the translated context (previous parts translated into the target language),
+        - the source and target languages,
+        - the next part to translate (new input in the source language).
 
-    Your tasks:
-    1) Make minor grammar or punctuation adjustments to the active part of the phrase.
-    2) Do not add or remove important words. Keep the meaning the same.
-    3) Use only basic punctuation (commas, periods). Avoid parentheses, brackets, or ellipses.
-    4) Return only the corrected phrase.
+        Your task is to:
+        1. Translate the "next part to translate" into the target language, without any additional explanations or comments, only the translated phrase.
+        2. Ensure that the translation is consistent with the "original context" and continues seamlessly from the "translated context".
+        3. If there are words or phrases in the original context that are missing in the translated context, do not retranslate them. Focus only on translating the "next part to translate".
+        4. Provide the translation as a direct continuation of the translated context.
 
-    --- EXAMPLES ---
+        # Source language: "{lang_from}"
+        # Target language: "{lang_to}"
+        # Original context (source language): "{source_context}"
+        # Translated context (target language): "{translated_context}"
+        # Next part to translate (source language): "{source_text}"
+    - name: default_correction
+      cls: correction_step.CorrectionStep
+      template: |-
+        You are a skilled reviewer.
 
-    [Example 1]
+        Your tasks:
+        1) Make minor grammar or punctuation adjustments to the active part of the phrase.
+        2) Do not add or remove important words. Keep the meaning the same.
+        3) Use only basic punctuation (commas, periods). Avoid parentheses, brackets, or ellipses.
+        4) Return only the corrected phrase.
 
-    # Input:
-    Previous part: "У нас есть несколько идей."
-    Active part: "мы должны протестировать их"
-    Language: Russian
-
-    # Output:
-    Мы должны протестировать их.
-
-    ---
-
-    [Example 2]
-
-    # Input:
-    Previous part: "I believe we have a clear plan now."
-    Active part: "we only need to finalize two more details"
-    Language: English
-
-    # Output:
-    We only need to finalize two more details.
-
-    --- INPUTS ---
-
-    # Previous part: "{translated_context}"
-    # Active part: "{translated_text}"
-    # Language: "{lang_to}"
-  gate_template: |-
-    You are an experienced simultaneous interpreter with 20 years of professional practice.
-    Analyze the context and the spoken part of a phrase to determine:
-    1. Whether the thought is complete or requires continuation.
-    2. Decide whether to “translate” or “wait.”
-
-    Write your response by using only one of two words:
-    - “translate” if can proceed with translation with decent quality
-    - “translate” if there is more than one sentence in the phrase
-    - “wait” if the phrase requires continuation
-
-    # Source language: "{lang_from}"
-    # Target language: "{lang_to}"
-    # Original context (source language): "{source_context}"
-    # Translated context (target language): "{translated_context}"
-    # Next part to translate (source language): "{source_text}"
-  gate_partial_template: ""
-  unified_template: ""
+        # Previous part: "{translated_context}"
+        # Active part: "{translated_text}"
+        # Language: "{lang_to}"
 tts:
   gap_size_bytes: 12000
   voice_map:
