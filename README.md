@@ -139,3 +139,6 @@ Used linters:
 
 - ruff - formatting and most of the static checking
 - mypy - static type checking
+
+
+### КТ. Собственность ООО «Нейрострим». Доступ ограничен.
