@@ -156,7 +156,7 @@ translate:
         4. Use ONLY commas and periods; avoid quotes, dashes, brackets, ellipses, emojis.
         5. Add a final period **ONLY** when the line is unmistakably a complete sentence or accepted abbreviation.
         6. No comments, labels, or extra whitespace—just the text itself.
-        7. **NEVER EVER** add new words in your return at the end of the Draft.
+        7. **NEVER EVER** add new words to the end of your return that were absent at the end of the Draft.
         Now, your best take on the Draft in one line is:
       params:
         strip_chars: [".", "…", "!", "?", "#", " ", "。"]
