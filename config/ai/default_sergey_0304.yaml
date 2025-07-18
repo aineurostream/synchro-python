@@ -1,0 +1,71 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 2
+  buffer_timeout_seconds: 3.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 24
+  temperature: 0.3
+  max_gate_size_words: 30
+  forced_line_end: "..."
+  language_map:
+    ru: Russian
+    en: English
+  gate_template: ""
+  gate_partial_template: |-
+    You are a simultaneous interpreter with 20 years of experience and you know when to start translate and when to wait more context.
+    
+    Your tasks:
+    1. Analyze "Active part"
+    2. Find end of sentence symbols
+    3. Return only part of "Active part" that you can't translate because of lack context.
+    4. Return one line of result without any changes and additional formatting.
+
+    # Active part: "{source_text}"
+  text_template: |-
+    You are a simultaneous interpreter with 20 years of experience and you know how to translate part of a phrase so that it sounds good no matter what the continuation.
+
+    Your task:
+    1. Make literary translation of every sentence in "Active part" to {lang_to}.
+    2. Find dates and replace it with words in {lang_to}.
+    3. Find numbers and replace it with words in {lang_to}.
+    4. Revert translation of onomastic units and names.
+    5. Remove dot from the end if it does not exists in "Active part".
+    6. Return only translated version of "Active part" in one line without any comments or formatting, just result.
+
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Active part (source language): "{source_text}"
+  correction_template: |-
+    You are a translation editor with 20 years of experience.
+
+    Your tasks:
+    1. Make minor grammar or punctuation adjustments to the active part of the phrase.
+    2. Don't add or remove words.
+    3. Use original punctuation, dont't add dots if it does not exists in "Active part".
+    4. Shorten the translation preserving meaning and key details.
+    5. Ensure dates and numbers written in words.
+    6. Ensure that all words agree with each other and with the "Previous part", fix if needed.
+    7. Return only corrected version of "Active part" in one line without any cooments or formatting, just result.
+
+    # Previous part: "{translated_context}"
+    # Active part: "{translated_text}"
+    # Language: "{lang_to}"
+  unified_template: ""
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - piper
+    - ruslan
+  hints:
+    audio_speed: 1.2

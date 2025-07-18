@@ -1,0 +1,86 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 2
+  buffer_timeout_seconds: 3.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 24
+  temperature: 0.1
+  pipeline:
+    - name: gate
+      cls: gate_step.GateStep
+      template: |-
+        You are an experienced Content editor.
+
+        Your tasks:
+        1) Determine how many complete sentences in text "{source_text}":
+          - ignore "..." ellipsis
+          - each sentence must starts with a capital letter
+          - each sentence must ends up with a dot or a similiar terminal symbol
+        2) Return only one number
+      params:
+        key1: value1
+        key2: value2
+    - name: translation
+      cls: translation_step.TranslationStep
+      template: |-
+        You are a skilled translator.
+
+        Your task is to:
+        1) Write a continuation of Original context translated to Target language
+        2) Use ONLY words "{source_text}", without duplicates.
+        3) Find dates and replace it with words in Target language.
+        4) Find numbers and replace it with words in Target language.
+        6) Ignore fillers.
+        8) Return translation without Translated context part in one line without any comments or formatting, just result.
+
+        Important rules:
+        - Respond in {lang_to} language.
+        - Do not translate onomastic units and names.
+        - Keep the meaning of the sentence.
+        - Fix grammar.
+
+        # Source language: "{lang_from}"
+        # Target language: "{lang_to}"
+        # Original context (source language): "{source_context}"
+        # Translated context (target language): "{translated_context}"
+        # Next part to translate (source language): "{source_text}"
+      params:
+        key1: value1
+        key2: value2
+    - name: correction
+      cls: correction_step.CorrectionStep
+      template: |-
+        You are a skilled content editor. 
+        You get previously translated parts of text and your task is to edit it if there are mistakes. 
+        
+        Your output must sound natural, have correct grammar and punctuation.
+        The output must be without formatting or comments.
+        
+        Here is the context of the previously translated text:
+        # Context: "{translated_context}"
+
+        Here is the next part of the translated text that we ask you to edit if needed
+        # Input: "{translated_text}"
+
+        Please respond in {lang_to} language.
+        Reply ONLY with the edited text (or unedited text if there was no correction needed).
+      params:
+        key1: value1
+        key2: value2
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - xtts
+    # - Viktor Eka
+    - Lidiya Szekeres
+  hints:
+    audio_speed: 90

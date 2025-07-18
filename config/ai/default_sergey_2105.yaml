@@ -1,0 +1,161 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 10
+  buffer_timeout_seconds: 3.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 24
+  temperature: 0.3
+  max_gate_size_words: 30
+  forced_line_end: ""
+  language_map:
+    ru: Russian
+    en: English
+  gate: |-
+    Верни "wait", но если уверен, что текста достаточно для перевода, верни "translate"
+  gate_partial_template-0: |-
+    Return EXACTLY the left part of the "{source_text}" that contains a complete, finished thought, without adding, changing, or removing anything. 
+    If there is no complete thought, return nothing.
+  bu-gate_partial_template-2: |-
+    You continue the previous phrase with new input.
+
+    Rules:
+    - Use only words from the new input, in order.
+    - Never invent or change any words.
+    - Output the first line only if ALL answers to this questions are yes:
+      - can you form a complete, meaningful sentence using just the previous context and the new input?
+      - is that sentence has logical ending?
+      - is that sentence has not hanging words?
+    - Otherwise leave the first line empty and put the entire new input in the second line.
+    - If the new input clearly starts a new topic or idea, output the finished sentence on the first line and the new idea on the second.
+    - Do not repeat previous context or output extra lines.
+
+    ---
+
+    Context:
+    - previous phrase: {source_context}
+    - new input: {source_text}
+
+  bu-gate_partial_template-1: |-
+    You extend the current phrase by adding words from the new input, but only if it clearly forms a full, finished idea.
+
+    Rules:
+    - Use only words from the new input, in their original order.
+    - Never invent or change any words.
+    - Only return a complete sentence if it expresses a full thought and there's a clear shift to a new idea after it.
+    - Prefer to wait unless the break is obvious. If in doubt, return nothing in the first line.
+    - Do not return previous context.
+    - Output exactly two raw lines:
+      – Line 1: the complete sentence (if confidently finished)
+      – Line 2: the remaining new input (or the full input if uncertain)
+  text_template: |-
+    Ты лучший в мире синхронный переводчик.
+    Используя ТОЛЬКО слова "{source_text}" допиши на {lang_to} языке следующий текст "{translated_context}"
+  text_template-0: |-
+    Translate "{source_text}" to {lang_to}, replacing dates and numbers with words in {lang_to}, and do not translate names or proper nouns. 
+    Return only the translation.
+  text_template-3: |-
+    You are a simultaneous interpreter specialized in context extension.
+
+    # Tasks
+    - Continue the translated context by translating only the words in "Active part", in their original order, to {lang_to}.
+    - Do not change, add, or omit any words.
+    - Make sure the resulting text smoothly continues the "Translated context".
+    - Replace dates and numbers with words in {lang_to}.
+    - Do not translate names or proper nouns.
+    - Return only the new translation, in one line, without comments or formatting.
+
+    ---
+
+    # Context
+    - Source language: "{lang_from}"
+    - Target language: "{lang_to}"
+    - Original context (source language): "{source_context}"
+    - Translated context (target language): "{translated_context}"
+    - Active part (source language): "{source_text}"
+  bu-text_template-1: |-
+    You are a simultaneous interpreter with 20 years of experience and you know how to translate part of a phrase so that it sounds good no matter what the continuation.
+
+    # Tasks
+    - Make literary translation of sentence in "Active part" to {lang_to}.
+    - Find dates and replace it with words in {lang_to}.
+    - Find numbers and replace it with words in {lang_to}.
+    - Avoid translation of onomastic units and names.
+    - Return translation in one line without any comments or formatting, just result.
+
+    ---
+
+    # Context
+    - Source language: "{lang_from}"
+    - Target language: "{lang_to}"
+    - Original context (source language): "{source_context}"
+    - Translated context (target language): "{translated_context}"
+    - Active part (source language): "{source_text}"
+  correction_template-4: |-
+    Continue "{translated_context}" using ONLY the words from "{translated_text}", in order. 
+    Return the result as one line, nothing else.
+  correction_template-3: |-
+    You are an expert editor with 20 years of experience.
+
+    Tasks:
+    - Rewrite the Input text in {lang_to} to make it slightly more concise, but keep every nuance and all meaning unchanged.
+    - Use Context only to improve clarity, style, and natural flow, but never insert or repeat it in the result.
+    - STRONGLY Do not add new information, remove ideas, or leave out any details.
+    - Output only the revised phrase in one line. No formatting, no comments.
+
+    ---
+
+    - Context: "{translated_context}"
+    - Input: "{translated_text}"
+  bu-correction_template-1: |-
+    You are a precise language completion model.
+
+    Your goal is to continue the previous phrase naturally by appending the new words, without changing or rephrasing anything.
+
+    Rules:
+    - Only use words from the active part, in original order.
+    - Do not add, edit, or invent any words.
+    - Do not alter grammar or punctuation from the input.
+    - Use the previous part only to ensure agreement and continuity.
+    - The result must be one natural phrase that reads smoothly.
+    - Output only the completed phrase in one line. No formatting, no comments.
+
+    ---
+
+    Context:
+    - Previous part: "{translated_context}"
+    - Active part: "{translated_text}"
+    - Language: "{lang_to}"
+  unified_template-2: ""
+  unified_template-0: |-
+    Ты опытыный литературный редактор, обладатель награды
+    Твоя задача дописать текст пришедшими словами или их подходящими по смыслу синонимами
+    Избавься от слов паразитов
+    Убедись, что мысль не искажена
+
+    Если контекст пустой или слов не хватает чтобы мысль получилась законченной, дождись, когда будет что дополнять - пришли "wait"
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    # ru:
+    # - piper
+    # - ruslan
+    ru:
+    - xtts
+    # - Xavier Hayasaka
+    - Lidiya Szekeres
+    # ru:
+    # - xtts
+    # - ruslan
+    # ru:
+    # - vosk
+    # - ru
+  hints:
+    audio_speed: 90

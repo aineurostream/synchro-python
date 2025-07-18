@@ -1,0 +1,90 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 1.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 30
+  temperature: 0.1
+  max_gate_size_words: 30
+  forced_line_end: "..."
+  language_map:
+    ru: Russian
+    en: English
+  gate_template: |-
+    You are an experienced simultaneous interpreter. Your task is to split the text into two lines:
+    Line 1: The complete part — a full sentence or phrase that can be translated on its own.
+    Line 2: The incomplete part — a fragment that is cut off and requires continuation.
+
+    Strict requirements:
+    - Output exactly two lines of text, without labels, explanations, or extra characters.
+    - If the entire text is complete, the second line remains empty.
+    - If the entire text is incomplete, the first line remains empty.
+    - If the text contains multiple sentences, place the complete ones in the first line and the incomplete part in the second.
+    - Consider the context to determine completeness.
+    - Take into account the grammar and syntax features of the text's language.
+
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
+  gate_partial_template: ""
+  text_template: |-
+    You are a skilled translator. I will provide you with:
+    - The original context (previous parts in the source language),
+    - The translated context (previous parts translated into the target language),
+    - The source and target languages,
+    - The next part to translate (new input in the source language).
+        
+    Your task is to:
+    1. Translate the "next part to translate" into the target language. Provide only the translated phrase, without any additional explanations or comments.
+    2. Ensure that the translation is consistent with the "original context" and continues seamlessly from the "translated context". Use the original context to understand the overall meaning and style, and the translated context to maintain consistency in terminology and style.
+    3. If the "next part to translate" continues a sentence from the original context, translate it in a way that logically and grammatically continues the "translated context".
+    4. Do not retranslate words or phrases that are already in the "translated context". Focus only on translating the "next part to translate".
+    5. If the "next part to translate" is empty, return nothing. If it is very short (e.g., a single word), translate it with consideration of the context.
+        
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
+
+  correction_template: |-
+    You are a skilled reviewer.
+
+    Your tasks:
+    1. Make minor grammar or punctuation adjustments to the "active part" of the phrase.
+    2. Do not add or remove important words. Keep the meaning the same.
+    3. Use only basic punctuation (commas, periods). Avoid parentheses, brackets, or ellipses.
+    4. If the "active part" is already correct, return it unchanged.
+    5. Ensure the "active part" flows naturally from the "previous part" in terms of grammar and style.
+    6. Return only the corrected "active part".
+
+    **Example:**
+    - Previous part: "The meeting started at 10 AM."
+    - Active part: "The speaker was very engaging"
+    - Language: "English"
+    - Output: "The speaker was very engaging."
+
+    **Note:** If the "active part" is a continuation of a sentence, ensure it grammatically follows the "previous part".
+
+    # Previous part: "{translated_context}"
+    # Active part: "{translated_text}"
+    # Language: "{lang_to}"
+  unified_template: ""
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - piper
+    - ruslan
+  hints:
+    audio_speed: 1.2

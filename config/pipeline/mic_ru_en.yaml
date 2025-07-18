@@ -1,13 +1,13 @@
 ---
 nodes:
-- name: input_mic_0_ru
+- name: input_mic_0_en
   node_type: input_channel
   device: 0 # <-- This device should be set for microphone input
   channel: 1 # <-- Always set to 1 for microphone input
-- name: normalizer_input_0_ru
+- name: normalizer_input_0_en
   node_type: normalizer
   headroom: 3.75
-- name: resampler_input_0_ru
+- name: resampler_input_0_en
   node_type: resampler
   to_rate: 16000
 - name: converter_0
@@ -18,10 +18,10 @@ nodes:
 - name: output_file_mic
   node_type: output_file
   path: samples/sample_mic_input.wav
-- name: output_file_1_en
+- name: output_file_1_ru
   node_type: output_file
   path: samples/sample_mic_output.wav
-- name: output_channel_1_en
+- name: output_channel_1_ru
   node_type: output_channel
   device: 1 # <-- This device should be set for audio output
   channel: 1 # <-- Always set to 1 for audio output
@@ -29,17 +29,15 @@ nodes:
   node_type: resampler
   to_rate: 44100 # <-- !!! resampler_output_1 rate
 edges:
-- - input_mic_0_ru
-  - normalizer_input_0_ru
-- - normalizer_input_0_ru
-  - resampler_input_0_ru
-- - resampler_output_1
-  - output_file_1_en
-# - - resampler_output_1
-#   - output_channel_1_en
+- - input_mic_0_en
+  - normalizer_input_0_en
+- - normalizer_input_0_en
+  - resampler_input_0_en
+- - resampler_input_0_en
+  - converter_0
 - - converter_0
   - resampler_output_1
-- - resampler_input_0_ru
-  - converter_0
-- - resampler_input_0_ru
+- - resampler_output_1
+  - output_file_1_ru
+- - resampler_input_0_en
   - output_file_mic

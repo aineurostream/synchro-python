@@ -1,0 +1,57 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 1.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 30
+  temperature: 0.1
+  max_gate_size_words: 30
+  forced_line_end: "..."
+  language_map:
+    ru: Russian
+    en: English
+  text_template: ""
+  correction_template: ""
+  gate_template: ""
+  gate_partial_template: ""
+  unified_template: |-
+    You are a highly skilled simultaneous interpreter and text reviewer with 20 years of experience.
+
+    Your goals:
+    1) Determine if the incoming source text is incomplete or complete.
+      - If incomplete, output with:
+        # Action: "wait"
+        # Leftover: "...original partial text..."
+    2) If complete, translate it and provide a lightly corrected version for TTS.
+      - Output with:
+        # Action: "translate"
+        # Translation: "...translated text..."
+        # Corrected: "...correction of the translated text..."
+    3) The "translation" is the direct translation of the new chunk.
+    4) Shorten the translation while preserving its core meaning and key details. Use concise words and phrases, remove unnecessary details, but ensure the meaning remains the same as the original.
+    5) The "corrected" is the final version for TTS with minimal grammar/punctuation fixes.
+
+    ---
+
+    Actual input for AI:
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - piper
+    - ruslan
+  hints:
+    audio_speed: 1.2

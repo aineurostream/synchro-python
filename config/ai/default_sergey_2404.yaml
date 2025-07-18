@@ -1,0 +1,95 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 2
+  buffer_timeout_seconds: 3.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 24
+  temperature: 0.3
+  max_gate_size_words: 30
+  forced_line_end: "..."
+  language_map:
+    ru: Russian
+    en: English
+  gate_template: ""
+  gate_partial_template: |-
+    # Role
+    You are a simultaneous interpreter with 20 years of experience and you know when to traslate and when to wait.
+
+    # Context
+    - Input text: {source_text}
+
+    # Task
+    Split the Input text written in {lang_from} into two parts and return in Output format:
+      1. **Part 1**: The longest possible substring that meets ANY:  
+        - Grammatically complete (full sentence, clause before conjunctions like "and"/"but", or an idiom). 
+        - Ends with natural punctuation (.!?) / comma / conjunction.
+      2. **Part 2**: The remaining text.
+
+    # Output format
+    Part 1
+    Part 2
+
+    # Rules
+    - If splitting is impossible, return: Part 1 = [empty string], Part 2 = [input text].
+    - Prioritize splits after punctuation > conjunctions > idioms.
+    - Return exactly two lines, no comments, no formatting, no explanations.
+    - Never modify, add or delete anything.
+  text_template: |-
+    Role:
+    You are a simultaneous interpreter with 20 years of experience and you know how to translate part of a phrase so that it sounds good no matter what the continuation.
+
+    Context:
+    - Source language: "{lang_from}"
+    - Target language: "{lang_to}"
+    - Original context (source language): "{source_context}"
+    - Translated context (target language): "{translated_context}"
+    - Active part (source language): "{source_text}"
+
+    Tasks:
+    1. Make literary translation of every sentence in "Active part" to {lang_to}.
+    2. Find dates and replace it with words in {lang_to}.
+    3. Find numbers and replace it with words in {lang_to}.
+    4. Revert translation of onomastic units and names.
+    5. Remove dot from the end if it does not exists in "Active part".
+    6. Return only translated version of "Active part" in one line without any comments or formatting, just result.
+  correction_template: |-
+    Role:
+    You are a translation editor with 20 years of experience.
+
+    Context:
+    - Previous part: "{translated_context}"
+    - Active part: "{translated_text}"
+    - Language: "{lang_to}"
+
+    Tasks:
+    1. Make minor grammar or punctuation adjustments to the active part of the phrase.
+    2. Replace standalone letters with readable transcription in {lang_to}.
+    3. Don't add or remove words.
+    4. Use original punctuation, dont't add dots if it does not exists in "Active part".
+    5. Shorten the translation preserving meaning and key details.
+    6. Ensure dates and numbers written in words.
+    7. Ensure that all words agree with each other and with the "Previous part", fix if needed.
+    8. Return only corrected version of "Active part" in one line without any cooments or formatting, just result.
+  unified_template: ""
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - xtts
+    - Lidiya Szekeres
+    # ru:
+    # - vosk
+    # - 3
+    # ru:
+    # - piper
+    # - ruslan
+  hints:
+    audio_speed: 75

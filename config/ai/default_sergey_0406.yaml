@@ -1,0 +1,223 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 2
+  buffer_timeout_seconds: 3.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 24
+  temperature: 0.1
+  max_gate_size_words: 12
+  forced_line_end: "..."
+  language_map:
+    ru: Russian
+    en: English
+  text_template-0: |-
+    I want you to act as a skilled translator.
+
+    Your tasks:
+    - Normalize Input in {lang_from} language.
+    - Return result without formatting or comments.
+
+    Input text: "{source_text}"
+
+  text_template: |-
+    I want you to act as a skilled translator.
+
+    Your task is to:
+    1) Write a continuation of Original context translated to Target language.
+    2) Use ONLY words "{source_text}", without duplicates.
+    3) Find dates and replace it with words in Target language.
+    4) Find numbers and replace it with words in Target language.
+    5) Ignore fillers.
+    6) Return translation without Translated context part in one line without any comments or formatting, just result.
+
+    Important rules:
+    - Respond in {lang_to} language.
+    - Do not translate onomastic units and names.
+    - Keep the meaning of the sentence.
+    - Fix grammar.
+
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
+    # Here is the translated part:
+  text_template-best-1: |-
+    I want you to act as a skilled translator.
+
+    Your task is to:
+    1) Write a continuation of Original context translated to Target language
+    2) Use ONLY words "{source_text}", without duplicates.
+    3) Find dates and replace it with words in Target language.
+    4) Find numbers and replace it with words in Target language.
+    6) Ignore fillers.
+    8) Return translation without Translated context part in one line without any comments or formatting, just result.
+
+    Important rules:
+    - Respond in {lang_to} language.
+    - Do not translate onomastic units and names.
+    - Keep the meaning of the sentence.
+    - Fix grammar.
+
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
+  correction_template: |-
+    You are a skilled content editor. You get previously translated parts of text and your task is to edit it if there are mistakes. 
+    Your output must sound natural, have correct grammar and punctuation. The output must be without formatting or comments.
+    Here is the context of the previously translated text:
+    # Context: "{translated_context}"
+    
+    # Here is the next part of the translated text that we ask you to edit if needed, Input: "{translated_text}"
+    Please respond in {lang_to} language. Reply ONLY with the edited text (or unedited text if there was no correction needed).
+
+  correction_template-6: |-
+    You are a skilled content editor.
+
+    Your tasks:
+    1) Write one complete sentence using only words from Input.
+    2) Use ONLY words "{translated_text}", without duplicates.
+    3) Make sentence sounds naturally.
+    4) Fix grammar and punctuation.
+    5) Return sentence without formatting or comments.
+
+    Important rules:
+    - Respond in {lang_to} language.
+    - Keep the meaning of the sentence.
+  correction_template-5: |-
+    You are a skilled content editor.
+    You've got some Input as continuation of Context.
+
+    Your tasks:
+    1) Make grammar and punctuation adjustments to the Input.
+    2) Make it sounds more naturally.
+    5) Use only words from Input, not Context.
+    6) Return only one corrected variant without formatting or comments.
+
+    # Input: "{translated_text}"
+    # Context: "{translated_context}"
+  correction_template-4: |-
+    You are a skilled writer.
+
+    Your tasks:
+    1) Rewrite Active part as a continuation of Previous part.
+    2) Don't repeat Previous part!
+    3) Save sense!
+    4) Return only the corrected text in {lang_to} language
+
+    # Previous part: "{translated_context}"
+    # Active part: "{translated_text}"
+    # Language: "{lang_to}"
+  correction_template-3: |-
+    You are a skilled content editor.
+    You receive Active part as a continuation of Previous part.
+
+    Your tasks:
+    1) Rewrite Active part
+    2) Save sense!
+    3) Use same words
+    4) Remove fillers
+    5) Return only the corrected text in {lang_to} language
+
+    # Previous part: "{translated_context}"
+    # Active part: "{translated_text}"
+    # Language: "{lang_to}"
+  correction_template-2: |-
+    You are a skilled reviewer.
+    You receive Active part as a continuation of Previous part.
+
+    Your tasks:
+    1) Rewrite text "{translated_text}"
+    2) Save sense
+    3) Use same words or synonims
+    4) Remove fillers
+    5) Return only the corrected text in {lang_to} language
+
+    # Previous part: "{translated_context}"
+    # Active part: "{translated_text}"
+    # Language: "{lang_to}"
+  correction_template-1: |-
+    You are a skilled content editor.
+
+    Your tasks:
+    1) Make minor grammar or punctuation adjustments to the active part of the phrase.
+    2) Do not add or remove important words. Keep the meaning the same.
+    3) Use only basic punctuation (commas, periods). Avoid parentheses, brackets, or ellipses.
+    4) Return only the corrected phrase.
+
+    # Previous part: "{translated_context}"
+    # Active part: "{translated_text}"
+    # Language: "{lang_to}"
+  gate_template-3: |-
+    Return 3
+  gate_template-2: |-
+    You are an experienced Content editor.
+
+    Your tasks:
+    1) Determine how many complete sentences in text "{source_text}":
+      - ignore "..." ellipsis
+      - each sentence must starts with a capital letter
+      - each sentence must ends up with a dot or a similiar terminal symbol
+    2) Return only one number
+  gate_template-1: |-
+    You are an experienced simultaneous interpreter.
+
+    Your tasks:
+    1) Analyze Active part to determine:
+      - Whether the thought is complete or requires continuation
+      - Decide whether to "translate" or "wait"
+    2) Write your response by using only one of two words:
+      - "wait" if Active part contains one sentence
+      - "translate" if Active part contains two or more sentences with 
+    3) Return only one word
+
+    # Active part: "{source_text}"
+  gate_partial_template: |-
+    You continue the previous phrase with new input.
+
+    Rules:
+    - Use only words from the new input, in order.
+    - Never invent or change any words.
+    - Output the first line only if ALL answers to this questions are yes:
+      - can you form a complete, meaningful sentence using just the previous context and the new input?
+      - is that sentence has logical ending?
+      - is that sentence has not hanging words?
+    - Otherwise leave the first line empty and put the entire new input in the second line.
+    - If the new input clearly starts a new topic or idea, output the finished sentence on the first line and the new idea on the second.
+    - Do not repeat previous context or output extra lines.
+
+    ---
+
+    Context:
+    - previous phrase: {source_context}
+    - new input: {source_text}
+  unified_template: ""
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    # ru:
+    # - piper
+    # - ruslan
+    ru:
+    - xtts
+    # - Xavier Hayasaka
+    # - Viktor Eka
+    - Lidiya Szekeres
+    # ru:
+    # - xtts
+    # - ruslan
+    # ru:
+    # - vosk
+    # - ru
+  hints:
+    audio_speed: 90
