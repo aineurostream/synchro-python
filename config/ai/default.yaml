@@ -4,7 +4,7 @@ stt:
   - субтитры сделал
   - субтитры делал
   - M.K.
-  buffer_min_words_size: 2
+  buffer_min_words_size: 1
   buffer_timeout_seconds: 3.0
 translate:
   llm_call_timeout: 120
@@ -22,8 +22,27 @@ translate:
     #   params:
     #     key1: value1
     #     ...
+    - name: remove_punctuation
+      cls: prepare_step.RemovePunctuationStep
+      template: not really used
+    - name: add_punctuation
+      cls: prepare_step.AddPunctuationStep
+      template: |-
+        You are experienced translation editor.
+
+        Your tasks:
+        1) Add dots and commas to next text - "{source_text}"
+        2) If thereis no punctuation to add, return only original text.
+        3) Return result text in one line without any comments or formatting.
+
+        Rules:
+        - Never never add or remove words.
+        - Ignore abbreviations.
+        - Return only result or original text, even if it is empty, no exceptions.
+      params:
+        words_treshold: 3
     - name: default_gate
-      cls: gate_step.GateStep
+      cls: gate_step.DotGateStep
       template: |-
         You are an experienced simultaneous interpreter with 20 years of professional practice.
         Analyze the context and the spoken part of a phrase to determine:
@@ -33,7 +52,7 @@ translate:
         Write your response by using only one of two words:
         - "translate" if can proceed with translation with decent quality
         - "translate" if there is more than one sentence in the phrase
-        - "wait" if the phrase requires continuation
+        - "wait" if the phrase requires continpuation
 
         # Source language: "{lang_from}"
         # Target language: "{lang_to}"
@@ -78,10 +97,10 @@ tts:
   gap_size_bytes: 12000
   voice_map:
     en:
-    - piper
-    - hfc_male
+    - xtts
+    - Lidiya Szekeres
     ru:
-    - piper
-    - ruslan
+    - xtts
+    - Lidiya Szekeres
   hints:
-    audio_speed: 1.0
+    audio_speed: 85

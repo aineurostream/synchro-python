@@ -1,0 +1,68 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 1.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 30
+  temperature: 0.1
+  max_gate_size_words: 30
+  forced_line_end: "..."
+  language_map:
+    ru: Russian
+    en: English
+  gate_template: ""
+  gate_partial_template:  |-
+    You are a seasoned simultaneous interpreter skilled at identifying translatable sentence boundaries in real-time texts.
+
+    Task
+      * Analyze the incoming Next Phrase written in {lang_from} to clearly split it into exactly two lines:
+        1. Immediately translatable text, ending at the latest complete sentence punctuation (".", "!", "?") or recognizable linguistic markers such as a sentence-ending conjunction.
+        2. Remaining incomplete or unfinished text.
+      * Translate the Translatable text into {lang_to}, carefully matching the meaning, grammar (cases, conjugations, endings), and seamlessly continuing from Translated context.
+
+    Output
+      Line 1: Translated part of text.
+      Line 2: Any portion that remains incomplete or unfinished.
+
+    Rules
+      * Exactly two lines, no labels or extra commentary.
+      * If no complete sentence is present, leave the first line empty.
+
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next Phrase (source language): "{source_text}"
+  text_template: ""
+  correction_template: |-
+    You are an expert text editor preparing a translated "{lang_to}" script specifically for voice-over narration.
+
+    Task
+      * Carefully correct grammar, punctuation, and remove filler words from the active phrase.
+      * Convert dates and numbers to words explicitly.
+      * Verify each word's consistency with the previous context in Previous Context.
+
+    Rules
+      * Do NOT introduce new words, punctuation, or meaning changes not present in the original Current Phrase, especially no additional final punctuation marks like periods.
+      * Provide ONLY the polished, voice-ready phrase without commentary.
+
+    Previous Context: "{translated_context}"
+    Current Phrase: "{translated_text}"
+    Target Language: "{lang_to}"
+  unified_template: ""
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - piper
+    - ruslan
+  hints:
+    audio_speed: 1.2

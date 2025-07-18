@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 PREFILL_SECONDS = 2
+JACK_ENABLED = False
+JACK_DEVICE = "jack"
 
 
 class ChannelOutputNode(AbstractOutputNode):
@@ -54,10 +56,11 @@ class ChannelOutputNode(AbstractOutputNode):
                 out_data[:, self._config.channel - 1] = 0
             self._out_buffer = outgoing_buffer[available_size:].tobytes()
 
-        device_info = sd.query_devices(self._config.device, "output")
+        device = JACK_DEVICE if JACK_ENABLED else self._config.device
+        device_info = sd.query_devices(device, "input")
         self._sample_rate = device_info["default_samplerate"]
         self._stream = sd.OutputStream(
-            device=self._config.device,
+            device=device,
             channels=self._config.channel,
             samplerate=self._sample_rate,
             dtype=DEFAULT_AUDIO_FORMAT.numpy_format,
@@ -68,17 +71,28 @@ class ChannelOutputNode(AbstractOutputNode):
         self._out_buffer += np.zeros((prefill_frames,), dtype=np.int16).tobytes()
         return self
 
+    
+    def _cleanup(self):
+        logger.info("Cleanup output node")
+        if self._stream:
+            try:
+                self._stream.stop()
+                self._stream.close()
+            finally:
+                pass
+
+        return False
+
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> Literal[False]:
-        if self._stream:
-            self._stream.stop()
-            self._stream.close()
+        self._cleanup()
 
-        return False
+    def __del__(self):
+        self._cleanup()
 
     def put_data(self, _source: str, data: FrameContainer) -> None:
         if data.rate != self._sample_rate:

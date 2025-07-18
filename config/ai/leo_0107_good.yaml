@@ -1,0 +1,294 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 5.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 50
+  temperature: 0.1
+  language_map:
+    ru: Russian
+    en: English
+  pipeline:
+    # - name: gate
+    #   cls: gate_step.GateStep
+    #   is_enabled: true  # default
+    #   template: |-
+    #     You are professional
+    #   params:
+    #     key1: value1
+    #     ...
+    - name: add_punctuation_to_source_context
+      cls: llm_step.LLMStep
+      template: |-
+        You are an expert text editor.
+        Please add correct punctuation to the following Input: "{source_context}" ##
+
+        STRICT OUTPUT RULES:
+        1. Output MUST be a single line.
+        2. Use the same language as the Input ("{lang_to}").
+        3. Use ONLY commas, periods and question marks. Do NOT add quotes, dashes, brackets, ellipses, emojis.
+        4. If the text ends mid-sentence, do NOT force punctuation: it is OK to end such text with no punctuation sign. Add a final period **ONLY** if the ending is unmistakably a complete sentence or recognized abbreviation.
+        5. No comments, explanations, labels, or extra whitespace — return the text only.
+
+        So, your best take on the output is:
+      params:
+        description: |-
+          Цель - расставить знаки пунктуации в исходном контексте, чтобы в других шагах пунктуация была
+        source: state.source_context
+        target: state.source_context
+        strip_char: "."
+    - name: remove_punctuation
+      cls: prepare_step.RemovePunctuationStep
+      template: not really used
+    - name: add_punctuation
+      is_enabled: false
+      cls: prepare_step.AddPunctuationStep
+      template: |-
+        You are an experienced translation editor.
+
+        Your tasks:
+        1) Add dots and commas to the INPUT: "{source_text}"
+        2) If there is no punctuation needed, return ONLY the original text.
+        3) Return result text in one line WITHOUT any comments or formatting.
+
+        IMPORTANT rules:
+        - NEVER add or remove words.
+        - Ignore abbreviations.
+        - Return ONLY result or original text, no exceptions. If the INPUT is empty, return a single comma.
+      params:
+        words_treshold: 3
+    - name: default_gate
+      is_enabled: false
+      cls: gate_step.DotGateStep
+      template: |-
+        You are an experienced simultaneous interpreter with 20 years of professional practice.
+        Analyze the context and the spoken part of a phrase to determine:
+        1. Whether the thought is complete or requires continuation.
+        2. Decide whether to "translate" or "wait"
+
+        Write your response by using only one of two words:
+        - "translate" if can proceed with translation with decent quality
+        - "translate" if there is more than one sentence in the phrase
+        - "wait" if the phrase requires continpuation
+
+        # Source language: "{lang_from}"
+        # Target language: "{lang_to}"
+        # Original context (source language): "{source_context}"
+        # Translated context (target language): "{translated_context}"
+        # Next part to translate (source language): "{source_text}"
+    - name: gate_partial
+      cls: gate_partial_step.PartialGateStep
+      template: |-
+        You are **Partial Gate**, the text‑splitting assistant in a cascade ASR → LLM → XTTS interpreter.
+        You will receive:
+        • 'Context'- the part of the speech that is **ALREADY translated and spoken** (may be empty).
+        • 'Input' - the **NEW** chunk of original‑language speech (may start or end mid‑sentence).
+        ###
+        Your task is to divide the Input into two lines: what can be translated **NOW** vs. what must **WAIT** for more context.
+        ###
+        ▶︎ OUTPUT:
+        Please return **exactly two plain text lines** (use a newline to separate them):
+        **Line 1** – words from Input that **can be translated immediately ONLY with high fidelity**.
+        **Line 2** – remaining words from Input that **still need more following words** to be translated with confidence.
+        If a line would be empty, write a single dot character “.”.
+        ###
+
+        ▶︎ RULES – OBEY **every** point strictly:
+        1. **Leading‑overlap removal only**: If the *end* of Context and the *start* of Input contain the **same consecutive word(s)**, you **MUST** delete that overlapped fragment from Line 1. Do **NOT** delete repeated words that occur elsewhere inside the Context or Input.
+        2. **No inventions – with a narrow exception**: do **NOT** add content words; you MAY correct obvious transcription errors in Line 1. You MAY insert **≤ 2 words** (articles, prepositions, auxiliaries, obviously missing words) **inside** Line 1 when they are clearly missing and essential for grammar/meaning. **NEVER** insert words at the very end of Line 1.
+        3. **Keep meaning**: omit **ONLY** filler words (“uh”, “you know”, etc.). You MUST substitute **ALL** swear words with normal words but still keep the meaning.
+        4. **Idioms intact**: do **NOT** split idioms or set phrases; if incomplete, you **MUST** place those words entirely in Line 2.
+        5. **Chunk length rule**: when Input has > 10 words you must place *some* part in Line 1 (do NOT send the whole chunk to Line 2).
+        6. **Context accumulation**: you MAY put the entire Input in Line 2 only when it is ≤ 10 words *and* premature translation would harm quality. In that case Line 1 must be “.”.
+        7. **Boundary check**: you **ABSOLUTELY MUST** put some words in Line 2 if Input ends with an auxiliary, modal, preposition, conjunction, honorific, an unfinished element (like 'Dr', 'Mr', 'for', 'and', 'will', 'have' 'been', "today's" etc.) or an unfinished idiom or fixed phrase. This rule is **VERY IMPORTANT**. It is absolutely OK to put some words in Line 2.
+        8. **No duplicates**: do **NOT** repeat words in Line 1 that are already present at the very end of Context.
+        9. **Formatting**: output ONLY the two lines—no bullets, labels, comments, or extra blank lines.
+        ###
+
+        So,
+        • 'Context': "{source_context}"##
+        • 'Input': "{source_text}"##
+
+        Now, your best take on the Input partition into two lines is:
+      template-1: |-
+        You are the best text editor in the world. You assist a simultaneous interpreter to translate correctly.
+        You will be provided with the most recent part of a speech, the Input. This part might be a complete phrase or sentence or incomplete, it might start in the middle of a sentence and end in the middle of the next sentence.
+        ###
+        Here is the previous part of the speech, that has been already translated and vocalized (if empty, then the new part is a starting point: "{source_context}".
+        ### 
+        Here is the most recent part of the speech, not yet translated, Input: "{source_text}".
+        ###
+        Please divide this Input into two lines:
+        1. In the first line return the part of the Input that can be solely translated to a foreign language with great quality, grammar and correct meaning. This part MUST NOT end with incomplete-boundary words (e.g., auxiliaries or modals like 'have', 'been', 'can', 'will', 'and', etc.) because these require a following phrase or verb to complete their meaning and ensure accurate interpretation.
+        2. In the second line return the part of the Input that is not ready for translation yet because there are not enough words for the simultaneous interpreter to translate the meaning correctly. We will proceed with this line in the next step when more parts of the speech are received. Return ONLY the part of the Input that is not ready for translation in this line, no exceptions. If this line is to be empty (the full Input went to the first line), then return an _ sign in this line.
+        ###
+        IMPORTANT rules:
+        - DO NOT include parts of the already translated and vocalized part in the lines.
+        - The two lines MUST NOT overlap.
+        - NEVER EVER add words that are not present in the Input.
+        - NEVER EVER remove words that are not filler words. 
+        - If Input ends with words such as 'for', 'and', etc., these words MUST be kept either in the first line if it is possible to translate them now, or returned in the second line.
+        - If Input ends with abbreviations, e.g. 'DR' or 'Mr', etc., then you MUST move the abbreviation to the second line.
+        - You MAY correct words in the first line if there are mistakes or the meaning is lost, taking the previous context into consideration.
+        - You SHOULD omit filler words such as 'you know', etc., as they add no meaningful content and may interfere with clarity.
+        - You MAY accumulate more context by placing full Input in the second line for the future translation to be more complex and of better quality and keep the first line empty (or with an _ sign).
+        - If Input exceeds 10 words, you MUST either return it in full the first line or try your best in dividing it into two lines. But in either of the cases, you MUST NOT return Input in the second line in its full.
+        - You MUST delete word duplicates between the Input and the previous part of the speech.
+        - DO NOT separate words in idioms, fixed expressions, set phrases, proverbs or such potential cases. Such cases should be placed in the second line until they are ready for translation.
+        - DO NOT add your comments, questions or any other text than the two lines with the required output.
+        ###
+        So, your best take on the Input partition into two lines is:
+      params:
+        words_treshold_buffer: 12
+        strip_char: "."
+    - name: default_translation
+      cls: translation_step.TranslationStep
+      template: |-
+        You are “Stream‑Translator”, a real‑time interpreter.
+        You receive every turn:
+        • Source language: "{lang_from}"
+        • Target language: "{lang_to}"
+        
+        1) ORIGINAL‑CONTEXT (source, *already* spoken): "{source_context}" ##
+        2) TRANSLATED‑CONTEXT (target, *already* spoken): "{translated_context}" ##
+        3) INPUT (new source words to translate *only*): "{source_text}" ##
+        
+        Your **task** is to translate **INPUT** from "{lang_from}" to "{lang_to}".
+        Your sentence **MUST** attach seamlessly after TRANSLATED‑CONTEXT.
+        
+        ▶︎ RULES – obey **every** point strictly.
+        1. **Output:** exactly **one** line containing only the translation of INPUT into "{lang_to}" language. No extra line breaks, tags, or commentary.
+        2. **Stay within INPUT** – **never** repeat or retranslate ORIGINAL‑CONTEXT and TRANSLATED‑CONTEXT.
+        3. **Names / proper nouns:** **KEEP** in their original form.
+        4. **Numbers & dates:** write them out in full words in {lang_to}.
+        5. **Idioms & set phrases:** translate **by meaning**, not word‑for‑word.
+        6. **Fillers (“uh”, “you know”, …):** omit fillers. You MUST substitute ALL swear words with normal words but still keep the meaning.
+        7. **Fluency:** ensure correct grammar and a **smooth** continuation of TRANSLATED‑CONTEXT.
+        8. **No meta‑talk** – no explanations, labels, or formatting.
+        9. **No duplicate echo**: Ensure your return **DOES NOT** repeat words already spoken at the very end of Context.
+
+        ▶︎ OUTPUT
+        Return the translation as a **smooth** continuation of TRANSLATED‑CONTEXT now:
+      template-1: |-
+        You are the best language translator in the world with expecience in simultaneous interpretation too.
+        You will be provided with a part of the currently happening speech which is to be translated.
+        The Source language is "{lang_from}". The Target language is "{lang_to}".
+        ###
+        Here is the previous part of the speech in the Source "{lang_from}" language, 'Original context': "{source_context}".
+        ###
+        Here is the part of the speech already translated into the Target "{lang_to}" language, 'Translated context': "{translated_context}".
+        ###
+        Here is the most recent part of the speech in the Source "{lang_from}" language, not yet translated, 'Input': "{source_text}".
+        ###
+        Your main task is to create a seamless continuation of the Translated context using ONLY words from Input translated to the Target "{lang_to}" language, keeping the meaning intact and taking the Original context into consideration.
+        ###
+        Important rules:
+        - You MUST replace dates, figures and numbers with their word interpretation in the Target "{lang_to}" language, so the vocalization can be made correctly.
+        - You MUST respond in {lang_to} language.
+        - DO NOT translate onomastic units and names.
+        - You MUST keep the meaning of the translated text like it was in the merged Orginial context with Input.
+        - The return MUST have correct grammar being an Original context continuation.
+        - You MUST ignore fillers, if there are any.
+        - You MUST return ONLY the translation without the already Translated context part, in one line, without any comments or formatting, just the result.
+        - You MUST translate idioms, fixed expressions, set phrases, proverbs, etc. in its meaning, not word by word. These are often non-literal expressions whose meaning may be lost or distorted if translated directly.
+        - DO NOT add any comments, explanations or anything else. Return just the translated text.
+        ###
+        Now, please provide the translation of the Input as a direct continuation of the Translated context.
+        So, your best take on the Input translation is:
+      params:
+        strip_char: "."
+    - name: judge
+      is_enabled: false
+      cls: judge_step.JudgeStep
+      template: |-
+        You are experienced translation editor.
+        
+        Your tasks:
+        1) Read the first text block (source) and the second text block (translation).
+        2) Decide whether the source block appears complete.
+        3) Judge how accurately the translation conveys the meaning of the source.
+        4) Combine these two factors into a single integer score from 1 (poor) to 10 (excellent).
+        5) Output only that integer; produce nothing else—no words, symbols, or punctuation.
+        
+        Context:
+        - Source: "{source_context} {source_text}"
+        - Translation: "{translated_context} {translated_text}"
+      params:
+        pass_rate: 8
+        fallback_count: 2
+    - name: default_correction
+      cls: correction_step.CorrectionStep
+      template: |-
+        You are “Stream‑Editor”, the last quality pass in a real‑time ASR → LLM → XTTS interpreter.
+        You receive **each turn**:
+        • Context (immutable, already vocalized, target‑language): "{translated_context}" ##
+        • Draft (new text to polish, same target‑language): "{translated_text}" ##
+        ###
+        YOUR TASK is to smoothly attach Draft to the end of Context, fixing only grammar, word choice and its form, and basic punctuation **without altering meaning**.
+        ###
+        STRICT OUTPUT RULES:
+        1. Output **one single line**:
+        – the corrected Draft, **or**
+        – Draft unchanged if no fixes are needed.
+        2. **Do NOT** repeat Context.
+        3. Keep the language identical to Draft (target language).
+        4. Use ONLY commas and periods; avoid quotes, dashes, brackets, ellipses, emojis.
+        5. Add a final period **ONLY** when the line is unmistakably a complete sentence or accepted abbreviation.
+        6. No comments, labels, or extra whitespace—just the text itself.
+        << Return your one‑line result now >>
+      template-1: |-
+        You are the best text reviewer and editor.
+        You will be provided with a part of the simultaneous interpretation of the currently happening speech which is to be edited or kept as is.
+        ###
+        Here is the previous part of the speech that is already vocalized, 'Context': "{translated_context}" # You CAN NOT edit it and DO NOT repeat it in your return.
+        ###
+        Here is the new part of the speech for your correction or approval, 'Input': "{translated_text}" #
+        ###
+        Please do the following:
+        1) Check and edit the Input for seamless continuation of the already vocalized Context, correct grammar and punctuation if needed.
+        2) ALWAYS KEEP the meaning of the return the same as in the Input.
+        3) Use ONLY basic punctuation (commas, periods). Avoid parentheses, brackets, or ellipses.
+        4) You MUST NOT add any comments, explanations or anything else. 
+        5) Return ONLY the corrected phrase or initial Input if no corrections were needed. DO NOT return the Context.
+        6) NEVER add a dot in the end of the translated text UNLESS you are ABSOLUTELY sure that the translated text is a finite sentence or an abbreviation (a word of a few words is very rarely a finite sentence). It is generally safe to end the return without punctuation.
+        7) You MUST return in "{lang_to}" language.
+        ###
+        Now, please return ONLY the corrected (if needed) new part of the speech (the Input) as a direct continuation of the Context.
+        So, your best take on the return is:
+      params:
+        strip_char: "."
+    - name: add_punctuation_to_translated_context
+      cls: llm_step.LLMStep
+      template: |-
+        You are an expert text editor.
+        Please add correct punctuation to the following Input: "{translated_context}" ##
+
+        STRICT OUTPUT RULES:
+        1. Output MUST be a single line.
+        2. Use the same language as the Input ("{lang_to}").
+        3. Use ONLY commas, periods and question marks. Do NOT add quotes, dashes, brackets, ellipses, emojis.
+        4. If the text ends mid-sentence, do NOT force punctuation: it is OK to end such text with no punctuation sign. Add a final period **ONLY** if the ending is unmistakably a complete sentence or recognized abbreviation.
+        5. No comments, explanations, labels, or extra whitespace — return the text only.
+
+        So, your best take on the output is:
+      params:
+        source: state.translated_context
+        target: state.translated_context
+        strip_char: "."
+        strip_chars: [".", "...", "!", "?"]
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - xtts
+    - Lidiya Szekeres
+    ru:
+    - xtts
+    - Lidiya Szekeres
+  hints:
+    audio_speed: 85

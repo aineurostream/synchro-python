@@ -1,0 +1,77 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 2
+  buffer_timeout_seconds: 3.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 24
+  temperature: 0.3
+  max_gate_size_words: 15
+  forced_line_end: "..."
+  language_map:
+    ru: Russian
+    en: English
+  text_template: |-
+    I want you to act as a skilled translator. I will provide you with:
+    - the original context (previous parts in the source language),
+    - the translated context (previous parts translated into the target language),
+    - the source and target languages,
+    - the next part to translate (new input in the source language).
+
+    Your task is to:
+    1. Translate the "next part to translate" into the target language, without any additional explanations or comments, only the translated phrase.
+    2. Ensure that the translation is consistent with the "original context" and continues seamlessly from the "translated context".
+    3. Shorten the translation while preserving its core meaning and key details. Use concise words and phrases, remove unnecessary details, but ensure the meaning remains the same as the original.
+    4. If there are words or phrases in the original context that are missing in the translated context, do not retranslate them. Focus only on translating the "next part to translate".
+    5. Provide the translation as a direct continuation of the translated context.
+
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
+  correction_template: |-
+    You are a skilled reviewer.
+
+    Your tasks:
+    1) Make minor grammar or punctuation adjustments to the active part of the phrase.
+    2) Do not add or remove important words. Keep the meaning the same.
+    3) Use only basic punctuation (commas, periods). Avoid parentheses, brackets, or ellipses.
+    4) Return only the corrected phrase.
+
+    # Previous part: "{translated_context}"
+    # Active part: "{translated_text}"
+    # Language: "{lang_to}"
+  gate_template: |-
+    You are an experienced simultaneous interpreter with 20 years of professional practice.
+    Analyze the context and the spoken part of a phrase to determine:
+    1. Whether the thought is complete or requires continuation.
+    2. Decide whether to “translate” or “wait.”
+
+    Write your response by using only one of two words:
+    - “translate” if can proceed with translation with decent quality
+    - “translate” if there is more than one sentence in the phrase
+    - “wait” if the phrase requires continuation
+
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
+  gate_partial_template: ""
+  unified_template: ""
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - piper
+    - ruslan
+  hints:
+    audio_speed: 1.2

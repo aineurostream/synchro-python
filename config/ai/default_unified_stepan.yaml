@@ -1,0 +1,70 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 1.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 30
+  temperature: 0.1
+  max_gate_size_words: 30
+  forced_line_end: "..."
+  language_map:
+    ru: Russian
+    en: English
+  text_template: ""
+  correction_template: ""
+  gate_template: ""
+  gate_partial_template: ""
+  unified_template: |-
+    Respond in the target language.
+
+    You are a skilled translator and reviewer. You will receive: original context, translated context, source language, target language, and the next part to process.
+
+    Your tasks:
+    1. Determine if the "next part" is a complete sentence or a fragment.
+      - If incomplete, output:
+        - Action: "wait"
+        - Leftover: "[original partial text]"
+      - If complete, proceed to translate and correct.
+    2. Translate the "next part" into the target language.
+      - Translate only the new part.
+      - Ensure consistency with the original and translated context.
+      - Do not translate names or companies.
+      - Shorten the translation, preserving core meaning and key details.
+    3. Correct the translation for TTS (Text-to-Speech).
+      - Make minor grammar and punctuation adjustments.
+      - Use only commas and periods.
+      - If complete sentence, adjust word forms to match context.
+      - If fragment, keep original capitalization and forms.
+      - Do not add terminal punctuation if absent.
+      - Convert numbers to words without altering surrounding text.
+    4. Output:
+      - If incomplete:
+        - Action: "wait"
+        - Leftover: "[original partial text]"
+      - If complete:
+        - Action: "translate"
+        - Translation: "[translated text]"
+        - Corrected: "[corrected translated text]"
+
+    Actual input for AI:
+    # Source language: "{lang_from}"
+    # Target language: "{lang_to}"
+    # Original context (source language): "{source_context}"
+    # Translated context (target language): "{translated_context}"
+    # Next part to translate (source language): "{source_text}"
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - piper
+    - ruslan
+  hints:
+    audio_speed: 1.2

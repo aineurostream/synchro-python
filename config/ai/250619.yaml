@@ -1,0 +1,117 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  buffer_min_words_size: 1
+  buffer_timeout_seconds: 1.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 24
+  temperature: 0.1
+  pipeline:
+    - name: remove_punctuation
+      cls: prepare_step.RemovePunctuationStep
+      template: not really used
+    - name: add_punctuation
+      cls: prepare_step.AddPunctuationStep
+      template: |-
+        You are experienced translation editor.
+
+        Your tasks:
+        1) Add dots and commas to next text - "{source_text}"
+        2) If thereis no punctuation to add, return only original text.
+        3) Return result text in one line without any comments or formatting.
+
+        Rules:
+        - Never never add or remove words.
+        - Ignore abbreviations.
+        - Return only result or original text, even if it is empty, no exceptions.
+      params:
+        words_treshold: 3
+    - name: gate
+      cls: gate_step.DotGateStep
+      template: not really user
+      params:
+        quick_start_symbols: 0
+        force_pass_count: 2
+        dots_pass_count: 2
+    - name: translation
+      cls: translation_step.TranslationStep
+      template: |-
+        You are a skilled translator.
+
+        Your task is to:
+        1) Write a continuation of Original context translated to Target language
+        2) Use ONLY words "{source_text}", without duplicates.
+        3) Find dates and replace it with words in Target language.
+        4) Find numbers and replace it with words in Target language.
+        6) Ignore fillers.
+        8) Return translation without Translated context part in one line without any comments or formatting, just result.
+
+        Important rules:
+        - Respond in {lang_to} language.
+        - Do not translate onomastic units and names.
+        - Keep the meaning of the sentence.
+        - Fix grammar.
+
+        # Source language: "{lang_from}"
+        # Target language: "{lang_to}"
+        # Original context (source language): "{source_context}"
+        # Translated context (target language): "{translated_context}"
+        # Next part to translate (source language): "{source_text}"
+      params:
+        key1: value1
+        key2: value2
+    - name: judge
+      is_enabled: false
+      cls: judge_step.JudgeStep
+      template: |-
+        You are experienced translation editor.
+        
+        Your tasks:
+        1) Read the first text block (source) and the second text block (translation).
+        2) Decide whether the source block appears complete.
+        3) Judge how accurately the translation conveys the meaning of the source.
+        4) Combine these two factors into a single integer score from 1 (poor) to 10 (excellent).
+        5) Output only that integer; produce nothing else—no words, symbols, or punctuation.
+        
+        Context:
+        - Source: "{source_context} {source_text}"
+        - Translation: "{translated_context} {translated_text}"
+      params:
+        pass_rate: 8
+        fallback_count: 2
+    - name: correction
+      cls: correction_step.CorrectionStep
+      template: |-
+        You are a skilled content editor. 
+        You get previously translated parts of text and your task is to edit it if there are mistakes. 
+        
+        Your output must sound natural, have correct grammar and punctuation.
+        The output must be without formatting or comments.
+        
+        Here is the context of the previously translated text:
+        # Context: "{translated_context}"
+
+        Here is the next part of the translated text that we ask you to edit if needed
+        # Input: "{translated_text}"
+
+        Please respond in {lang_to} language.
+        Reply ONLY with the edited text (or unedited text if there was no correction needed).
+      params:
+        key1: value1
+        key2: value2
+tts:
+  gap_size_bytes: 12000
+  voice_map:
+    en:
+    - piper
+    - hfc_male
+    ru:
+    - xtts
+    # - Viktor Eka
+    - Lidiya Szekeres
+  hints:
+    audio_speed: 85
