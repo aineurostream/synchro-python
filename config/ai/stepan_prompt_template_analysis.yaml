@@ -1,0 +1,92 @@
+# Единый стандарт промптов для максимальной краткости и удобства редактирования
+
+standard_template:
+  description: "Оптимизированный стандарт промптов: краткий, структурированный, удобный для редактирования"
+  
+  # ОБЯЗАТЕЛЬНАЯ СТРУКТУРА (4 блока)
+  mandatory_structure:
+    1_role: "You are [ROLE]."
+    2_task: "Task: [ACTION] from {input} to {output}."
+    3_rules: "Rules: 1) [RULE1] 2) [RULE2] 3) [RULE3]"
+    4_output: "Output:"
+  
+  # ШАБЛОН ДЛЯ КОПИРОВАНИЯ
+  copy_template: |
+    You are [ROLE].
+    Task: [ACTION] from {input_var} to {output_var}.
+    Rules: 1) [CONSTRAINT1] 2) [FORMAT] 3) [LANGUAGE]
+    Output:
+
+# ПРИМЕРЫ ПРИМЕНЕНИЯ СТАНДАРТА
+
+examples:
+  punctuation:
+    before_lines: 42
+    after_lines: 6
+    template: |
+      You are text editor.
+      Task: Add punctuation to "{source_context}".
+      Rules: 1) Single line only 2) Use commas/periods only 3) Same language "{lang_to}"
+      Output:
+  
+  translation:
+    before_lines: 35
+    after_lines: 6
+    template: |
+      You are translator.
+      Task: Translate "{source_text}" from {lang_from} to {lang_to}.
+      Rules: 1) Continue "{translated_context}" 2) No repetition 3) Keep names original
+      Output:
+  
+  correction:
+    before_lines: 25
+    after_lines: 6
+    template: |
+      You are editor.
+      Task: Fix grammar in "{translated_text}" after "{translated_context}".
+      Rules: 1) Single line 2) No new words 3) Same meaning
+      Output:
+  
+  gate_partial:
+    before_lines: 45
+    after_lines: 8
+    template: |
+      You are text splitter.
+      Task: Split "{source_text}" into ready/waiting parts.
+      Rules: 1) Two lines exactly 2) Remove overlap with "{source_context}" 3) Keep incomplete phrases in line 2
+      Output:
+
+# ПРИНЦИПЫ ОПТИМИЗАЦИИ
+
+optimization_principles:
+  brevity:
+    - "Убрать все лишние слова и фразы"
+    - "Объединить похожие правила"
+    - "Использовать короткие формулировки"
+  
+  structure:
+    - "Всегда 4 блока: Role, Task, Rules, Output"
+    - "Правила всегда нумерованы 1) 2) 3)"
+    - "Переменные всегда в фигурных скобках"
+  
+  editability:
+    - "Каждое правило на одной строке"
+    - "Легко найти и изменить любой элемент"
+    - "Минимум вложенности и форматирования"
+  
+  consistency:
+    - "Одинаковая структура для всех промптов"
+    - "Стандартные роли: editor, translator, splitter"
+    - "Стандартные переменные: {source_text}, {lang_from}, etc"
+
+# СРАВНЕНИЕ ЭФФЕКТИВНОСТИ
+efficiency_comparison:
+  original_avg_lines: 35
+  optimized_avg_lines: 6
+  reduction_ratio: "83% сокращение"
+  
+  benefits:
+    - "Быстрое редактирование"
+    - "Легкое понимание структуры"
+    - "Меньше ошибок при копировании"
+    - "Единообразие всех промптов"

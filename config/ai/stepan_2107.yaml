@@ -5,7 +5,7 @@ stt:
   - субтитры делал
   - M.K.
   - For more information, visit www.fema.gov
-  buffer_min_words_size: 5
+  buffer_min_words_size: 7
   buffer_timeout_seconds: 2.0
 translate:
   llm_call_timeout: 120
@@ -114,14 +114,14 @@ translate:
         • Source language: "{lang_from}"
         • Target language: "{lang_to}"
         
-        1) ORIGINAL‑CONTEXT (source, *already* spoken, may start mid-sentence): "{source_context}" ##
+        1) SOURCE‑CONTEXT (source, *already* spoken, may start mid-sentence): "{source_context}" ##
         2) TRANSLATED‑CONTEXT (target, *already* spoken, may start mid-sentence): "{translated_context}" ##
         3) INPUT (new source words to translate *only*): "{source_text}" ##
         
         Your **task** is to translate **INPUT** from "{lang_from}" to "{lang_to}".
         Your translated sentence **MUST** attach seamlessly after TRANSLATED‑CONTEXT.
         
-        ▶︎ RULES – obey **every** point strictly.
+        RULES – obey **every** point strictly.
         1. **Output:** exactly **one** line containing only the translation of INPUT into "{lang_to}" language. No extra line breaks, tags, or commentary.
         2. **Stay within INPUT** – **never** repeat or retranslate ORIGINAL‑CONTEXT and TRANSLATED‑CONTEXT.
         3. **Names / proper nouns:** **KEEP** in their original form.
@@ -130,16 +130,16 @@ translate:
         6. **Fillers (“uh”, “you know”, …):** omit fillers. You MUST substitute ALL swear words with normal words but still keep the meaning.
         7. **Fluency:** ensure correct grammar and a **smooth** continuation of TRANSLATED‑CONTEXT.
         8. **No meta‑talk** – no explanations, labels, or formatting.
-        9. **No duplicate echo**: Ensure your return **DOES NOT** repeat words already spoken at the very end of Context.
+        9. Do NOT repeat words already spoken in TRANSLATED‑CONTEXT.
 
-        ▶︎ OUTPUT
+        OUTPUT
         Return the translation as a **smooth** continuation of TRANSLATED‑CONTEXT now:
       params:
         strip_chars: [".", "…", "!", "?", "#", " ", "。"]
     - name: default_correction
       cls: correction_step.CorrectionStep
       template: |-
-        You are “Stream‑Editor”, the last quality pass in a real‑time ASR → LLM → XTTS interpreter.
+        You are “Stream‑Editor”, the last quality pass in a real‑time ASR → LLM → TTS interpreter.
         You receive **each turn**:
         • Context (immutable, already vocalized, target‑language): "{translated_context}" ##
         • Draft (new text to polish, same target‑language): "{translated_text}" ##
@@ -155,7 +155,7 @@ translate:
         4. Use ONLY commas and periods; avoid quotes, dashes, brackets, ellipses, emojis.
         5. Add a final period **ONLY** when the line is unmistakably a complete sentence or accepted abbreviation.
         6. No comments, labels, or extra whitespace—just the text itself.
-        7. **NEVER EVER** add new words in your return at the end of the Draft.
+        7. NEVER add word(s) at the end of your return that are absent in the initial Draft.
         Now, your best take on the Draft in one line is:
       params:
         strip_chars: [".", "…", "!", "?", "#", " ", "。"]

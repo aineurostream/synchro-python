@@ -1,0 +1,98 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  - For more information, visit www.fema.gov
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 2.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 35
+  temperature: 0.1
+  language_map:
+    ru: Russian
+    en: English
+  pipeline:
+    - name: add_punctuation_to_source_context
+      cls: llm_step.LLMStep
+      stage: post
+      template: |-
+        You are text editor.
+        Task: Add punctuation to "{source_context}".
+        Rules: 1) Single line only 2) Use commas/periods/questions only 3) Same language "{lang_from}" 4) No forced punctuation for incomplete text
+        Output:
+      params:
+        source: state.source_context
+        target: state.source_context
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        cut_hanging: false
+    - name: add_punctuation_to_translated_context
+      cls: llm_step.LLMStep
+      stage: post
+      template: |-
+        You are text editor.
+        Task: Add punctuation to "{translated_context}".
+        Rules: 1) Single line only 2) Use commas/periods/questions only 3) Same language "{lang_to}" 4) No forced punctuation for incomplete text
+        Output:
+      params:
+        source: state.translated_context
+        target: state.translated_context
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        cut_hanging: false
+    - name: remove_punctuation
+      cls: prepare_step.RemovePunctuationStep
+      template: n/a
+    - name: strip_chars
+      cls: prepare_step.EmptyStep
+      template: n/a
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: gate_partial
+      cls: gate_partial_step.PartialGateStep
+      template: |-
+        You are text splitter.
+        Task: Split "{source_text}" into ready/waiting parts after "{source_context}".
+        Rules: 1) Two lines exactly 2) Remove overlap with context 3) Keep incomplete phrases in line 2 4) Use dot "." for empty lines 5) Language "{lang_from}" 6) No duplicates from context end 7) Split idioms to line 2 if incomplete 8) Put auxiliary/modal/preposition words to line 2
+        Output:
+      params:
+        words_treshold_buffer: 12
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_translation
+      cls: translation_step.TranslationStep
+      template: |-
+        You are translator.
+        Task: Translate "{source_text}" from {lang_from} to {lang_to} after "{translated_context}".
+        Rules: 1) Single line only 2) Continue context seamlessly 3) Keep names original 4) No repetition 5) Numbers as words 6) Translate idioms by meaning 7) Omit fillers 8) Replace swear words
+        Output:
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_correction
+      cls: correction_step.CorrectionStep
+      template: |-
+        You are editor.
+        Task: Fix grammar in "{translated_text}" after "{translated_context}".
+        Rules: 1) Single line only 2) No new words at end 3) Same meaning 4) Use commas/periods only 5) No forced punctuation for incomplete text
+        Output:
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+tts:
+  gap_size_bytes: 8000
+  voice_map:
+    en:
+    - xtts
+    # - Kumar Dahl
+    # - Lidiya Szekeres
+    # - Alexandra Hisakawa
+    # - Asya Anara
+    - Dionisio Schuyler
+    ru:
+    - xtts
+    # - Kumar Dahl
+    # - Lidiya Szekeres
+    # - Alexandra Hisakawa
+    # - Asya Anara
+    - Dionisio Schuyler
+  hints:
+    audio_speed: 85
