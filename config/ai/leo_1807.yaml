@@ -5,7 +5,7 @@ stt:
   - субтитры делал
   - M.K.
   - For more information, visit www.fema.gov
-  buffer_min_words_size: 2
+  buffer_min_words_size: 3
   buffer_timeout_seconds: 2.0
 translate:
   llm_call_timeout: 120
@@ -17,7 +17,7 @@ translate:
   pipeline:
     - name: add_punctuation_to_source_context
       cls: llm_step.LLMStep
-      # is_enabled: false
+      is_enabled: false
       stage: post
       template: |-
         You are an expert text editor.
@@ -25,7 +25,7 @@ translate:
 
         STRICT OUTPUT RULES:
         1. Output MUST be a single line.
-        2. Use the same language as the Input ("{lang_to}").
+        2. Use the same language as the Input ("{lang_from}").
         3. Use ONLY commas, periods and question marks. Do NOT add quotes, dashes, brackets, ellipses, emojis.
         4. If the text ends mid-sentence, do NOT force punctuation: it is OK to end such text with no punctuation sign. Add a final period **ONLY** if the ending is unmistakably a complete sentence or recognized abbreviation.
         5. No comments, explanations, labels, or extra whitespace anywhere in the output — return the text only in a line.
@@ -38,7 +38,7 @@ translate:
         cut_hanging: false
     - name: add_punctuation_to_translated_context
       cls: llm_step.LLMStep
-      # is_enabled: false
+      is_enabled: false
       stage: post
       template: |-
         You are an expert text editor.
@@ -157,7 +157,7 @@ translate:
         5. Add a final period **ONLY** when the line is unmistakably a complete sentence or accepted abbreviation.
         6. No comments, labels, or extra whitespace—just the text itself.
         7. **NEVER EVER** add new words to the end of your return that were absent at the end of the Draft.
-        Now, your best take on the Draft in one line is:
+        Now, your best take on the smooth Draft attachement to the Context in one line is:
       params:
         strip_chars: [".", "…", "!", "?", "#", " ", "。"]
 tts:

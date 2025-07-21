@@ -1,0 +1,194 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  - For more information, visit www.fema.gov
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 2.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 35
+  temperature: 0.1
+  language_map:
+    ru: Russian
+    en: English
+  pipeline:
+    - name: add_punctuation_to_source_context
+      cls: llm_step.LLMStep
+      # is_enabled: false
+      stage: post
+      template: |-
+        ROLE:  
+        Punctuation Specialist (source text)
+
+        TASK:  
+        Insert correct punctuation into the input so it sounds natural.
+
+        INPUT:  
+        Text = "{source_context}"  
+        Lang = "{lang_from}"
+
+        RULES:  
+        1. Return exactly one line.  
+        2. Keep the language identical to the input ({lang_from}).  
+        3. Only commas, periods, question marks. Do NOT add quotes, dashes, brackets, ellipses, emojis.  
+        4. If the text ends mid‑sentence, do not force a closing mark; add a final mark only when the sentence is unmistakably complete or a recognised abbreviation.  
+        5. No comments, labels, extra whitespace or any other formatting — output only the punctuated text.
+
+        OUTPUT:  
+        <Punctuated text>
+      params:
+        source: state.source_context
+        target: state.source_context
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        cut_hanging: false
+    - name: add_punctuation_to_translated_context
+      cls: llm_step.LLMStep
+      # is_enabled: false
+      stage: post
+      template: |-
+        ROLE:  
+        Translation‑Punctuation Specialist (target text)
+
+        TASK:  
+        Insert correct punctuation into the translated text, following target‑language conventions.
+
+        INPUT:  
+        Text = "{translated_context}"  
+        Lang = "{lang_to}"
+
+        RULES:  
+        1. Return exactly one line.  
+        2. Keep the language identical to the input ({lang_to}).  
+        3. Only commas, periods, question marks. Do NOT add quotes, dashes, brackets, ellipses, emojis.  
+        4. If the text ends mid‑sentence, do not force a closing mark; add a final mark only when the sentence is unmistakably complete or a recognised abbreviation.  
+        5. No comments, labels, extra whitespace or any other formatting — output only the punctuated text.
+
+        OUTPUT:  
+        <Punctuated translated text>
+      params:
+        source: state.translated_context
+        target: state.translated_context
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        cut_hanging: false
+    - name: remove_punctuation
+      # is_enabled: false
+      cls: prepare_step.RemovePunctuationStep
+      template: n/a
+    - name: strip_chars
+      cls: prepare_step.EmptyStep
+      template: n/a
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: gate_partial
+      cls: gate_partial_step.PartialGateStep
+      template: |-
+        ROLE:  
+        Partial‑Gate — real‑time speech‑segmentation assistant
+
+        TASK:  
+        Split the new source chunk into two parts:  
+        • Line 1 — words that can be translated NOW with high fidelity.  
+        • Line 2 — words that must WAIT for more context.
+
+        INPUT:  
+        Context = "{source_context}" # already translated & spoken  
+        NewChunk = "{source_text}" # new source words  
+        Lang = "{lang_from}"
+
+        RULES:  
+        1. Leading‑overlap removal only: if the last words of Context repeat at the start of NewChunk, delete those duplicates from Line 1 (do not touch internal overlaps).  
+        2. Keep original word order; do not rearrange phrases.  
+        3. Keep incomplete idioms, phrasal verbs, modal/auxiliary chains, prepositions, etc. together — if they need following words, put them in Line 2.  
+        4. Chunk‑length rule: when NewChunk has > 10 words, at least one word must remain in Line 1 (never send the whole chunk to Line 2).  
+        5. Context‑accumulation rule: you may place all of NewChunk in Line 2 (Line 1 = ".") only if translating any part now would damage quality.  
+        6. You may add punctuation inside the lines.  
+        7. Boundary check: always put something in Line 2 — this is crucial.  
+        8. No duplicates: do not repeat in Line 1 words already at the very end of Context.  
+        9. Formatting: return exactly two plain‑text lines, separated by a single newline; if a line would be empty, output "." (dot). No bullets, labels, comments or extra blank lines.  
+        10. Preserve the original language unchanged.
+
+        OUTPUT:  
+        Line1  
+        Line2
+      params:
+        words_treshold_buffer: 12
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_translation
+      cls: translation_step.TranslationStep
+      template: |-
+        ROLE:  
+        Stream‑Translator — real‑time interpreter
+
+        TASK:  
+        Translate INPUT from "{lang_from}" to "{lang_to}" and make it flow naturally after TRANSLATED‑CONTEXT.
+
+        INPUT:  
+        ORIGINAL‑CONTEXT = "{source_context}" # source, already spoken  
+        TRANSLATED‑CONTEXT = "{translated_context}" # target, already spoken  
+        INPUT = "{source_text}" # new source words
+
+        RULES:  
+        1. Return exactly one line containing only the translation of INPUT in {lang_to}. No extra breaks, tags or comments.  
+        2. Never repeat or re‑translate words from ORIGINAL‑CONTEXT or TRANSLATED‑CONTEXT.  
+        3. Proper nouns / names — keep their original form.  
+        4. Numbers & dates — spell them out fully in {lang_to}.  
+        5. Idioms & set phrases — translate by meaning, not word‑for‑word.  
+        6. Remove fillers ("uh", "you know", …). Replace any profanity with a neutral equivalent that preserves meaning.  
+        7. Ensure correct grammar and seamless continuation after TRANSLATED‑CONTEXT.  
+        8. No meta‑talk — absolutely no explanations, labels or formatting.  
+        9. No duplicate echo — do not repeat words already at the very end of TRANSLATED‑CONTEXT.
+
+        OUTPUT:  
+        <Translated text continuation>
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_correction
+      cls: correction_step.CorrectionStep
+      template: |-
+        ROLE:  
+        Stream‑Editor — final quality pass
+
+        TASK:  
+        Attach Draft to the end of Context and polish its grammar, punctuation and register without altering meaning.
+
+        INPUT:  
+        Context (immutable, already vocalised): "{translated_context}"  
+        Draft (to polish): "{translated_text}"
+
+        RULES:  
+        1. Produce exactly one line:  
+           – the corrected Draft, or  
+           – Draft unchanged if no fixes are needed.  
+        2. Do not repeat Context.  
+        3. Keep the language identical to Draft ({lang_to}).  
+        4. Use only commas and periods; avoid quotes, dashes, brackets, ellipses, emojis.  
+        5. Add a final period only when the line is unmistakably a complete sentence or an accepted abbreviation; never force punctuation for incomplete sentences.  
+        6. No comments, labels or extra whitespace — return just the text itself.  
+        7. Never add new words at the end of Draft, and do not truncate or duplicate any words.
+
+        OUTPUT:  
+        <Polished line>
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+tts:
+  gap_size_bytes: 8000
+  voice_map:
+    en:
+    - xtts
+    # - Kumar Dahl
+    # - Lidiya Szekeres
+    # - Alexandra Hisakawa
+    # - Asya Anara
+    - Dionisio Schuyler
+    ru:
+    - xtts
+    # - Kumar Dahl
+    # - Lidiya Szekeres
+    # - Alexandra Hisakawa
+    # - Asya Anara
+    - Dionisio Schuyler
+  hints:
+    audio_speed: 85

@@ -1,0 +1,213 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  - For more information, visit www.fema.gov
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 2.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 50  # Увеличено с 35 для лучшего контекста
+  temperature: 0.05  # Снижено с 0.1 для более стабильных результатов
+  language_map:
+    ru: Russian
+    en: English
+  pipeline:
+    - name: add_punctuation_to_source_context
+      cls: llm_step.LLMStep
+      stage: post
+      template: |-
+        ROLE:  
+        Punctuation Specialist (source text)
+
+        TASK:  
+        Insert correct punctuation into the input so it sounds natural and maintains logical flow.
+
+        INPUT:  
+        Text = "{source_context}"  
+        Lang = "{lang_from}"
+
+        RULES:  
+        1. Return exactly one line with proper punctuation.
+        2. Keep the language identical to the input ({lang_from}).
+        3. Use commas, periods, question marks, and colons appropriately.
+        4. Ensure logical sentence boundaries and proper clause separation.
+        5. For technical/educational content, use precise punctuation to clarify meaning.
+        6. If text ends mid-sentence, add appropriate punctuation only if it forms a complete thought.
+        7. No comments, labels, or extra formatting — output only the punctuated text.
+
+        OUTPUT:  
+        <Punctuated text>
+      params:
+        source: state.source_context
+        target: state.source_context
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        cut_hanging: false
+    - name: add_punctuation_to_translated_context
+      cls: llm_step.LLMStep
+      stage: post
+      template: |-
+        ROLE:  
+        Translation-Punctuation Specialist (target text)
+
+        TASK:  
+        Insert correct punctuation into the translated text, following target-language conventions and ensuring clarity.
+
+        INPUT:  
+        Text = "{translated_context}"  
+        Lang = "{lang_to}"
+
+        RULES:  
+        1. Return exactly one line with proper punctuation.
+        2. Keep the language identical to the input ({lang_to}).
+        3. Use appropriate punctuation for {lang_to} (commas, periods, question marks, colons).
+        4. Ensure logical sentence structure and proper clause separation.
+        5. For technical/educational content, prioritize clarity and precision.
+        6. Maintain natural flow while ensuring grammatical correctness.
+        7. No comments, labels, or extra formatting — output only the punctuated text.
+
+        OUTPUT:  
+        <Punctuated translated text>
+      params:
+        source: state.translated_context
+        target: state.translated_context
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        cut_hanging: false
+    - name: remove_punctuation
+      cls: prepare_step.RemovePunctuationStep
+      template: n/a
+    - name: strip_chars
+      cls: prepare_step.EmptyStep
+      template: n/a
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: gate_partial
+      cls: gate_partial_step.PartialGateStep
+      template: |-
+        ROLE:  
+        Advanced Partial-Gate — intelligent real-time speech segmentation specialist
+
+        TASK:  
+        Analyze the new source chunk and split it into two parts with high precision:
+        • Line 1 — words ready for immediate translation with full context
+        • Line 2 — words requiring additional context for accurate translation
+
+        INPUT:  
+        Context = "{source_context}" # previously processed and spoken text
+        NewChunk = "{source_text}" # incoming source words to process
+        Lang = "{lang_from}"
+
+        CRITICAL RULES:  
+        1. DUPLICATE DETECTION: Carefully check if the beginning of NewChunk repeats the end of Context. Remove ONLY exact word-for-word duplicates from the start of Line 1.
+        2. CONTEXT INTEGRITY: Never break technical terms, proper nouns, or compound concepts across lines.
+        3. SENTENCE BOUNDARIES: Prefer to break at natural sentence or clause boundaries.
+        4. MINIMUM PROGRESS: If NewChunk > 10 words, ensure at least some words go to Line 1 (never send everything to Line 2 unless absolutely necessary for quality).
+        5. TECHNICAL CONTENT: For educational/medical content, keep related concepts together.
+        6. PHRASE COMPLETION: Don't split phrasal verbs, prepositional phrases, or dependent clauses.
+        7. QUALITY OVER SPEED: If immediate translation would create confusion, hold words in Line 2.
+        8. PUNCTUATION: Add appropriate punctuation within lines for clarity.
+        9. NO INTERNAL DUPLICATES: Check for and eliminate any repetitions within NewChunk itself.
+        10. FORMATTING: Return exactly two lines separated by newline. Use "." for empty lines.
+
+        QUALITY CHECKS:
+        - Does Line 1 form coherent, translatable units?
+        - Are technical terms kept intact?
+        - Would a human translator understand Line 1 without Line 2?
+        - Are there any obvious duplications or repetitions?
+
+        OUTPUT:  
+        Line1  
+        Line2
+      params:
+        words_treshold_buffer: 15  # Увеличено с 12 для лучшего буферинга
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_translation
+      cls: translation_step.TranslationStep
+      template: |-
+        ROLE:  
+        Expert Stream-Translator — real-time interpretation specialist
+
+        TASK:  
+        Translate INPUT from "{lang_from}" to "{lang_to}" ensuring natural flow, technical accuracy, and seamless continuation after TRANSLATED-CONTEXT.
+
+        INPUT:  
+        ORIGINAL-CONTEXT = "{source_context}" # source text already processed
+        TRANSLATED-CONTEXT = "{translated_context}" # target text already spoken  
+        INPUT = "{source_text}" # new source words to translate
+
+        TRANSLATION RULES:  
+        1. OUTPUT: Return exactly one line containing only the translation of INPUT in {lang_to}.
+        2. NO REPETITION: Never repeat or re-translate content from ORIGINAL-CONTEXT or TRANSLATED-CONTEXT.
+        3. TECHNICAL ACCURACY: For medical/scientific terms, use precise {lang_to} equivalents.
+        4. PROPER NOUNS: Keep names and specific terms in their original form.
+        5. NUMBERS: Spell out numbers naturally in {lang_to}.
+        6. NATURAL FLOW: Ensure the translation flows naturally after TRANSLATED-CONTEXT.
+        7. GRAMMAR: Use correct {lang_to} grammar, including proper cases, tenses, and word order.
+        8. COHERENCE: Maintain logical connections between ideas.
+        9. REGISTER: Match the educational/formal tone of the source.
+        10. NO META-TALK: Absolutely no explanations, labels, or formatting.
+
+        QUALITY CHECKS:
+        - Does the translation sound natural to a native {lang_to} speaker?
+        - Are technical terms accurately translated?
+        - Does it flow logically from the previous context?
+        - Is the grammar correct and complete?
+
+        OUTPUT:  
+        <Natural, accurate translation>
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_correction
+      cls: correction_step.CorrectionStep
+      template: |-
+        ROLE:  
+        Expert Stream-Editor — final quality assurance specialist
+
+        TASK:  
+        Polish the Draft text for grammar, style, and clarity while ensuring it flows naturally after Context. Focus on creating publication-quality output.
+
+        INPUT:  
+        Context (immutable, already spoken): "{translated_context}"  
+        Draft (to polish): "{translated_text}"
+        Language: "{lang_to}"
+
+        CORRECTION RULES:  
+        1. OUTPUT: Return exactly one line — the corrected Draft (or unchanged if perfect).
+        2. NO CONTEXT REPETITION: Never repeat or modify Context.
+        3. GRAMMAR: Fix all grammatical errors, including cases, tenses, and agreement.
+        4. CLARITY: Improve sentence structure for maximum clarity.
+        5. FLOW: Ensure natural continuation from Context.
+        6. PUNCTUATION: Add appropriate punctuation (commas, periods, colons) for clarity.
+        7. TECHNICAL PRECISION: Maintain accuracy of technical/medical terms.
+        8. COMPLETENESS: Ensure sentences are complete and logical.
+        9. STYLE: Maintain consistent educational/formal register.
+        10. NO ADDITIONS: Don't add new information or change meaning.
+
+        SPECIFIC FIXES TO WATCH FOR:
+        - Incomplete sentences or phrases
+        - Incorrect word order
+        - Missing or wrong prepositions
+        - Repetitive phrases
+        - Unclear pronoun references
+        - Awkward constructions
+
+        QUALITY STANDARD:
+        The output should read as if written by a native {lang_to} speaker with expertise in the subject matter.
+
+        OUTPUT:  
+        <Polished, publication-ready text>
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+tts:
+  gap_size_bytes: 8000
+  voice_map:
+    en:
+    - xtts
+    - Dionisio Schuyler
+    ru:
+    - xtts
+    - Dionisio Schuyler
+  hints:
+    audio_speed: 85

@@ -1,0 +1,136 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  - For more information, visit www.fema.gov
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 2.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 35
+  temperature: 0.1
+  language_map:
+    ru: Russian
+    en: English
+  pipeline:
+    - name: add_punctuation_to_source_context
+      cls: llm_step.LLMStep
+      # is_enabled: false
+      stage: post
+      template: |-
+        You are text editor.
+        Task: Add punctuation to "{source_context}".
+        Rules: 1) Single line only 2) Use commas/periods/questions only 3) Same language "{lang_to}" 4) No forced punctuation for incomplete text
+        Output:
+      params:
+        source: state.source_context
+        target: state.source_context
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        cut_hanging: false
+    - name: add_punctuation_to_translated_context
+      cls: llm_step.LLMStep
+      # is_enabled: false
+      stage: post
+      template: |-
+        You are text editor.
+        Task: Add punctuation to "{translated_context}".
+        Rules: 1) Single line only 2) Use commas/periods/questions only 3) Same language "{lang_to}" 4) No forced punctuation for incomplete text
+        Output:
+      params:
+        source: state.translated_context
+        target: state.translated_context
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        cut_hanging: false
+    - name: remove_punctuation
+      # is_enabled: false
+      cls: prepare_step.RemovePunctuationStep
+      template: n/a
+    - name: strip_chars
+      cls: prepare_step.EmptyStep
+      template: n/a
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: gate_partial
+      cls: gate_partial_step.PartialGateStep
+      template: |-
+        You are text splitter.
+        Task: Split "{source_text}" into ready/waiting parts after "{source_context}".
+        Rules: 1) Two lines exactly 2) Remove overlap with context 3) Keep incomplete phrases in line 2 4) Use dot "." for empty lines 5) Language "{lang_from}" 6) No duplicates from context end 7) Split idioms to line 2 if incomplete 8) Put auxiliary/modal/preposition words to line 2
+        Output:
+      params:
+        words_treshold_buffer: 12
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_translation
+      cls: translation_step.TranslationStep
+      template: |-
+        You are “Stream‑Translator”, a real‑time interpreter.
+        You receive every turn:
+        • Source language: "{lang_from}"
+        • Target language: "{lang_to}"
+        
+        1) ORIGINAL‑CONTEXT (source, *already* spoken, may start mid-sentence): "{source_context}" ##
+        2) TRANSLATED‑CONTEXT (target, *already* spoken, may start mid-sentence): "{translated_context}" ##
+        3) INPUT (new source words to translate *only*): "{source_text}" ##
+        
+        Your **task** is to translate **INPUT** from "{lang_from}" to "{lang_to}".
+        Your translated sentence **MUST** attach seamlessly after TRANSLATED‑CONTEXT and don't repeat words.
+        
+        ▶︎ RULES – obey **every** point strictly.
+        1. **Output:** exactly **one** line containing only the translation of INPUT into "{lang_to}" language. No extra line breaks, tags, or commentary.
+        2. **Stay within INPUT** – **never** repeat or retranslate ORIGINAL‑CONTEXT and TRANSLATED‑CONTEXT.
+        3. **Names / proper nouns:** **KEEP** in their original form.
+        4. **Numbers & dates:** write them out in full words in {lang_to}.
+        5. **Idioms & set phrases:** translate **by meaning**, not word‑for‑word.
+        6. **Fillers (“uh”, “you know”, …):** omit fillers. You MUST substitute ALL swear words with normal words but still keep the meaning.
+        7. **Fluency:** ensure correct grammar and a **smooth** continuation of TRANSLATED‑CONTEXT.
+        8. **No meta‑talk** – no explanations, labels, or formatting.
+        9. **No duplicate echo**: Ensure your return **DOES NOT** repeat words already spoken at the very end of Context.
+
+        ▶︎ OUTPUT
+        Return the translation as a **smooth** continuation of TRANSLATED‑CONTEXT now:
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_correction
+      cls: correction_step.CorrectionStep
+      template: |-
+        You are “Stream‑Editor”, the last quality pass in a real‑time ASR → LLM → TTS interpreter.
+        You receive **each turn**:
+        • Context (immutable, already vocalized, target‑language): "{translated_context}" ##
+        • Draft (new text to polish, same target‑language): "{translated_text}" ##
+        ###
+        YOUR TASK is to smoothly attach Draft to the end of Context, fixing only grammar, word choice and its form, and basic punctuation **without altering meaning**.
+        ###
+        STRICT OUTPUT RULES:
+        1. Output **one single line**:
+        – the corrected Draft, **or**
+        – Draft unchanged if no fixes are needed.
+        2. **Do NOT** repeat Context.
+        3. Keep the language identical to Draft (target language).
+        4. Use ONLY commas and periods; avoid quotes, dashes, brackets, ellipses, emojis.
+        5. Add a final period **ONLY** when the line is unmistakably a complete sentence or accepted abbreviation.
+        6. No comments, labels, or extra whitespace—just the text itself.
+        7. **NEVER EVER** add new words in your return at the end of the Draft.
+        Now, your best take on the Draft in one line is:
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+tts:
+  gap_size_bytes: 8000
+  voice_map:
+    en:
+    - xtts
+    # - Kumar Dahl
+    # - Lidiya Szekeres
+    # - Alexandra Hisakawa
+    # - Asya Anara
+    - Dionisio Schuyler
+    ru:
+    - xtts
+    # - Kumar Dahl
+    # - Lidiya Szekeres
+    # - Alexandra Hisakawa
+    # - Asya Anara
+    - Dionisio Schuyler
+  hints:
+    audio_speed: 85
