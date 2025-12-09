@@ -100,8 +100,18 @@ def initialize_configs(
     settings_config = cast(DictConfig, cfg["settings"])
 
     core_config = ProcessingGraphConfig.model_validate(pipeline_config)
+    print(core_config.model_dump(mode="json"))
+    print()
+
     settings = SettingsSchema.model_validate(settings_config)
+    print(settings.model_dump(mode="json"))
+    print()
+    
     neural_config_dict = OmegaConf.to_container(neural_config)
+    print(json.dumps(neural_config_dict, indent=2, ensure_ascii=False))
+    print()
+
+    # exit()
 
     return core_config, settings, neural_config_dict
 

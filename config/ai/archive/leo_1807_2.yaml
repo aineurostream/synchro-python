@@ -107,9 +107,9 @@ translate:
         • Source language: "{lang_from}"
         • Target language: "{lang_to}"
         
-        • 'ORIGINAL‑CONTEXT' (source, already spoken, may start mid-sentence).
-        • 'TRANSLATED‑CONTEXT' (target, already spoken, may start mid-sentence).
-        • 'INPUT' (new source words to translate only).
+        1) ORIGINAL‑CONTEXT (source, already spoken, may start mid-sentence): "{source_context}" ##
+        2) TRANSLATED‑CONTEXT (target, already spoken, may start mid-sentence): "{translated_context}" ##
+        3) INPUT (new source words to translate *only*): "{source_text}" ##
         
         Your TASK is to translate INPUT from "{lang_from}" to "{lang_to}".
         Your translated sentence MUST attach seamlessly to TRANSLATED‑CONTEXT.
@@ -126,10 +126,6 @@ translate:
         9. Do NOT repeat words in the beginning of your return that are already present at the very end of TRANSLATED‑CONTEXT.
         10. **NEVER EVER** add new words to the end of your return that are absent at the end of the Input.
         #
-        So,
-        • 'ORIGINAL‑CONTEXT': "{source_context}" #
-        • 'TRANSLATED‑CONTEXT': "{translated_context}" #
-        • 'INPUT': "{source_text}" #
 
         Now, your best take on the Input translation as a SMOOTH continuation of TRANSLATED‑CONTEXT is:
       params:
@@ -161,16 +157,16 @@ tts:
   voice_map:
     en:
     - xtts
-    - Kumar Dahl
+    # - Kumar Dahl
     # - Lidiya Szekeres
-    # - Alexandra Hisakawa
+    - Alexandra Hisakawa
     # - Asya Anara
     # - Dionisio Schuyler
     ru:
     - xtts
-    - Kumar Dahl
+    # - Kumar Dahl
     # - Lidiya Szekeres
-    # - Alexandra Hisakawa
+    - Alexandra Hisakawa
     # - Asya Anara
     # - Dionisio Schuyler
   hints:

@@ -164,16 +164,16 @@ tts:
   voice_map:
     en:
     - xtts
-    # - Kumar Dahl
+    - Kumar Dahl
     # - Lidiya Szekeres
-    - Alexandra Hisakawa
+    # - Alexandra Hisakawa
     # - Asya Anara
     # - Dionisio Schuyler
     ru:
     - xtts
-    # - Kumar Dahl
+    - Kumar Dahl
     # - Lidiya Szekeres
-    - Alexandra Hisakawa
+    # - Alexandra Hisakawa
     # - Asya Anara
     # - Dionisio Schuyler
   hints:

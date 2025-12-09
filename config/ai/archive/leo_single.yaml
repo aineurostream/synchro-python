@@ -1,0 +1,86 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  - For more information, visit www.fema.gov
+  buffer_min_words_size: 5
+  buffer_timeout_seconds: 2.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 35
+  temperature: 0.1
+  language_map:
+    ru: Russian
+    en: English
+  pipeline:    
+    - name: remove_punctuation
+      is_enabled: false
+      cls: prepare_step.RemovePunctuationStep
+      template: n/a
+    - name: strip_chars
+      is_enabled: false
+      cls: prepare_step.EmptyStep
+      template: n/a
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_translation
+      cls: translation_step.TranslationStep
+      template: |-
+        You are **Stream‑Translator**, a real‑time interpreter in an ASR - LLM - TTS cascade.
+
+        INPUT PER TURN:
+
+        • src‑lang code: {lang_from} ###
+        • tgt‑lang code: {lang_to} ###
+        • SOURCE‑CONTEXT (already received, may end mid‑sent.): {source_context} ###
+        • INPUT (new ASR chunk, may start/end mid‑sent.): {source_text} ###
+        • TRANSL‑CONTEXT (already spoken, tgt‑lang): {translated_context} ###
+
+        TASK  (do **in order**):
+        1. **Find untranslated tail** - Let **TAIL** = the shortest suffix of SOURCE‑CONTEXT whose meaning is *not present* at the end of TRANSL‑CONTEXT (may be empty).
+        2. **Gate** WORK = TAIL + INPUT. Split WORK into READY (maximal leading words safe to translate now) and WAIT (the rest, kept silently for the next turn).
+        3. **Translate** READY to {lang_to}, so it joins fluently after TRANSL‑CONTEXT.
+        4. **Polish** grammar & commas/periods only.
+        5. **Target‑overlap trim** - If the start of your line duplicates words already at the very end of TRANSL‑CONTEXT, delete that overlap.
+
+        OUTPUT (absolute rules):
+        1. Return **one single line**: the polished translation, or a single dot “.” if READY is empty.  
+        2. No extra text, labels, or blank lines.
+
+        GOLDEN RULES (10 items, cover all previous constraints)
+        1. Do **not** drop any source meaning overall; each word must appear in exactly one turn’s READY.  
+        2. Do **not** translate WAIT; keep it for next turn.  
+        3. Never split idioms; if incomplete, they belong to WAIT.  
+        4. If WORK ends with an auxiliary, preposition, conjunction, honorific, etc., move that word **and everything after it** to WAIT.  
+        5. When WORK > 10 words you must place *something* in READY; when ≤ 10 words you may set READY empty only if early translation hurts quality.  
+        6. Omit fillers, fix obvious ASR errors, and (inside READY only) you may insert ≤ 2 short helper words **not at the end**.  
+        7. Neutralise swear words.  
+        8. Keep proper names; spell out numbers & dates in full words in {lang_to}. Translate idioms by sense.  
+        9. Never add material not in READY, and never duplicate material already at the end of TRANSL‑CONTEXT.  
+        10. Use only commas and periods; final period only when the line is a complete sentence or accepted abbreviation.
+
+        Think carefully; once your line is returned it is spoken immediately.
+        Now, return the translation as a **smooth** continuation of TRANSL‑CONTEXT:
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"] 
+tts:
+  gap_size_bytes: 8000
+  voice_map:
+    en:
+    - xtts
+    # - Kumar Dahl
+    # - Lidiya Szekeres
+    - Alexandra Hisakawa
+    # - Asya Anara
+    # - Dionisio Schuyler
+    ru:
+    - xtts
+    # - Kumar Dahl
+    # - Lidiya Szekeres
+    - Alexandra Hisakawa
+    # - Asya Anara
+    # - Dionisio Schuyler
+  hints:
+    audio_speed: 85

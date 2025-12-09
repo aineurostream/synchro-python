@@ -50,31 +50,21 @@ nodes:
     device: 11
     channel: 1
 edges:
-  - - input_channel_0_ru
-    - normalizer_input_0_ru
-  - - normalizer_input_0_ru
-    - vad_input_0_ru
-  - - vad_input_0_ru
-    - resampler_input_0_ru
-  - - input_channel_0_ru
-    - output_file_source_0
-  - - resampler_input_0_ru
-    - converter_0_to_en
-  - - resampler_input_0_ru
-    - converter_0_to_ja
-  - - converter_0_to_en
-    - resampler_output_converter_0_to_en_to_0
-  - - resampler_output_converter_0_to_en_to_0
-    - mixer_en_0
-  - - mixer_en_0
-    - output_file_en_0
-  - - mixer_en_0
-    - output_channel_en_0
-  - - converter_0_to_ja
-    - resampler_output_converter_0_to_ja_to_1
-  - - resampler_output_converter_0_to_ja_to_1
-    - mixer_ja_1
-  - - mixer_ja_1
-    - output_file_ja_1
-  - - mixer_ja_1
-    - output_channel_ja_1
+  - [input_channel_0_ru, normalizer_input_0_ru]
+  - [normalizer_input_0_ru, vad_input_0_ru]
+  - [vad_input_0_ru, resampler_input_0_ru]
+  - [input_channel_0_ru, output_file_source_0] # исходный звук в файл
+
+  # to en
+  - [resampler_input_0_ru, converter_0_to_en]
+  - [converter_0_to_en, resampler_output_converter_0_to_en_to_0]
+  - [resampler_output_converter_0_to_en_to_0, mixer_en_0]
+  - [mixer_en_0, output_file_en_0]
+  - [mixer_en_0, output_channel_en_0]
+
+  # to jp
+  - [resampler_input_0_ru, converter_0_to_ja]
+  - [converter_0_to_ja, resampler_output_converter_0_to_ja_to_1]
+  - [resampler_output_converter_0_to_ja_to_1, mixer_ja_1]
+  - [mixer_ja_1, output_file_ja_1]
+  - [mixer_ja_1, output_channel_ja_1]

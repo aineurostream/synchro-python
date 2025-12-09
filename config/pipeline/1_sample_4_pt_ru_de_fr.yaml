@@ -1,0 +1,127 @@
+nodes:
+  - name: input_file_0
+    node_type: input_file
+    path: samples/sample_01.wav
+    looping: false
+  - name: normalizer_input_0
+    node_type: normalizer
+    headroom: 3
+  - name: vad_input_0
+    node_type: vad
+    threshold: 1000
+  - name: resampler_input_0
+    node_type: resampler
+    to_rate: 16000
+  - name: output_file_source_0
+    node_type: output_file
+    path: $WORKING_DIR/source_input_0.wav
+
+  # pt
+  - name: converter_0_to_pt
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: en
+    lang_to: pt
+  - name: mixer_pt_0
+    node_type: mixer
+  - name: resampler_output_converter_0_to_pt_to_0
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_pt_0
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_pt_0.wav
+  - name: output_channel_pt_0
+    node_type: output_channel
+    device: 19
+    channel: 1
+
+  # ru
+  - name: converter_0_to_ru
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: en
+    lang_to: ru
+  - name: mixer_ru_1
+    node_type: mixer
+  - name: resampler_output_converter_0_to_ru_to_1
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_ru_1
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_ru_1.wav
+  - name: output_channel_ru_1
+    node_type: output_channel
+    device: 19
+    channel: 1
+
+  # de
+  - name: converter_0_to_de
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: en
+    lang_to: de
+  - name: mixer_de_1
+    node_type: mixer
+  - name: resampler_output_converter_0_to_de_to_1
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_de_1
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_de_1.wav
+  - name: output_channel_de_1
+    node_type: output_channel
+    device: 19
+    channel: 1
+
+  # fr
+  - name: converter_0_to_fr
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: en
+    lang_to: fr
+  - name: mixer_fr_1
+    node_type: mixer
+  - name: resampler_output_converter_0_to_fr_to_1
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_fr_1
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_fr_1.wav
+  - name: output_channel_fr_1
+    node_type: output_channel
+    device: 19
+    channel: 1
+
+edges:
+  - [input_file_0, output_file_source_0] # исходный звук в файл
+  - [input_file_0, normalizer_input_0]
+  - [normalizer_input_0, vad_input_0]
+  - [vad_input_0, resampler_input_0]
+
+  # to 1
+  - [resampler_input_0, converter_0_to_pt]
+  - [converter_0_to_pt, resampler_output_converter_0_to_pt_to_0]
+  - [resampler_output_converter_0_to_pt_to_0, mixer_pt_0]
+  - [mixer_pt_0, output_file_pt_0]
+  # - [mixer_pt_0, output_channel_pt_0]
+
+  # to 2
+  - [resampler_input_0, converter_0_to_ru]
+  - [converter_0_to_ru, resampler_output_converter_0_to_ru_to_1]
+  - [resampler_output_converter_0_to_ru_to_1, mixer_ru_1]
+  - [mixer_ru_1, output_file_ru_1]
+  # - [mixer_ru_1, output_channel_ru_1]
+
+  # to 3
+  - [resampler_input_0, converter_0_to_de]
+  - [converter_0_to_de, resampler_output_converter_0_to_de_to_1]
+  - [resampler_output_converter_0_to_de_to_1, mixer_de_1]
+  - [mixer_de_1, output_file_de_1]
+  # - [mixer_de_1, output_channel_de_1]
+
+  # to 4
+  - [resampler_input_0, converter_0_to_fr]
+  - [converter_0_to_fr, resampler_output_converter_0_to_fr_to_1]
+  - [resampler_output_converter_0_to_fr_to_1, mixer_fr_1]
+  - [mixer_fr_1, output_file_fr_1]
+  # - [mixer_fr_1, output_channel_fr_1]
