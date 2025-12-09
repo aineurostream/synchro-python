@@ -1,0 +1,70 @@
+nodes:
+  - name: input_channel_0
+    node_type: input_channel
+    device: 10
+    channel: 1
+  - name: normalizer_input_0
+    node_type: normalizer
+    headroom: 3
+  - name: vad_input_0
+    node_type: vad
+    threshold: 1000
+  - name: resampler_input_0
+    node_type: resampler
+    to_rate: 16000
+  - name: output_file_source_0
+    node_type: output_file
+    path: $WORKING_DIR/source_input_0.wav
+  - name: converter_0_to_pt
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: en
+  - name: converter_0_to_uk
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: ja
+  - name: mixer_pt_0
+    node_type: mixer
+  - name: resampler_output_converter_0_to_pt_to_0
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_pt_0
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_pt_0.wav
+  - name: output_channel_pt_0
+    node_type: output_channel
+    device: 11
+    channel: 1
+  - name: mixer_uk_1
+    node_type: mixer
+  - name: resampler_output_converter_0_to_uk_to_1
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_uk_1
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_uk_1.wav
+  - name: output_channel_uk_1
+    node_type: output_channel
+    device: 11
+    channel: 1
+edges:
+  - [input_channel_0, output_file_source_0] # исходный звук в файл
+  - [input_channel_0, normalizer_input_0]
+  - [normalizer_input_0, vad_input_0]
+  - [vad_input_0, resampler_input_0]
+
+  # to 1
+  - [resampler_input_0, converter_0_to_pt]
+  - [converter_0_to_pt, resampler_output_converter_0_to_pt_to_0]
+  - [resampler_output_converter_0_to_pt_to_0, mixer_pt_0]
+  - [mixer_pt_0, output_file_pt_0]
+  - [mixer_pt_0, output_channel_pt_0]
+
+  # to 2
+  - [resampler_input_0, converter_0_to_uk]
+  - [converter_0_to_uk, resampler_output_converter_0_to_uk_to_1]
+  - [resampler_output_converter_0_to_uk_to_1, mixer_uk_1]
+  - [mixer_uk_1, output_file_uk_1]
+  - [mixer_uk_1, output_channel_uk_1]

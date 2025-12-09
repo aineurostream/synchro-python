@@ -1,5 +1,6 @@
 import logging
 import time
+import threading
 from types import TracebackType
 from typing import Literal, Self
 
@@ -20,6 +21,15 @@ JACK_DEVICE = "jack"
 
 
 class ChannelOutputNode(AbstractOutputNode):
+    """
+    Узел вывода на устройство. 
+    
+    Ключевые особенности:
+      - Буфер потокобезопасен (lock),
+      - Конвертация байтов ↔ numpy строго под dtype стрима,
+      - Моно-данные дублируются во все доступные (или 2) канала вывода.
+    """
+
     def __init__(
         self,
         config: OutputChannelStreamerNodeSchema,
@@ -32,46 +42,64 @@ class ChannelOutputNode(AbstractOutputNode):
         self._stream: sd.OutputStream | None = None
         self._last_time_emit = 0.0
         self._out_buffer = b""
-        self._output_interval_secs = output_interval_secs
+        self._lock = threading.Lock()
 
     def __enter__(self) -> Self:
         def callback(
-            out_data: np.ndarray,
-            frames: int,
-            _time: int,
-            status: str | None,
+            out_data: np.ndarray, 
+            frames: int, 
+            _time: int, 
+            status: str | None
         ) -> None:
             if status:
-                self._logger.error("Error in audio stream: %s", status)
+                logger.error("Error in audio stream: %s", status)
 
-            outgoing_buffer = np.frombuffer(self._out_buffer, dtype=np.int16)
-            available_size = min(frames, outgoing_buffer.size)
-            if available_size > 0:
-                out_data[:available_size, self._config.channel - 1] = outgoing_buffer[
-                    :available_size
-                ]
-                if available_size < frames:
-                    out_data[available_size:, self._config.channel - 1] = 0
+            # Достаём накопленные байты атомарно
+            with self._lock:
+                buf = self._out_buffer
+                self._out_buffer = b""
+
+            dtype = DEFAULT_AUDIO_FORMAT.numpy_format  # должен совпадать с dtype стрима!
+            samples = np.frombuffer(buf, dtype=dtype)
+
+            # Мы считаем, что приходят МОНО-данные. Дублируем во все выходные каналы.
+            # out_data.shape = (frames, out_channels)
+            out_channels = 1 if out_data.ndim == 1 else out_data.shape[1]
+            available = min(frames, samples.size)
+
+            if available > 0:
+                # Заполняем каждую колонку одинаковыми моно-сэмплами
+                for ch in range(out_channels):
+                    out_data[:available, ch] = samples[:available]
+                if available < frames:
+                    out_data[available:, :] = 0
             else:
-                out_data[:, self._config.channel - 1] = 0
-            self._out_buffer = outgoing_buffer[available_size:].tobytes()
+                out_data[:, :] = 0
 
         device = JACK_DEVICE if JACK_ENABLED else self._config.device
-        device_info = sd.query_devices(device, "input")
-        self._sample_rate = device_info["default_samplerate"]
+        device_info = sd.query_devices(device, "output")
+        self._sample_rate = int(device_info["default_samplerate"])
+
+        # Кол-во каналов вывода — не более 2 (стерео) и не более max_device_channels
+        max_dev_ch = int(device_info.get("max_output_channels", 2))
+        out_channels = min(max(2, 1), max_dev_ch)  # минимум стерео, если устройство позволяет
+
         self._stream = sd.OutputStream(
             device=device,
-            channels=self._config.channel,
+            channels=out_channels,
             samplerate=self._sample_rate,
-            dtype=DEFAULT_AUDIO_FORMAT.numpy_format,
+            dtype=DEFAULT_AUDIO_FORMAT.numpy_format,  # например, np.int16
             callback=callback,
         )
         self._stream.start()
+
+        # Предзаполнение нулями, чтобы callback имел запас на первом цикле
         prefill_frames = int(self._sample_rate * PREFILL_SECONDS)
-        self._out_buffer += np.zeros((prefill_frames,), dtype=np.int16).tobytes()
+        with self._lock:
+            self._out_buffer += np.zeros((prefill_frames,), dtype=DEFAULT_AUDIO_FORMAT.numpy_format).tobytes()
+
         return self
 
-    
     def _cleanup(self):
         logger.info("Cleanup output node")
         if self._stream:
@@ -79,61 +107,39 @@ class ChannelOutputNode(AbstractOutputNode):
                 self._stream.stop()
                 self._stream.close()
             finally:
-                pass
-
+                self._stream = None
         return False
 
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> Literal[False]:
+    def __exit__(self, exc_type, exc_val, exc_tb) -> Literal[False]:
         self._cleanup()
 
     def __del__(self):
         self._cleanup()
 
     def put_data(self, _source: str, data: FrameContainer) -> None:
-        if data.rate != self._sample_rate:
-            self._logger.warning(
-                "Data rate is %d, expected %d",
-                data.rate,
-                self._sample_rate,
-            )
-
-        self._logger.info(
-            "Writing %d frames to stream",
-            data.length_frames,
-            extra={
-                "frames": data.length_frames,
-                "rate": data.rate,
-                "length": data.length_secs,
-                "event": "audio_write",
-                "node": self.name,
-                "node_type": "channel_output",
-            },
-        )
+        """
+        Принимаем моно PCM-данные в формате DEFAULT_AUDIO_FORMAT.
+        Если формат/частота отличаются — лучше конвертировать на предыдущем шаге
+        (через FormatValidatorNode и/или ResampleNode).
+        """
         if self._stream is None:
             raise RuntimeError("Audio stream is not open")
-        frames_per_buffer = int(
-            self._sample_rate * self._output_interval_secs,
-        )
-        if frames_per_buffer > data.length_frames:
-            self._logger.warning(
-                "Expected %d frames, got %d",
-                frames_per_buffer,
-                data.length_frames,
-            )
 
-        current_emit_time = time.time()
+        if data.rate != self._sample_rate:
+            logger.warning("Data rate is %d, expected device rate %d", data.rate, self._sample_rate)
+
+        # Копим байты атомарно (callback читает этот буфер)
+        with self._lock:
+            self._out_buffer += data.frame_data
+
+        # Мониторим тайминг через monotonic — устойчиво к NTP/сдвигам
+        current_emit_time = time.monotonic()
         if self._last_time_emit > 0:
             time_diff = current_emit_time - self._last_time_emit
             if time_diff > data.length_secs:
-                self._logger.warning(
+                logger.warning(
                     "Time diff is %.3f while expected %.3f",
                     time_diff,
                     data.length_secs,
                 )
-        self._out_buffer += data.frame_data
         self._last_time_emit = current_emit_time

@@ -6,7 +6,11 @@ from pydantic import BaseModel
 
 
 class AudioFormatType(str, Enum):
+    INT_8 = "int8"
     INT_16 = "int16"
+    INT_24 = "int24"
+    INT_32 = "int32"
+    FLOAT_32 = "float32"
 
 
 class AudioFormat(BaseModel):

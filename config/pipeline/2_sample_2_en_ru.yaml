@@ -1,0 +1,106 @@
+nodes:
+  # in:1
+  - name: input_file_1
+    node_type: input_file
+    path: samples/sample_01.wav
+    looping: false
+  - name: normalizer_input_1
+    node_type: normalizer
+    headroom: 3
+  - name: vad_input_1
+    node_type: vad
+    threshold: 1000
+  - name: resampler_input_1
+    node_type: resampler
+    to_rate: 16000
+  - name: output_file_source_1
+    node_type: output_file
+    path: $WORKING_DIR/source_input_1.wav
+
+  # in:2
+  - name: input_file_2
+    node_type: input_file
+    path: samples/sample_01.wav
+    looping: false
+  - name: normalizer_input_2
+    node_type: normalizer
+    headroom: 3
+  - name: vad_input_2
+    node_type: vad
+    threshold: 1000
+  - name: resampler_input_2
+    node_type: resampler
+    to_rate: 16000
+  - name: output_file_source_2
+    node_type: output_file
+    path: $WORKING_DIR/source_input_2.wav
+
+  # out:common
+  - name: mixer_0
+    node_type: mixer
+  - name: output_channel_0
+    node_type: output_channel
+    device: 19
+    channel: 1
+
+  # out:en
+  - name: converter_1_to_2
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: en
+    lang_to: ru
+  - name: mixer_2
+    node_type: mixer
+  - name: resampler_output_2
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_target_2
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_2.wav
+
+  # out:ru
+  - name: converter_2_to_1
+    node_type: converter_seamless
+    server_url: http://127.0.0.1:8000
+    lang_from: ru
+    lang_to: en
+  - name: mixer_1
+    node_type: mixer
+  - name: resampler_output_1
+    node_type: resampler
+    to_rate: 44100
+  - name: output_file_target_1
+    node_type: output_file
+    path: $WORKING_DIR/translated_output_1.wav
+
+edges:
+  # in:1
+  - [input_file_1, output_file_source_1] # исходный звук в файл
+  - [input_file_1, normalizer_input_1]
+  - [normalizer_input_1, vad_input_1]
+  - [vad_input_1, resampler_input_1]
+
+  # in:1 out:1
+  - [resampler_input_1, converter_1_to_2]
+  - [converter_1_to_2, resampler_output_converter_2]
+  - [resampler_output_converter_2, mixer_2]
+  - [mixer_2, output_file_target_2]
+  # - [mixer_2, output_channel_pt_0]
+
+  # in:2
+  - [input_file_2, output_file_source_2] # исходный звук в файл
+  - [input_file_2, normalizer_input_2]
+  - [normalizer_input_2, vad_input_2]
+  - [vad_input_2, resampler_input_2]
+
+  # in:2 out:1
+  - [resampler_input_2, converter_2_to_1]
+  - [converter_2_to_1, resampler_output_converter_1]
+  - [resampler_output_1, mixer_1]
+  - [mixer_1, output_file_target_1]
+  # - [mixer_2, output_channel_pt_0]
+
+  # out
+  # - [mixer_2, mixer_0]
+  # - [mixer_1, mixer_0]
+  # - [mixer_0, output_channel_0]

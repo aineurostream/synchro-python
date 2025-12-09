@@ -1,0 +1,51 @@
+name: Sample RU->EN
+input_interval_secs: 0.3
+processor_interval_secs: 0.016
+limits:
+  run_time_seconds: 45  # <-- Set 0 for unlimited time
+metrics:
+  quality:
+  - node: converter_1_to_2
+    expected_transcription:  |-
+      if by some chance you haven 't seen that in your store yet
+      you can rest assured that one day soon you will and what
+      this does is it leads people to walk into their stores asking
+      this question and do you know what the answer to this question
+      now is the answer is no it is not possible to buy a cell phone
+      that doesn't do too much so in other aspects of life that are
+      much more significant than buying things the same explosion of
+      choice is true health care it is no longer the case in the
+      united states that you
+    expected_translation: |-
+      Если вдруг в вашем магазине такого еще нет,
+      будьте уверены — вскоре обязательно появится.
+      И это приводит к тому, что люди заходят в магазины,
+      задавая себе один вопрос:
+      “Можно ли купить телефон, который не делает слишком много?”
+      И знаете, каков ответ на этот вопрос сегодня?
+      Нет. Купить мобильный телефон, который не перегружен функциями, невозможно.
+      И то же самое касается других, куда более значимых сфер жизни,
+      чем просто покупки. Например, здравоохранение. В Соединенных Штатах
+      больше не существует такой ситуации, когда вы
+  - node: converter_2_to_1
+    expected_transcription:  |-
+      Если вдруг в вашем магазине такого еще нет,
+      будьте уверены — вскоре обязательно появится.
+      И это приводит к тому, что люди заходят в магазины,
+      задавая себе один вопрос:
+      “Можно ли купить телефон, который не делает слишком много?”
+      И знаете, каков ответ на этот вопрос сегодня?
+      Нет. Купить мобильный телефон, который не перегружен функциями, невозможно.
+      И то же самое касается других, куда более значимых сфер жизни,
+      чем просто покупки. Например, здравоохранение. В Соединенных Штатах
+      больше не существует такой ситуации, когда вы
+    expected_translation: |-
+      if by some chance you haven 't seen that in your store yet
+      you can rest assured that one day soon you will and what
+      this does is it leads people to walk into their stores asking
+      this question and do you know what the answer to this question
+      now is the answer is no it is not possible to buy a cell phone
+      that doesn't do too much so in other aspects of life that are
+      much more significant than buying things the same explosion of
+      choice is true health care it is no longer the case in the
+      united states that you

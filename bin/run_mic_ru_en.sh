@@ -2,7 +2,7 @@
 
 SERVER="http://127.0.0.1:50080" \
 DEVICE_IN=0 \
-DEVICE_OUT=5 \
+DEVICE_OUT=1 \
 uv run python hydra_run.py \
     --config-name config \
     pipeline=mic_ru_en \

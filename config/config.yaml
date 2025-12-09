@@ -1,11 +1,26 @@
 defaults:
-  # - ai: leo_group
-  - ai: leo_0707
+  - ai: leo_20250930.yaml
+  # - ai: demo_12092025.yaml
+  # - ai: demo_golos_and_subs_29072025 #best demo for 29 07 2025 
+  # - ai: demo_golos_and_subs_buffer_5 #5 words buffer demo
+  # - ai: demo_golos_no_subs
+  # - ai: leo_group_2_for_q4 # Отлично сочетается с QAT Q4_0
+  # - ai: leo_group_3 # Лучше всего для QAT Q5 K L
+  # - ai: stepan_group_1 # test
+  # - ai: stepan_test_2307 # test
+  # - ai: leo_1807
+  # - ai: leo_1807_4 # тест без удаления запятых с фокусом на субтитры
+  # - ai: leo_1807 # demo cofig
+  # - ai: leo_single # single prompt
   # - ai: stepan_1707 # старые промпты, норм работают
   # - ai: stepan_1807_optimized_1 #старые промпты, норм работают
   # - ai: stepan_1807_optimized_5 #эксперимент
   # - ai: grouped
   # - ai: stepan_2107 # пытаемся победить повторы в транслейте
+  # - ai: NE_TROGAI_ETO_DLYA_DEMO # режим демо для субтитров и только субтитров
+  # - ai: NE_TROGAI_ETO_DLYA_DEMO_2 # demo 2
+  # - ai: DEMO_SUBTITELS # best for subs
+  # - ai: DEMO_SUBS_DVA_SHAGA # krasivie subtitry no trebuet optimizacii
   - pipeline: leo_file
   - settings: default
   - override hydra/job_logging: custom

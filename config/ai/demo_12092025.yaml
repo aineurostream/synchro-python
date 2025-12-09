@@ -1,0 +1,304 @@
+stt:
+  stop_words:
+  - DimaTorzok
+  - субтитры сделал
+  - субтитры делал
+  - M.K.
+  - For more information, visit www.fema.gov
+  - For more information visit www.fema.gov
+  - www.fema.gov
+  buffer_min_words_size: 10
+  buffer_timeout_seconds: 2.0
+translate:
+  llm_call_timeout: 120
+  context_window_words: 35
+  temperature: 0.2
+  language_map:
+    ru: Русский
+    uk: Украинский
+    tt: Татарский
+    az: Азербайджанский
+    kk: Казахский
+    be: Белорусский
+    ka: Грузинский
+    tr: Турецкий
+    de: Немецкий
+    ro: Румынский
+    en: Английский
+    ja: Японский
+    fr: Французский
+    it: Итальянский
+    es: Испанский
+    hi: Хинди
+    pt: Португальский
+    zh: Китайский
+    ar: Арабский
+    uz: Узбекский
+    pl: Польский
+    fa: Фарси
+  pipeline:
+    - name: remove_punctuation
+      cls: prepare_step.RemovePunctuationStep
+      # is_enabled: false
+    - name: strip_chars
+      cls: prepare_step.EmptyStep
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: gate_and_translated_punctuation
+      kind: group
+      type: parallel
+      steps:
+        - name: add_punctuation_to_translated_context
+          cls: llm_step.LLMStep
+          template: |-
+            You are an expert text editor.
+            Please add correct punctuation to the following Input: "{translated_context}" ##
+
+            STRICT OUTPUT RULES:
+            1. Output MUST be a single line.
+            2. Use the same language as the Input ("{lang_to}").
+            3. Use ONLY commas, periods and question marks. Do NOT add quotes, dashes, brackets, ellipses, emojis.
+            4. If the text ends mid-sentence, do NOT force punctuation: it is OK to end such text with no punctuation sign. Add a final period **ONLY** if the ending is unmistakably a complete sentence or recognized abbreviation.
+            5. No comments, explanations, labels, or extra whitespace — return the text only.
+
+            So, your best take on the output is:
+          params:
+            source: state.translated_context
+            target: state.translated_context
+            strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+            cut_hanging: false
+        - name: gate_partial
+          cls: gate_partial_step.PartialGateStep
+          template: |-
+            You are **Partial Gate**, the text‑splitting assistant in a cascade ASR → LLM → XTTS interpreter.
+            You will receive:
+            • 'Context'- the part of the speech that is **ALREADY translated and spoken** (may be empty).
+            • 'Input' - the **NEW** chunk of original‑language speech (may start or end mid‑sentence).
+            ###
+            Your task is to divide the Input into two lines: what can be translated **NOW** vs. what must **WAIT** for more context.
+            ###
+            ▶︎ OUTPUT:
+            Please return **exactly two plain text lines** (use a newline to separate them):
+            **Line 1** – words from Input that **can be translated immediately ONLY with high fidelity**.
+            **Line 2** – remaining words from Input that **still need more following words** to be translated with confidence.
+            If a line would be empty, write a single dot character “.”.
+            ###
+
+            ▶︎ RULES – OBEY **every** point strictly:
+            1. **Leading‑overlap removal only**: If the *end* of Context and the *start* of Input contain the **same consecutive word(s)**, you **MUST** delete that overlapped fragment from Line 1. Do **NOT** delete repeated words that occur elsewhere inside the Context or Input.
+            2. **No inventions – with a narrow exception**: do **NOT** add content words; you MAY correct obvious transcription errors in Line 1. You MAY insert **≤ 2 words** (articles, prepositions, auxiliaries, obviously missing words) **ONLY INSIDE** Line 1 when they are clearly missing and essential for grammar or meaning. **NEVER** insert words at the very end of Line 1.
+            3. **Keep meaning**: omit **ONLY** filler words (“uh”, “you know”, etc.). You MUST substitute **ALL** swear words with normal words but still keep the meaning.
+            4. **Idioms intact**: do **NOT** split idioms or set phrases; if incomplete, you **MUST** place those words entirely in Line 2.
+            5. **_context}"##
+            • 'Input': "{source_text}"##
+
+            Now, your best taks in Line 2.
+            9. **No duplicates**: do **NOT** repeat words in Line 1 that are already present at the very end of Context.
+            10. **Formatting**: output ONLY the twe on the Input partition into two lines is:
+          params:
+            words_treshold_buffer: 12
+            strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: default_translation
+      cls: translation_step.TranslationStep
+      template: |-
+        You are “Stream‑Translator”, a real‑time interpreter.
+        You receive every turn:
+        • Source language: "{lang_from}"
+        • Target language: "{lang_to}"
+        
+        1) ORIGINAL‑CONTEXT (source, *already* spoken, may start mid-sentence): "{source_context}" ##
+        2) TRANSLATED‑CONTEXT (target, *already* spoken, may start mid-sentence): "{translated_context}" ##
+        3) INPUT (new source words to translate *only*): "{source_text}" ##
+        
+        Your **task** is to translate **INPUT** from "{lang_from}" to "{lang_to}".
+        Your translated sentence **MUST** attach seamlessly after TRANSLATED‑CONTEXT.
+        
+        ▶︎ RULES – obey **every** point strictly.
+        1. **Output:** exactly **one** line containing only the translation of INPUT into "{lang_to}" language. No extra line breaks, tags, or commentary.
+        2. **Stay within INPUT** – **never** repeat or retranslate ORIGINAL‑CONTEXT and TRANSLATED‑CONTEXT.
+        3. **Names / proper nouns:** **KEEP** in their original form.
+        4. **Numbers & dates:** write them out in full words in {lang_to}.
+        5. **Idioms & set phrases:** translate **by meaning**, not word‑for‑word.
+        6. **Fillers (“uh”, “you know”, …):** omit fillers. You MUST substitute ALL swear words with normal words but still keep the meaning.
+        7. **Fluency:** ensure correct grammar and a **smooth** continuation of TRANSLATED‑CONTEXT.
+        8. **No meta‑talk** – no explanations, labels, or formatting.
+        9. **DO NOT** repeat words already spoken at the very end of Context in your return.
+        10. VERY IMPORTANT: DO **NOT** add words in the end of your return that are absent at the end of the Input. The continuation will come at the next step.
+
+        ▶︎ OUTPUT
+        Return the translation as a **smooth** continuation of TRANSLATED‑CONTEXT now:
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: correction_and_source_punctuation
+      kind: group
+      type: parallel
+      steps:
+        - name: default_correction
+          cls: correction_step.CorrectionStep
+          template: |-
+            You are “Stream‑Editor”, the last quality pass in a real‑time ASR → LLM → XTTS interpreter.
+            You receive **each turn**:
+            • Context (immutable, already vocalized, target‑language): "{translated_context}" ##
+            • Draft (new text to polish, same target‑language): "{translated_text}" ##
+            ###
+            YOUR TASK is to smoothly attach Draft to the end of Context, fixing only grammar, word choice and its form, and basic punctuation **without altering meaning**.
+            ###
+            STRICT OUTPUT RULES:
+            1. Output **one single line**:
+            – the corrected Draft, **or**
+            – Draft unchanged if no fixes are needed.
+            2. **Do NOT** repeat Context.
+            3. Keep the language identical to Draft (target language).
+            4. Use ONLY commas and periods; avoid quotes, dashes, brackets, ellipses, emojis.
+            5. Add a final period **ONLY** when the line is unmistakably a complete sentence or accepted abbreviation.
+            6. No comments, labels, or extra whitespace—just the text itself.
+            7. VERY IMPORTANT: DO **NOT** add words in the end of your return that are absent at the end of the Draft. The continuation will come at the next step.
+            Now, your best take on the Draft in one line is:
+          params:
+            strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        - name: add_punctuation_to_source_context
+          cls: llm_step.LLMStep
+          template: |-
+            You are an expert text editor.
+            Please add correct punctuation to the following Input: "{source_context}" #
+
+            STRICT OUTPUT RULES:
+            1. Output MUST be a single line.
+            2. Use the same language as the Input ("{lang_from}").
+            3. Use ONLY commas, periods and question marks. Do NOT add quotes, dashes, brackets, ellipses, emojis.
+            4. If the text ends mid-sentence, do NOT force punctuation: it is OK to end such text with no punctuation sign. Add a final period **ONLY** if the ending is unmistakably a complete sentence or recognized abbreviation.
+            5. No comments, explanations, labels, or extra whitespace anywhere in the output — return the text only in a line.
+
+            So, your best take on the output is:
+          params:
+            source: state.source_context
+            target: state.source_context
+            strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+            cut_hanging: false
+    - name: deduplicate
+      cls: prepare_step.DumbDeduplicateStep
+      params:
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+        last_n_words: 10
+    - name: sentence_accumulator
+      cls: subtitles_step.SubtitlesStep
+      template: |-
+        You are **Sentence Fragment Gate**, preparing text for final sentence formatting before TTS.
+        You will receive:
+        • 'Context' - text that is **ALREADY spoken** (may be empty).
+        • 'Input' - the **NEW** translated text chunk that needs sentence preparation.
+        ###
+        Your task is to divide the Input into two parts: what can be formatted into complete sentences **NOW** vs. what must **WAIT** for more text.
+        ###
+        OUTPUT:
+        Please return **exactly two plain text lines** (use a newline to separate them):
+        **Line 1** – text from Input that **can be formatted into complete sentences immediately**.
+        **Line 2** – remaining text from Input that **needs more following text** to form complete sentences.
+        If a line would be empty, write a single dot character ".".
+        ###
+
+        RULES – OBEY **every** point strictly:
+        1. **Complete thoughts**: Line 1 should contain text that forms complete thoughts or can stand alone as sentences.
+        2. **Incomplete fragments**: Line 2 should contain text that clearly needs continuation (incomplete clauses, dangling conjunctions, etc.).
+        3. **Natural breaks**: Look for natural sentence boundaries - complete clauses, logical pauses, finished ideas.
+        4. **No duplication**: do **NOT** repeat text that appears at the end of Context.
+        5. **Preserve meaning**: do **NOT** alter the actual words, only decide where to split.
+        6. **Minimum length**: If Input has fewer than 5 words, you MAY put it all in Line 2 to wait for more context.
+        7. **Language consistency**: Keep the same language as Input ("ru").
+        8. **No punctuation changes**: do **NOT** add or remove punctuation - just split the text.
+        9. **Formatting**: output ONLY the two lines — no bullets, labels, comments, or extra blank lines.
+        ###
+
+        So,
+        • 'Target language': "{lang_to}"##
+        • 'Context': "{subtitles_context}"##
+        • 'Input': "{subtitles_accumulated} {translated_text}"##
+
+        Now, your best take on splitting the Input for sentence formation is:
+      params:
+        action: subtitles_accumulator
+        max_buffer_fragments: 10
+        min_sentence_words: 8
+        accumulation_timeout: 15
+        strip_chars: [".", "…", "!", "?", "#", " ", "。"]
+    - name: sentence_formatter  
+      cls: llm_step.LLMStep
+      template: |-
+        You are **Sentence Formatter**, the final text preparation step before TTS.
+        You receive text fragments that need to be formatted into proper sentences.
+        
+        Input text: "{subtitles_text}" ##
+        
+        Your task is to format this text into proper sentences by:
+        1. Making the first letter of the first word uppercase
+        2. Adding appropriate ending punctuation (period or exclamation mark)
+        3. Ensuring proper sentence structure and grammatical agreement
+        4. If more then one sentence then you separate each sentence in a separate line.
+
+        RULES – OBEY **every** point strictly:
+        1. **Output**: the formatted sentences each in a separate line. New sentence must be in new line.
+        2. **Capitalization**: Make the first letter of the text uppercase, keep other capitalization as-is.
+        3. **Ending punctuation**: Add a period (.) for statements or exclamation mark (!) for exclamatory sentences.
+        4. **Language**: Keep the same language as input ("{lang_to}").
+        5. **No content changes**: do **NOT** add, remove, or change words - only format existing text.
+        6. **Grammatical agreement**: Adjust word forms (cases, genders, numbers) to ensure proper grammatical agreement between words in the sentence, but do NOT add or remove any words.
+        7. **Word form correction**: Change only word endings/forms to match grammatical rules (e.g., adjective-noun agreement, verb-subject agreement).
+        8. **Multiple sentences**: If the input contains multiple sentence fragments, format each appropriately in separate lines.
+        9. **No meta-talk**: no explanations, labels, or commentary - just the formatted text.
+        10. **Preserve meaning**: maintain the exact meaning and tone of the original text.
+        11. If you find "." or ";" use it as end of sentence. But separate sentences on lines.
+        
+        Now, your formatted sentence is:
+      params:
+        action: subtitles
+        source: subtitles_text
+        target: subtitles_text
+        strip_chars: []
+        preserve_meaning: true
+tts:
+  gap_size_bytes: 8000
+  voice_map:
+    en:
+    # - piper
+    # - hfc_male
+    - xtts
+    - Kumar Dahl
+    # - Lidiya Szekeres
+    # - Alexandra Hisakawa
+    # - Asya Anara
+    # - Dionisio Schuyler
+    # - Claribel Dervla
+    ru:
+    # - piper
+    # - hfc_male
+    - xtts
+    # - Ruslan
+    - Kumar Dahl
+    # - Lidiya Szekeres
+    # - Alexandra Hisakawa
+    # - Asya Anara
+    # - Dionisio Schuyler
+    # - Claribel Dervla
+    hi:
+    - xtts
+    - Kumar Dahl
+    zn: # pypinyin
+    - xtts
+    - Kumar Dahl
+    ko: # hangul_romanize
+    - xtts
+    - Kumar Dahl
+    ar:
+    - xtts
+    - Kumar Dahl
+    hu:
+    - xtts
+    - Kumar Dahl
+    cs:
+    - xtts
+    - Kumar Dahl
+    sw:
+    - piper
+    - hfc_male
+  hints:
+    audio_speed: 85
