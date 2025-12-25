@@ -13,3 +13,4 @@ NodeEventsCallback = Callable[[str, dict], None]
 class StreamConfig(BaseModel):
     audio_format: AudioFormat
     rate: int
+    channels: int
