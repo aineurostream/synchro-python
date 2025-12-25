@@ -1,0 +1,124 @@
+Grid {
+    grid-size: 3 3;
+    grid-gutter: 1;
+}
+
+Screen { 
+    layout: vertical;
+    layers: sidebar;
+}
+
+Sidebar {
+    width: 100%;
+    /* Needs to go in its own layer to sit above content */
+    layer: sidebar; 
+
+    /* Dock the sidebar to the appropriate side */
+    dock: top;
+
+    /* Offset x to be -100% to move it out of view by default */
+    offset-y: -100%;
+ 
+    /* Enable animation */
+    transition: offset 200ms;
+    
+    &.-visible {
+        /* Set offset.x to 0 to make it visible when class is applied */
+        offset-x: 0;
+    }
+
+    & > Vertical {
+        margin: 1 2;
+    }
+}
+
+.section {
+  border: solid $accent 40%;
+  border-title-color: $text-accent 50%;
+  border-title-align: center;
+
+  &:focus-within {
+    border: solid $accent 100%;
+    border-title-color: $foreground;
+    border-title-style: b;
+  }
+
+}
+
+
+#threads-info {
+    overflow-y: scroll;
+}
+
+
+.dialog { 
+    width: 60; 
+    height: auto; 
+    padding: 1 2; 
+    border: solid $accent; 
+    align: center middle; 
+}
+
+.screen_modal {
+    align: center middle;
+}
+
+.screen_modal > Container {
+    width: auto;
+    max-width: 80;
+    height: auto;
+    max-height: 60%;
+    align: center middle;
+    padding: 1 2;
+    background: $surface;
+    align: center middle;
+}
+
+Label {
+    width: 100%;
+}
+
+Log {
+    width: 100%;
+}
+
+ListView {
+    width: 100%;
+}
+
+.screen_modal > Container > VerticalScroll {
+
+}
+
+.screen_modal TextArea {
+    width: 100%;
+}
+
+.screen_modal > Container > Horizontal {
+    height: auto;
+    width: auto;
+}
+
+.screen_modal > Container > Horizontal > Button {
+    margin: 1 2;
+    width: auto;
+}
+
+Input.-valid {
+    border: tall $success 60%;
+}
+Input.-valid:focus {
+    border: tall $success;
+}
+Input {
+    margin: 1 1;
+}
+Select {
+    margin: 1 1;
+}
+Label {
+    margin: 1 2;
+}
+Pretty {
+    margin: 1 2;
+}
