@@ -176,3 +176,9 @@ source_input.wav
 *.db-journal
 *.db-shm
 *.db-wal
+
+samples/
+config.1306.backup/
+
+mic_input.wav
+mic_output.wav

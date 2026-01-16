@@ -18,6 +18,9 @@ from synchro.config.schemas import (
     ResamplerNodeSchema,
     SeamlessConnectorNodeSchema,
     VadNodeSchema,
+    FormatValidatorNodeSchema,
+    WhisperPrepNodeSchema,
+    TerminalMetricsDisplayNodeSchema,
 )
 from synchro.config.settings import SettingsSchema
 from synchro.graph.graph_edge import GraphEdge
@@ -32,6 +35,9 @@ from synchro.graph.nodes.processors.mixer_node import MixerNode
 from synchro.graph.nodes.processors.normalization_node import NormalizerNode
 from synchro.graph.nodes.processors.resample_node import ResampleNode
 from synchro.graph.nodes.processors.vad_node import VadNode
+from synchro.graph.nodes.processors.preparation_node import WhisperPrepNode
+from synchro.graph.nodes.processors.validation_node import FormatValidatorNode
+from synchro.graph.nodes.outputs.metrics_node import TerminalMetricsDisplayNode
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +104,15 @@ class GraphInitializer:
     def _create_denoiser_node(self, config: DenoiserNodeSchema) -> DenoiserNode:
         return DenoiserNode(config)
 
+    def _create_validator_node(self, config: DenoiserNodeSchema) -> FormatValidatorNode:
+        return FormatValidatorNode(config)
+
+    def _create_preparer_node(self, config: DenoiserNodeSchema) -> WhisperPrepNode:
+        return WhisperPrepNode(config)
+
+    def _create_measurer_node(self, config: TerminalMetricsDisplayNodeSchema) -> TerminalMetricsDisplayNode:
+        return TerminalMetricsDisplayNode(config)
+    
     BUILD_METHODS: typing.ClassVar[
         dict[type, Callable[["GraphInitializer", Any], GraphNode]]
     ] = {
@@ -111,6 +126,9 @@ class GraphInitializer:
         VadNodeSchema: _create_vad_node,
         NormalizerNodeSchema: _create_normalizer_node,
         DenoiserNodeSchema: _create_denoiser_node,
+        FormatValidatorNodeSchema: _create_validator_node,
+        WhisperPrepNodeSchema: _create_preparer_node,
+        TerminalMetricsDisplayNodeSchema: _create_measurer_node,
     }
 
     def build(self) -> tuple[list[GraphNode], list[GraphEdge]]:
