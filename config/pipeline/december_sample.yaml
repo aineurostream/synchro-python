@@ -17,7 +17,7 @@ nodes:
   lang_to: en
 - name: output_channel_1
   node_type: output_channel
-  device: 19 # <-- This device should be set for audio output
+  device: 14 # <-- This device should be set for audio output
   channel: 1 # <-- Always set to 1 for audio output
 - name: output_file_0
   node_type: output_file

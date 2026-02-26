@@ -1,10 +1,15 @@
 stt:
   stop_words:
+    # "all" applies to any input language.
     all:
       - DimaTorzok
+      - создавал dimatorzok
       - субтитры сделал
       - субтитры делал
+      - Продолжение следует...
+      - продолжение следует...
       - Продолжение следует
+      - продолжение следует
       - to be continued
       - Субтитры
       - Редактор субтитров А
@@ -15,12 +20,18 @@ stt:
       - www.fema.gov
       - субтитров А.
       - Редактор субтитров А.
-      - Продолжение следует...
       - Gracias por ver el video
       - редактор субтитров анатолий курас
       - dimatorzok
+      - игорь негода
+      - субтитров алисой екатеринбург
+      - субтитры подогнал «симон»
+      # - следует...
+      - ах...
+    # Per-language dictionaries, keyed by source language code.
     ru:
       - ололо
+    en: []
   buffer_min_words_size: 5
   buffer_timeout_seconds: 2.0
 translate:
@@ -291,6 +302,7 @@ translate:
         preserve_meaning: true
 tts:
   gap_size_bytes: 8000
+  append_silence_between_chunks: false
   voice_map:
     en:
     # - piper

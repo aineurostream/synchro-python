@@ -1,11 +1,12 @@
 defaults:
   # - ai: leo_group
-  - ai: leo_0707
+  # - ai: leo_0707
+  - ai: bioprom
   # - ai: stepan_1707 # старые промпты, норм работают
   # - ai: stepan_1807_optimized_1 #старые промпты, норм работают
   # - ai: stepan_1807_optimized_5 #эксперимент
   # - ai: grouped
   # - ai: stepan_2107 # пытаемся победить повторы в транслейте
-  - pipeline: leo_file
+  - pipeline: december_sample
   - settings: default
   - override hydra/job_logging: custom
