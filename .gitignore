@@ -182,8 +182,6 @@ config.1306.backup/
 
 mic_input.wav
 mic_output.wav
-<<<<<<< HEAD
-=======
 
 .vscode
 .github
@@ -191,4 +189,3 @@ outputs
 reports
 samples
 pytests
->>>>>>> f283b64 (Updates)
