@@ -156,8 +156,8 @@ cython_debug/
 .idea/
 .ruff_cache/
 
-outputs/
-reports/
+outputs
+reports
 multirun/
 samples/output_chunks/
 # Agent config files
@@ -178,14 +178,10 @@ source_input.wav
 *.db-wal
 
 samples/
-config.1306.backup/
 
 mic_input.wav
 mic_output.wav
 
 .vscode
 .github
-outputs
-reports
-samples
 pytests
