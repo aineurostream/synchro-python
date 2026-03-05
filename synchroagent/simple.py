@@ -122,7 +122,11 @@ class SettingsParmas(BaseModel):
     config: str = "config"  # config
     ai: str = "bioprom"  # config/ai
     # pipeline: str = "2510_postbioprom_sample"  # config/pipeline
+<<<<<<< HEAD
     pipeline: str = "december_sample"
+=======
+    pipeline: str = "default_file"
+>>>>>>> f283b64 (Updates)
     name: str = "sample"
 
     audio_path: Path | None = "/home/gof/Projects/volumes/samples/long/disabled_support_conference.wav"

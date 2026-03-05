@@ -1,6 +1,0 @@
-defaults:
-  - ai: stepan_0807
-  # - ai: stepan_0807
-  - pipeline: leo_file
-  - settings: default
-  - override hydra/job_logging: custom

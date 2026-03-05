@@ -1,4 +1,5 @@
 defaults:
+<<<<<<< HEAD
   # - ai: leo_group
   # - ai: leo_0707
   - ai: bioprom
@@ -8,5 +9,9 @@ defaults:
   # - ai: grouped
   # - ai: stepan_2107 # пытаемся победить повторы в транслейте
   - pipeline: december_sample
+=======
+  - ai: default
+  - pipeline: default_file
+>>>>>>> f283b64 (Updates)
   - settings: default
   - override hydra/job_logging: custom

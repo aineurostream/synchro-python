@@ -24,13 +24,7 @@ UV will install all dependencies from `pyproject.toml`.
 
 The application supports configuration through environment variables. You can set these variables directly in your environment or use a `.env` file.
 
-1. Copy the example environment file:
-
-```bash
-cp .env.example .env
-```
-
-2. Edit the `.env` file to customize your configuration:
+Edit the `.env` file to customize your configuration:
 
 ```
 # Database configuration
@@ -42,7 +36,7 @@ AGNT_OUTPUTS_DIR=outputs
 
 # Script paths
 AGNT_HYDRA_SCRIPT=hydra_run.py
-AGNT_SYNCHRO_REPORT_SCRIPT=../synchro_reporter.git/report.py
+AGNT_SYNCHRO_REPORT=../synchro_reporter.git/report.py
 ```
 
 ### Step 2. Get devices info
@@ -56,33 +50,26 @@ Devices with `in` channels can be used in `output_channel` node type.
 
 ## How to use
 
-### Step 3.A Start application
+### Step 3.A Start application in HYDRA mode (sample from file)
 
 ```bash
-python run.py instance start -p ./samples/config_leo_file.json -n ./samples/ai_config.json
-```
-
-This will start an application using the provided pipeline and neural networks configuration files.
-
-### Step 3.B Start application in HYDRA mode
-
-```bash
-python hydra_run.py
+python hydra_run.py --config-name config
 ```
 
 In that case all configs are taken from the HYDRA's `config` folder. See [HYDRA](https://hydra.cc)
 documentation for launch options.
 
-You can try multirun on many threads for grid search:
+### Step 3.B Start microphone mode
 
 ```bash
-python hydra_run.py --multirun --config-name optuna_01
-```
-
-You can try run using microphone with russian-to-english translation:
-
-```bash
-python hydra_run.py --config-name mic_01
+python hydra_run.py --config-name config \
+  pipeline=default_mic \
+  pipeline.nodes.0.device=0 \
+  pipeline.nodes.5.device=1 \
+  pipeline.nodes.3.lang_from=ru \
+  pipeline.nodes.3.lang_to=en \
+  pipeline.nodes.3.server_url=http://127.0.0.1:50080 \
+  settings.limits.run_time_seconds=0
 ```
 
 ## Docker Usage

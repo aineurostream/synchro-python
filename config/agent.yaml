@@ -1,5 +1,0 @@
-defaults:
-  - ai: default_unified
-  - settings: agent
-  - pipeline: leo_file
-  - override hydra/job_logging: custom

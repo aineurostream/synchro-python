@@ -3,7 +3,7 @@ name = "synchro-backend"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Stanislav Gonorovsky", email = "drmozg@gmail.com"},
+    {name = "", email = ""},
 ]
 readme = "README.md"
 requires-python = ">=3.13"
@@ -13,27 +13,20 @@ dependencies = [
     "sounddevice==0.5.2",
     "python-socketio==5.13.0",
     "websocket-client==1.8.0",
-    "vad==1.0.2",
     "numpy==2.2.6",
-    "requests==2.32.3",
     "soxr==0.5.0.post1",
     "pydub==0.25.1",
     "python-json-logger==3.3.0",
     "fastapi==0.115.12",
     "sse-starlette==2.3.5",
     "python-dotenv==1.1.0",
-    "httpx==0.28.1",
     "uvicorn==0.34.2",
     "audioop-lts==0.2.1",
     "pyyaml==6.0.2",
     "hydra-core==1.3.2",
     "hydra-optuna-sweeper==1.2.0",
     "hydra-joblib-launcher==1.2.0",
-    # Reporter
-    "jinja2==3.1.6",
-    "pyyaml==6.0.2",
-    "matplotlib==3.10.3",
-    "networkx==3.4.2",
+    "scipy==1.15.2",
     "psutil>=7.2.1",
 ]
 

@@ -154,7 +154,7 @@ class ClientProcessManager:
             str(hydra_script_path),
             f"pipeline={config_name}",
             f"hydra.run.dir={run_output_dir}",
-            "--config-name=agent",
+            "--config-name=config",
         ]
 
         try:

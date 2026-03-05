@@ -1,5 +1,0 @@
-defaults:
-  - ai: default
-  - pipeline: mic_ru_en
-  - settings: default_ru_en
-  - override hydra/job_logging: custom
