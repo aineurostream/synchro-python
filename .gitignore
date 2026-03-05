@@ -117,12 +117,6 @@ celerybeat.pid
 # Environments
 .env
 .venv
-.speech.env
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
 
 # Spyder project settings
 .spyderproject
@@ -166,18 +160,11 @@ agent_*.yaml
 translated_output.wav
 source_input.wav
 
-.vscode/
-!.vscode/tasks.json
-!.vscode/settings.json
-!.vscode/launch.json
-
 # SQLite
 *.db
 *.db-journal
 *.db-shm
 *.db-wal
-
-samples/
 
 mic_input.wav
 mic_output.wav
