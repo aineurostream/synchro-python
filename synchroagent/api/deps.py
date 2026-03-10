@@ -18,7 +18,10 @@ from synchroagent.database.config_registry import ConfigRegistry
 from synchroagent.database.db import DatabaseConnection
 from synchroagent.database.log_registry import LogRegistry
 from synchroagent.database.report_registry import ReportRegistry
-from synchroagent.logic.client_process_manager import ClientProcessManager
+from synchroagent.logic.client_process_manager import (
+    ClientProcessManager,
+    ProcessManagers,
+)
 from synchroagent.logic.log_manager import LogManager
 from synchroagent.logic.report_manager import ReportManager
 
@@ -82,6 +85,46 @@ def get_report_manager(
     )
 
 
+def get_process_managers(
+    log_manager: Annotated[LogManager, Depends(get_log_manager)],
+    report_manager: Annotated[ReportManager, Depends(get_report_manager)],
+) -> ProcessManagers:
+    return ProcessManagers(log_manager=log_manager, report_manager=report_manager)
+
+
+LogRouteDeps = tuple[LogManager, LogRegistry, ClientRegistry, ClientRunRegistry]
+ReportRouteDeps = tuple[
+    ReportManager,
+    ReportRegistry,
+    ClientRegistry,
+    ClientRunRegistry,
+]
+
+
+def get_log_route_deps(
+    log_manager: Annotated[LogManager, Depends(get_log_manager)],
+    log_registry: Annotated[LogRegistry, Depends(get_log_registry_dep)],
+    client_registry: Annotated[ClientRegistry, Depends(get_client_registry_dep)],
+    client_run_registry: Annotated[
+        ClientRunRegistry,
+        Depends(get_client_run_registry_dep),
+    ],
+) -> LogRouteDeps:
+    return log_manager, log_registry, client_registry, client_run_registry
+
+
+def get_report_route_deps(
+    report_manager: Annotated[ReportManager, Depends(get_report_manager)],
+    report_registry: Annotated[ReportRegistry, Depends(get_report_registry_dep)],
+    client_registry: Annotated[ClientRegistry, Depends(get_client_registry_dep)],
+    client_run_registry: Annotated[
+        ClientRunRegistry,
+        Depends(get_client_run_registry_dep),
+    ],
+) -> ReportRouteDeps:
+    return report_manager, report_registry, client_registry, client_run_registry
+
+
 def get_client_process_manager(
     client_registry: Annotated[ClientRegistry, Depends(get_client_registry_dep)],
     client_run_registry: Annotated[
@@ -90,14 +133,12 @@ def get_client_process_manager(
     ],
     config_registry: Annotated[ConfigRegistry, Depends(get_config_registry_dep)],
     app_config: Annotated[AppConfig, Depends(get_app_config)],
-    log_manager: Annotated[LogManager, Depends(get_log_manager)],
-    report_manager: Annotated[ReportManager, Depends(get_report_manager)],
+    process_managers: Annotated[ProcessManagers, Depends(get_process_managers)],
 ) -> ClientProcessManager:
     return ClientProcessManager(
         client_registry=client_registry,
         client_run_registry=client_run_registry,
         config_registry=config_registry,
-        log_manager=log_manager,
-        report_manager=report_manager,
+        process_managers=process_managers,
         outputs_dir=app_config.outputs_dir,
     )

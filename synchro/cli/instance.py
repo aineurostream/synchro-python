@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import click
 
@@ -10,7 +11,7 @@ from synchro.core import CoreManager
 
 @click.group(help="Instance starting and stopping")
 def manager() -> None:
-    """Start/stop instances of the Synchro application"""
+    """Start/stop instances of the Synchro application."""
 
 
 @manager.command(
@@ -38,12 +39,14 @@ def start(
     pipeline: str,
     neuro: str,
 ) -> None:
-    """Start an instance of the Synchro application"""
+    """Start an instance of the Synchro application."""
     cli_echo_title("Starting Synchro instance")
 
+    pipeline_path = Path(pipeline)
+    neuro_path = Path(neuro)
     with (
-        open(pipeline) as graph_config_file,
-        open(neuro) as neuro_config_file,
+        pipeline_path.open() as graph_config_file,
+        neuro_path.open() as neuro_config_file,
     ):
         core_config = ProcessingGraphConfig.model_validate_json(
             graph_config_file.read(),

@@ -34,13 +34,14 @@ class ConfigRegistry(BaseRegistry[ConfigSchema, ConfigCreate, ConfigUpdate]):
                 row["content"] = json.loads(row["content"])
             except json.JSONDecodeError:
                 logger.exception(
-                    f"Failed to parse JSON content for config ID {row.get('id')}",
+                    "Failed to parse JSON content for config ID %s",
+                    row.get("id"),
                 )
                 row["content"] = {}
-        return cast(ConfigSchema, ConfigSchema.model_validate(row))
+        return cast("ConfigSchema", ConfigSchema.model_validate(row))
 
     def model_to_dict(self, model: ConfigSchema) -> dict[str, Any]:
-        return cast(dict[str, Any], model.model_dump())
+        return cast("dict[str, Any]", model.model_dump())
 
     def model_create_to_dict(self, model: ConfigCreate) -> dict[str, Any]:
         data = model.model_dump(exclude_unset=True)
@@ -49,7 +50,7 @@ class ConfigRegistry(BaseRegistry[ConfigSchema, ConfigCreate, ConfigUpdate]):
         data["created_at"] = get_datetime_iso()
         data["updated_at"] = get_datetime_iso()
 
-        return cast(dict[str, Any], data)
+        return cast("dict[str, Any]", data)
 
     def model_update_to_dict(self, model: ConfigUpdate) -> dict[str, Any]:
         data = model.model_dump(exclude_unset=True, exclude_none=True)
@@ -59,4 +60,4 @@ class ConfigRegistry(BaseRegistry[ConfigSchema, ConfigCreate, ConfigUpdate]):
         # Update timestamp
         data["updated_at"] = get_datetime_iso()
 
-        return cast(dict[str, Any], data)
+        return cast("dict[str, Any]", data)

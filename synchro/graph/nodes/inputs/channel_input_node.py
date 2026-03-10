@@ -38,12 +38,13 @@ class ChannelInputNode(AbstractInputNode):
             if status:
                 self._logger.error("Error in audio stream: %s", status)
             if self._incoming_buffer is None:
-                raise RuntimeError("Incoming buffer is not initialized")
-            
+                msg = "Incoming buffer is not initialized"
+                raise RuntimeError(msg)
+
             if JACK_ENABLED:
-                chunk = cast(bytes, input_data[:, self._config.device - 1].tobytes())
+                chunk = cast("bytes", input_data[:, self._config.device - 1].tobytes())
             else:
-                chunk = cast(bytes, input_data.tobytes())
+                chunk = cast("bytes", input_data.tobytes())
 
             self._incoming_buffer.append_bytes_inp(chunk)
 
@@ -62,8 +63,8 @@ class ChannelInputNode(AbstractInputNode):
         )
         self._stream.start()
         return self
-    
-    def _cleanup(self):
+
+    def _cleanup(self) -> bool:
         logger.info("Cleanup input node")
         if self._stream:
             try:
@@ -82,15 +83,18 @@ class ChannelInputNode(AbstractInputNode):
         exc_tb: TracebackType | None,
     ) -> Literal[False]:
         self._cleanup()
+        return False
 
-    def __del__(self):
+    def __del__(self) -> None:
         self._cleanup()
 
     def get_data(self) -> FrameContainer | None:
         if not self._stream:
-            raise RuntimeError("Audio stream is not open")
+            msg = "Audio stream is not open"
+            raise RuntimeError(msg)
         if self._incoming_buffer is None:
-            raise RuntimeError("Incoming buffer is not initialized")
+            msg = "Incoming buffer is not initialized"
+            raise RuntimeError(msg)
         read_bytes = self._incoming_buffer
         self._incoming_buffer = self._incoming_buffer.to_empty()
         return read_bytes

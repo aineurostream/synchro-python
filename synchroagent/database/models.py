@@ -1,17 +1,17 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     CREATED = "created"
     RUNNING = "running"
     STOPPED = "stopped"
     FAILED = "failed"
 
 
-class LogType(str, Enum):
+class LogType(StrEnum):
     STDOUT = "stdout"
     STDERR = "stderr"
     APPLICATION = "application"

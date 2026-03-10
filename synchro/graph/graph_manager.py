@@ -1,9 +1,9 @@
 import logging
 import time
+from collections.abc import Callable
 from contextlib import suppress
 from queue import Empty, Queue
-from threading import Lock, Thread, Event
-from typing import Callable
+from threading import Event, Lock, Thread
 
 from pydantic import BaseModel, ConfigDict
 
@@ -21,9 +21,8 @@ MS_IN_SEC = 1000.0
 logger = logging.getLogger(__name__)
 
 
-class StopGraph(Exception):
+class StopGraphError(Exception):
     """Request a cooperative, graceful shutdown of the whole graph."""
-    pass
 
 
 class EdgeQueue(BaseModel):
@@ -73,14 +72,14 @@ class NodeExecutor(Thread):
                     self.process_outputs()
 
                     interval = (
-                        self._settings.input_interval_secs 
-                        if emitting_only_node else 
-                        self._settings.processor_interval_secs
+                        self._settings.input_interval_secs
+                        if emitting_only_node
+                        else self._settings.processor_interval_secs
                     )
-                    
+
                     if self._stop_evt.wait(timeout=interval):
                         break
-        except StopGraph as exc:
+        except StopGraphError as exc:
             logger.info("Node %s requested graceful shutdown: %s", self.node.name, exc)
             self._running = False
             self.local_exception = None
@@ -144,11 +143,11 @@ class GraphManager:
                         "Exception detected in thread %s, stopping all execution",
                         thread.name,
                     )
-                    # сохраняем и останавливаемся; НЕ raise здесь
+                    # Save and stop; do not raise from this thread.
                     self._first_exception = thread.local_exception
                     self.request_shutdown(None)
                     return
-                
+
             time.sleep(0.1)
 
     def _reraise_worker_exception_if_any(self) -> None:
@@ -156,17 +155,18 @@ class GraphManager:
             exc = self._first_exception
             self._first_exception = None
             raise exc
-        
+
     def request_shutdown(self, exc: Exception | None = None) -> None:
         if exc and self._first_exception is None:
             self._first_exception = exc
-            
+
         self._shutdown_evt.set()
 
     def execute(self) -> None:
         with self._lock:
             if self._executing:
-                raise RuntimeError("Graph is already executing")
+                msg = "Graph is already executing"
+                raise RuntimeError(msg)
             self._executing = True
 
         logger.info("Starting Synchro graph execution")
@@ -207,9 +207,9 @@ class GraphManager:
             ]
 
             thread = NodeExecutor(
-                self._settings, 
-                node, 
-                incoming, 
+                self._settings,
+                node,
+                incoming,
                 outgoing,
                 on_fatal=_on_node_fatal,
             )

@@ -41,6 +41,7 @@ class ClientProcessMonitor(threading.Thread):
         Args:
             client_run_registry: Registry for client runs
             poll_interval: How often to check processes (seconds)
+
         """
         super().__init__(daemon=True, name="ProcessMonitor")
         self.client_run_registry = client_run_registry
@@ -86,7 +87,7 @@ class ClientProcessMonitor(threading.Thread):
             with self.lock:
                 for run_id, process_info in list(self.processes.items()):
                     try:
-                        logger.debug(f"Monitoring process {run_id}")
+                        logger.debug("Monitoring process %d", run_id)
                         self._monitor_process(process_info)
                     except Exception:
                         logger.exception("Error monitoring process %d", run_id)
@@ -102,7 +103,8 @@ class ClientProcessMonitor(threading.Thread):
                 with self.lock:
                     self.processes[process_info.run_id] = process_info
                 logger.debug(
-                    f"Added process to monitoring: run_id={process_info.run_id}",
+                    "Added process to monitoring: run_id=%d",
+                    process_info.run_id,
                 )
                 self.process_queue.task_done()
         except queue.Empty:
@@ -113,7 +115,7 @@ class ClientProcessMonitor(threading.Thread):
         self._read_process_output(process_info)
 
         if exit_code is not None:
-            logger.debug(f"Process {process_info.run_id} exit code: {exit_code}")
+            logger.debug("Process %d exit code: %d", process_info.run_id, exit_code)
             self._store_process_outputs(process_info)
             self._handle_process_exit(process_info, exit_code)
 
@@ -123,7 +125,8 @@ class ClientProcessMonitor(threading.Thread):
                     self.on_process_completed(run_id, exit_code)
                 except Exception:
                     logger.exception(
-                        f"Error in process completed callback for run {run_id}",
+                        "Error in process completed callback for run %d",
+                        run_id,
                     )
 
             del self.processes[process_info.run_id]
@@ -136,14 +139,14 @@ class ClientProcessMonitor(threading.Thread):
                 if output_bytes:
                     process_info.stdout_buffer += output_bytes
                     logger.debug(
-                        (
-                            f"Read {len(output_bytes)} bytes from STDOUT for run "
-                            f"{process_info.run_id}",
-                        ),
+                        "Read %d bytes from STDOUT for run %d",
+                        len(output_bytes),
+                        process_info.run_id,
                     )
             except Exception:
                 logger.exception(
-                    f"Error during stdout processing for run {process_info.run_id}",
+                    "Error during stdout processing for run %d",
+                    process_info.run_id,
                 )
 
         stderr_pipe = process_info.process.stderr
@@ -153,14 +156,14 @@ class ClientProcessMonitor(threading.Thread):
                 if output_bytes:
                     process_info.stderr_buffer += output_bytes
                     logger.debug(
-                        (
-                            f"Read {len(output_bytes)} bytes from STDERR for run "
-                            f"{process_info.run_id}",
-                        ),
+                        "Read %d bytes from STDERR for run %d",
+                        len(output_bytes),
+                        process_info.run_id,
                     )
             except Exception:
                 logger.exception(
-                    f"Error during stderr processing for run {process_info.run_id}",
+                    "Error during stderr processing for run %d",
+                    process_info.run_id,
                 )
 
         self._parse_and_emit_log_lines(process_info, "stdout")
@@ -176,11 +179,11 @@ class ClientProcessMonitor(threading.Thread):
         except (BlockingIOError, InterruptedError):
             pass
         except BrokenPipeError:
-            logger.warning(f"Broken pipe when reading from fd {pipe.fileno()}")
+            logger.warning("Broken pipe when reading from fd %d", pipe.fileno())
         except ValueError:
-            logger.warning(f"Attempted to read from closed pipe fd {pipe.fileno()}")
+            logger.warning("Attempted to read from closed pipe fd %d", pipe.fileno())
         except Exception:
-            logger.exception(f"Error reading from pipe fd {pipe.fileno()}")
+            logger.exception("Error reading from pipe fd %d", pipe.fileno())
         return data
 
     def _parse_and_emit_log_lines(
@@ -205,7 +208,7 @@ class ClientProcessMonitor(threading.Thread):
                 line_str = line_bytes.decode("utf-8").strip()
                 if not line_str:
                     continue
-                logger.debug(f"Processing line: {line_str[:100]}")
+                logger.debug("Processing line: %s", line_str[:100])
                 log_content_dict = json.loads(line_str)
                 event_bus.emit(
                     LogEventSchema(
@@ -215,17 +218,16 @@ class ClientProcessMonitor(threading.Thread):
                     ),
                 )
                 logger.debug(
-                    (
-                        f"{stream_type.upper()} for run {process_info.run_id} "
-                        f"(parsed): {str(log_content_dict)[:100]}...",
-                    ),
+                    "%s for run %d (parsed): %s...",
+                    stream_type.upper(),
+                    process_info.run_id,
+                    str(log_content_dict)[:100],
                 )
             except Exception:
                 logger.exception(
-                    (
-                        f"Unexpected error parsing log line from {stream_type} for run "
-                        f"{process_info.run_id}",
-                    ),
+                    "Unexpected error parsing log line from %s for run %d",
+                    stream_type,
+                    process_info.run_id,
                 )
 
         if lines_found:
@@ -240,11 +242,11 @@ class ClientProcessMonitor(threading.Thread):
             "stderr": process_info.stderr_buffer,
         }
 
-        logger.info(f"Stored byte outputs for run {run_id}")
+        logger.info("Stored byte outputs for run %d", run_id)
 
     def _handle_process_exit(self, process_info: ProcessInfo, exit_code: int) -> None:
         run_id = process_info.run_id
-        logger.info(f"Process for run {run_id} exited with code {exit_code}")
+        logger.info("Process for run %d exited with code %d", run_id, exit_code)
 
         status = RunStatus.STOPPED if exit_code == 0 else RunStatus.FAILED
         try:

@@ -1,27 +1,27 @@
-from enum import Enum
+import sys
+from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, Literal, TextIO, cast
+from typing import Annotated, Literal, TextIO
 
 from pydantic import (
     AnyUrl,
     BaseModel,
+    ConfigDict,
     Discriminator,
     Field,
     FilePath,
+    SerializationInfo,
     Tag,
-    ConfigDict,
-    model_validator,
     field_serializer,
+    model_validator,
 )
 
-from synchro.config.audio_format import AudioFormat
-from synchro.config.audio_format import DEFAULT_AUDIO_FORMAT
-
+from synchro.config.audio_format import DEFAULT_AUDIO_FORMAT, AudioFormat
 
 EdgeRoute = tuple[str, str]
 
 
-class NodeType(str, Enum):
+class NodeType(StrEnum):
     INPUT_CHANNEL = "input_channel"
     OUTPUT_CHANNEL = "output_channel"
     INPUT_FILE = "input_file"
@@ -32,7 +32,7 @@ class NodeType(str, Enum):
     NORMALIZER = "normalizer"
     DENOISER = "denoiser"
     OUTPUT_FILE = "output_file"
-    
+
     PREPARER = "preparer"
     VALIDATOR = "validator"
     MEASURER = "measurer"
@@ -103,19 +103,18 @@ class FormatValidatorNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.VALIDATOR] = NodeType.VALIDATOR
 
     enforce_mono: bool = True
-    enforce_format: AudioFormat = DEFAULT_AUDIO_FORMAT  # во что приводить байты (например, int16 LE)
+    enforce_format: AudioFormat = (
+        DEFAULT_AUDIO_FORMAT  # во что приводить байты (например, int16 LE)
+    )
     passthrough_rate: bool = True  # частоту не трогаем (ресэмпл — отдельной нодой)
 
 
 class WhisperPrepNodeSchema(BaseNodeSchema):
+    """Pydantic config for a Whisper preparation node.
+    Defaults to peak normalization with headroom (similar to pydub).
     """
-    Pydantic-конфиг для ноды подготовки под Whisper.
-    По умолчанию — безопасная peak-нормализация с headroom (как в pydub).
-    """
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    # тип ноды, если у тебя в базовом конфиге это требуется:
-    # node_type: Literal[NodeType.PREPARATION] = NodeType.PREPARATION
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
 
@@ -126,12 +125,12 @@ class WhisperPrepNodeSchema(BaseNodeSchema):
     normalization: Literal["peak", "lufs"] = "peak"
 
     # Для peak-режима (аналог pydub.effects.normalize):
-    headroom_db: float = 10.0  # целевой пик = −headroom dBFS
+    headroom_db: float = 10.0  # target peak = -headroom dBFS
 
     # Для LUFS-режима:
     target_lufs: float = -16.0
-    lufs_block_sec: float = 0.10     # block_size для pyloudnorm (сек)
-    lufs_min_sec: float = 0.10       # не считаем LUFS на более коротких чанках
+    lufs_block_sec: float = 0.10  # block_size для pyloudnorm (сек)
+    lufs_min_sec: float = 0.10  # не считаем LUFS на более коротких чанках
     gain_smooth_alpha: float = 0.25  # сглаживание усиления (EWMA)
 
     # Лимитер-потолок после нормализации
@@ -140,7 +139,8 @@ class WhisperPrepNodeSchema(BaseNodeSchema):
     # Дереверберация
     use_wpe: bool = True
 
-    # Ресэмпл внутри НОДЫ не делаем (держим спектр до финала); опция оставлена на случай отладки
+    # Ресэмпл внутри НОДЫ не делаем (держим спектр до финала).
+    # Опция оставлена на случай отладки.
     resample_to_target_sr: bool = False
     target_sr: int = 16000
 
@@ -161,17 +161,19 @@ class TerminalMetricsDisplayNodeSchema(BaseNodeSchema):
     # Порог клиппинга (для float-представления)
     clip_threshold_float: float = 0.999
 
-    # --- Runtime-поле: реальный объект файла (НЕ сериализуем, НЕ валидируем как тип pydantic) ---
+    # Runtime-only field with a live file object.
+    # It is excluded from serialization and type validation.
     stream: TextIO = Field(default=None, exclude=True)
 
     # pydantic v2: разрешаем произвольные типы (TextIO)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_validator(mode="after")
-    def _make_stream(self: "TerminalMetricsDisplayNodeSchema") -> "TerminalMetricsDisplayNodeSchema":
-        """
-        Создаём реальный поток из спецификации.
-        Прячем его в self.stream (он исключён из сериализации).
+    def _make_stream(
+        self: "TerminalMetricsDisplayNodeSchema",
+    ) -> "TerminalMetricsDisplayNodeSchema":
+        """Create a real stream from config values.
+        Store it in self.stream (excluded from serialization).
         """
         if self.stream is not None:
             # Пользователь уже положил готовый поток вручную (DI) — уважаем
@@ -183,23 +185,30 @@ class TerminalMetricsDisplayNodeSchema(BaseNodeSchema):
             self.stream = sys.stderr
         else:
             if not self.file_path:
-                raise ValueError("sink='file' требует file_path")
+                msg = "sink='file' требует file_path"
+                raise ValueError(msg)
             mode = "a" if self.append else "w"
             # ВАЖНО: ответственность за закрытие файла на стороне ноды/контекста
-            self.stream = open(self.file_path, mode, encoding=self.encoding, newline=self.newline)
+            self.stream = self.file_path.open(
+                mode,
+                encoding=self.encoding,
+                newline=self.newline,
+            )
 
         return self
 
     # Красиво сериализуем модель (например, в логи/конфиги), пряча runtime-поле
     @field_serializer("file_path", check_fields=False)
-    def _ser_path(self, v: Path | None, _info):
+    def _ser_path(self, v: Path | None, _info: SerializationInfo) -> str | None:
         return str(v) if v else None
-    
 
-def get_node_discriminator_value(v: Any) -> str | None:  # noqa: ANN401
+
+def get_node_discriminator_value(v: dict[str, object] | object) -> str | None:
     if isinstance(v, dict):
-        return v.get("node_type")
-    return getattr(v, "node_type", None)
+        node_type = v.get("node_type")
+        return node_type if isinstance(node_type, str) else None
+    node_type = getattr(v, "node_type", None)
+    return node_type if isinstance(node_type, str) else None
 
 
 AllNodes = Annotated[

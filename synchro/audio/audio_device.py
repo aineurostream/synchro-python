@@ -16,8 +16,7 @@ class DeviceMode(Enum):
 
 
 class AudioDevice:
-    """
-    Represents an audio device with information about its input
+    """Represents an audio device with information about its input
     and output capabilities.
     """
 
@@ -28,8 +27,8 @@ class AudioDevice:
     ) -> None:
         self.index: int = device_index
         self.name = device_info["name"]
-        self.input_channels: int = cast(int, device_info["maxInputChannels"])
-        self.output_channels: int = cast(int, device_info["maxOutputChannels"])
+        self.input_channels: int = cast("int", device_info["maxInputChannels"])
+        self.output_channels: int = cast("int", device_info["maxOutputChannels"])
         self.default_sample_rate: int = int(floor(device_info["defaultSampleRate"]))
 
     @property

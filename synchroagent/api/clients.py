@@ -1,26 +1,24 @@
-from typing import Annotated, cast
+from typing import Annotated, NoReturn, cast
 
 from fastapi import APIRouter, Depends, Path, status
 from pydantic import BaseModel
 
 from synchroagent.api.deps import (
+    LogRouteDeps,
+    ReportRouteDeps,
     get_client_process_manager,
     get_client_registry_dep,
     get_client_run_registry_dep,
-    get_log_manager,
-    get_log_registry_dep,
-    get_report_manager,
+    get_log_route_deps,
     get_report_registry_dep,
+    get_report_route_deps,
 )
 from synchroagent.api.errors import BadRequestError, NotFoundError, ServerError
 from synchroagent.database.client_registry import ClientRegistry
 from synchroagent.database.client_run_registry import ClientRunRegistry
-from synchroagent.database.log_registry import LogRegistry
 from synchroagent.database.models import ClientSchema, RunStatus
 from synchroagent.database.report_registry import ReportRegistry
 from synchroagent.logic.client_process_manager import ClientProcessManager
-from synchroagent.logic.log_manager import LogManager
-from synchroagent.logic.report_manager import ReportManager
 
 router = APIRouter(tags=["clients"])
 
@@ -78,13 +76,17 @@ class ReportResponse(BaseModel):
     generated_at: str | None = None
 
 
+def _raise_not_found(message: str) -> NoReturn:
+    raise NotFoundError(message)
+
+
 @router.get("")
 async def get_clients(
     client_registry: Annotated[ClientRegistry, Depends(get_client_registry_dep)],
 ) -> list[ClientResponse]:
     clients = client_registry.get_all()
     return [
-        cast(ClientResponse, ClientResponse.model_validate(client.model_dump()))
+        cast("ClientResponse", ClientResponse.model_validate(client.model_dump()))
         for client in clients
     ]
 
@@ -103,7 +105,7 @@ async def create_client(
 
     created_client = client_registry.create(client)
     return cast(
-        ClientResponse,
+        "ClientResponse",
         ClientResponse.model_validate(created_client.model_dump()),
     )
 
@@ -115,9 +117,10 @@ async def get_client(
 ) -> ClientResponse:
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
-    return cast(ClientResponse, ClientResponse.model_validate(client.model_dump()))
+    return cast("ClientResponse", ClientResponse.model_validate(client.model_dump()))
 
 
 @router.put("/{client_id}")
@@ -128,15 +131,17 @@ async def update_client(
 ) -> ClientResponse:
     existing_client = client_registry.get_by_id(client_id)
     if not existing_client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     updated_client = client_registry.update(client_id, client_data)
 
     if not updated_client:
-        raise BadRequestError("Failed to update client")
+        msg = "Failed to update client"
+        raise BadRequestError(msg)
 
     return cast(
-        ClientResponse,
+        "ClientResponse",
         ClientResponse.model_validate(updated_client.model_dump()),
     )
 
@@ -152,12 +157,14 @@ async def delete_client(
 ) -> None:
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     active_runs = client_run_registry.get_runs_by_client_id(client_id)
     if active_runs:
+        msg = "Cannot delete client with active runs. Remove all runs first."
         raise BadRequestError(
-            "Cannot delete client with active runs. Remove all runs first.",
+            msg,
         )
 
     client_registry.delete(client_id)
@@ -174,11 +181,12 @@ async def get_client_runs(
 ) -> list[ClientRunResponse]:
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     runs = client_run_registry.get_runs_by_client_id(client_id)
     return [
-        cast(ClientRunResponse, ClientRunResponse.model_validate(run.model_dump()))
+        cast("ClientRunResponse", ClientRunResponse.model_validate(run.model_dump()))
         for run in runs
     ]
 
@@ -198,23 +206,28 @@ async def start_client_run(
 ) -> ClientRunResponse:
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     config_id = run_data.config_id or client.config_id
     if not config_id:
-        raise BadRequestError(
+        msg = (
             "No configuration specified. Provide "
-            "config_id or set a default config for the client.",
+            "config_id or set a default config for the client."
+        )
+        raise BadRequestError(
+            msg,
         )
 
     try:
         client_run = client_process_manager.start_client(client_id, config_id)
         return cast(
-            ClientRunResponse,
+            "ClientRunResponse",
             ClientRunResponse.model_validate(client_run.model_dump()),
         )
     except Exception as e:
-        raise ServerError("Failed to start client") from e
+        msg = "Failed to start client"
+        raise ServerError(msg) from e
 
 
 @router.get("/{client_id}/runs/{run_id}")
@@ -229,14 +242,16 @@ async def get_client_run(
 ) -> ClientRunResponse:
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     run = client_run_registry.get_by_id(run_id)
     if not run or run.client_id != client_id:
-        raise NotFoundError("Client run not found")
+        msg = "Client run not found"
+        raise NotFoundError(msg)
 
     return cast(
-        ClientRunResponse,
+        "ClientRunResponse",
         ClientRunResponse.model_validate(run.model_dump()),
     )
 
@@ -257,46 +272,47 @@ async def stop_client_run(
 ) -> None:
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     run = client_run_registry.get_by_id(run_id)
     if not run or run.client_id != client_id:
-        raise NotFoundError("Client run not found")
+        msg = "Client run not found"
+        raise NotFoundError(msg)
 
     if run.status != RunStatus.RUNNING:
-        raise BadRequestError(f"Client run is not running (status: {run.status})")
+        msg = f"Client run is not running (status: {run.status})"
+        raise BadRequestError(msg)
 
     try:
         client_process_manager.stop_client_run(run_id)
     except Exception as e:
-        raise ServerError("Failed to stop client run") from e
+        msg = "Failed to stop client run"
+        raise ServerError(msg) from e
 
 
 @router.get("/{client_id}/runs/{run_id}/logs")
 async def get_client_run_logs(
     client_id: Annotated[int, Path(ge=1)],
     run_id: Annotated[int, Path(ge=1)],
-    log_manager: Annotated[LogManager, Depends(get_log_manager)],
-    log_registry: Annotated[LogRegistry, Depends(get_log_registry_dep)],
-    client_registry: Annotated[ClientRegistry, Depends(get_client_registry_dep)],
-    client_run_registry: Annotated[
-        ClientRunRegistry,
-        Depends(get_client_run_registry_dep),
-    ],
+    route_deps: Annotated[LogRouteDeps, Depends(get_log_route_deps)],
 ) -> LogResponse:
+    log_manager, log_registry, client_registry, client_run_registry = route_deps
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     run = client_run_registry.get_by_id(run_id)
     if not run or run.client_id != client_id:
-        raise NotFoundError("Client run not found")
+        msg = "Client run not found"
+        raise NotFoundError(msg)
 
     if run.log_id:
         log = log_registry.get_by_id(run.log_id)
         if log:
             return cast(
-                LogResponse,
+                "LogResponse",
                 LogResponse.model_validate(log.model_dump()),
             )
 
@@ -307,13 +323,15 @@ async def get_client_run_logs(
                 log = log_registry.get_by_id(log_id)
                 if log:
                     return cast(
-                        LogResponse,
+                        "LogResponse",
                         LogResponse.model_validate(log.model_dump()),
                     )
         except Exception as e:
-            raise ServerError("Failed to collect logs") from e
+            msg = "Failed to collect logs"
+            raise ServerError(msg) from e
 
-    raise NotFoundError("Logs not found for this run")
+    msg = "Logs not found for this run"
+    raise NotFoundError(msg)
 
 
 @router.get("/{client_id}/reports")
@@ -324,7 +342,8 @@ async def get_client_reports(
 ) -> list[ReportResponse]:
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     reports = report_registry.get_reports_by_client_id(
         client_id,
@@ -336,27 +355,24 @@ async def get_client_reports(
 async def get_client_run_report(
     client_id: Annotated[int, Path(ge=1)],
     run_id: Annotated[int, Path(ge=1)],
-    report_manager: Annotated[ReportManager, Depends(get_report_manager)],
-    report_registry: Annotated[ReportRegistry, Depends(get_report_registry_dep)],
-    client_registry: Annotated[ClientRegistry, Depends(get_client_registry_dep)],
-    client_run_registry: Annotated[
-        ClientRunRegistry,
-        Depends(get_client_run_registry_dep),
-    ],
+    route_deps: Annotated[ReportRouteDeps, Depends(get_report_route_deps)],
 ) -> ReportResponse:
+    report_manager, report_registry, client_registry, client_run_registry = route_deps
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     run = client_run_registry.get_by_id(run_id)
     if not run or run.client_id != client_id:
-        raise NotFoundError("Client run not found")
+        msg = "Client run not found"
+        raise NotFoundError(msg)
 
     if run.report_id:
         report = report_registry.get_by_id(run.report_id)
         if report:
             return cast(
-                ReportResponse,
+                "ReportResponse",
                 ReportResponse.model_validate(report.model_dump()),
             )
 
@@ -367,39 +383,41 @@ async def get_client_run_report(
                 report = report_registry.get_by_id(report_id)
                 if report:
                     return cast(
-                        ReportResponse,
+                        "ReportResponse",
                         ReportResponse.model_validate(report.model_dump()),
                     )
         except Exception as e:
-            raise ServerError("Failed to generate report") from e
+            msg = "Failed to generate report"
+            raise ServerError(msg) from e
 
-    raise NotFoundError("Report not found for this run")
+    msg = "Report not found for this run"
+    raise NotFoundError(msg)
 
 
 @router.post("/{client_id}/runs/{run_id}/report")
 async def generate_client_run_report(
     client_id: Annotated[int, Path(ge=1)],
     run_id: Annotated[int, Path(ge=1)],
-    report_manager: Annotated[ReportManager, Depends(get_report_manager)],
-    report_registry: Annotated[ReportRegistry, Depends(get_report_registry_dep)],
-    client_registry: Annotated[ClientRegistry, Depends(get_client_registry_dep)],
-    client_run_registry: Annotated[
-        ClientRunRegistry,
-        Depends(get_client_run_registry_dep),
-    ],
+    route_deps: Annotated[ReportRouteDeps, Depends(get_report_route_deps)],
 ) -> ReportResponse:
+    report_manager, report_registry, client_registry, client_run_registry = route_deps
     client = client_registry.get_by_id(client_id)
     if not client:
-        raise NotFoundError("Client not found")
+        msg = "Client not found"
+        raise NotFoundError(msg)
 
     run = client_run_registry.get_by_id(run_id)
     if not run or run.client_id != client_id:
-        raise NotFoundError("Client run not found")
+        msg = "Client run not found"
+        raise NotFoundError(msg)
 
     if run.status not in [RunStatus.STOPPED, RunStatus.FAILED]:
-        raise BadRequestError(
+        msg = (
             "Cannot generate report for a run that "
-            f"is not finished (status: {run.status})",
+            f"is not finished (status: {run.status})"
+        )
+        raise BadRequestError(
+            msg,
         )
 
     try:
@@ -407,8 +425,13 @@ async def generate_client_run_report(
         report = report_registry.get_by_id(report_id)
 
         if not report:
-            raise NotFoundError("Report not found")  # noqa: TRY301
+            msg = "Report not found"
+            _raise_not_found(msg)
 
-        return cast(ReportResponse, ReportResponse.model_validate(report.model_dump()))
+        return cast(
+            "ReportResponse",
+            ReportResponse.model_validate(report.model_dump()),
+        )
     except Exception as e:
-        raise ServerError("Failed to generate report") from e
+        msg = "Failed to generate report"
+        raise ServerError(msg) from e

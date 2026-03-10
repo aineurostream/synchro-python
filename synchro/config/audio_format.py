@@ -1,11 +1,11 @@
-from enum import Enum
+from enum import StrEnum
 from typing import ClassVar
 
 import numpy as np
 from pydantic import BaseModel
 
 
-class AudioFormatType(str, Enum):
+class AudioFormatType(StrEnum):
     INT_8 = "int8"
     INT_16 = "int16"
     INT_24 = "int24"

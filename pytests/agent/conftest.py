@@ -3,7 +3,7 @@ import pytest
 from synchroagent.config import AppConfig
 
 
-@pytest.fixture()
+@pytest.fixture
 def test_app_config() -> AppConfig:
     """Fixture for test application configuration."""
     return AppConfig(

@@ -13,12 +13,12 @@ from synchroagent.database.models import RunStatus
 from synchroagent.database.report_registry import ReportRegistry
 
 
-@pytest.fixture()
+@pytest.fixture
 def test_db_path() -> str:
     return ":memory:"
 
 
-@pytest.fixture()
+@pytest.fixture
 def test_app_config(test_db_path: str) -> AppConfig:
     return AppConfig(
         db_path=test_db_path,
@@ -26,7 +26,7 @@ def test_app_config(test_db_path: str) -> AppConfig:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_connection(
     test_app_config: AppConfig,
 ) -> Generator[DatabaseConnection, None, None]:
@@ -36,7 +36,7 @@ def db_connection(
     conn.close()
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_transaction(
     db_connection: DatabaseConnection,
 ) -> Generator[sqlite3.Connection, None, None]:
@@ -44,32 +44,32 @@ def db_transaction(
         yield transaction
 
 
-@pytest.fixture()
+@pytest.fixture
 def config_registry(db_connection):
     return ConfigRegistry(db_connection)
 
 
-@pytest.fixture()
+@pytest.fixture
 def client_registry(db_connection):
     return ClientRegistry(db_connection)
 
 
-@pytest.fixture()
+@pytest.fixture
 def client_run_registry(db_connection):
     return ClientRunRegistry(db_connection)
 
 
-@pytest.fixture()
+@pytest.fixture
 def log_registry(db_connection):
     return LogRegistry(db_connection)
 
 
-@pytest.fixture()
+@pytest.fixture
 def report_registry(db_connection):
     return ReportRegistry(db_connection)
 
 
-@pytest.fixture()
+@pytest.fixture
 def test_config_item(config_registry):
     config = ConfigCreate(
         name="report_test_config",
@@ -78,7 +78,7 @@ def test_config_item(config_registry):
     return config_registry.create(config)
 
 
-@pytest.fixture()
+@pytest.fixture
 def test_client_item(client_registry, test_config_item):
     client = ClientCreate(
         name="run_test_client",
@@ -87,7 +87,7 @@ def test_client_item(client_registry, test_config_item):
     return client_registry.create(client)
 
 
-@pytest.fixture()
+@pytest.fixture
 def test_client_run_item(client_run_registry, test_client_item, test_config_item):
     client_run = ClientRunCreate(
         client_id=test_client_item.id,

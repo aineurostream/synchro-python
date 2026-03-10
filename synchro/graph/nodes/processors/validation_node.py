@@ -4,21 +4,22 @@ import threading
 import numpy as np
 
 from synchro.audio.frame_container import FrameContainer
-from synchro.config.audio_format import AudioFormat, AudioFormatType, DEFAULT_AUDIO_FORMAT
-from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
-from synchro.config.schemas import FormatValidatorNodeSchema
+from synchro.config.audio_format import (
+    AudioFormat,
+    AudioFormatType,
+)
 from synchro.config.commons import LONG_BUFFER_SIZE_SEC
-
+from synchro.config.schemas import FormatValidatorNodeSchema
+from synchro.graph.graph_node import EmittingNodeMixin, GraphNode, ReceivingNodeMixin
 
 logger = logging.getLogger(__name__)
 
 
 class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
-    """
-    Прозрачная нода-«санитайзер» формата, совместимая с графом:
-    - поддерживает контекстный менеджер (__enter__/__exit__),
-    - принимает данные через put_data, на get_data выдаёт «ровно то, что пришло»,
-      но с приведением в моно (при enforce_mono) и в целевой PCM-формат.
+    """Transparent format sanitizer node compatible with the graph:
+    - supports context manager methods (__enter__/__exit__),
+    - accepts input in put_data and returns the same stream in get_data,
+      but converted to mono (when enforce_mono is set) and target PCM format.
     """
 
     def __init__(self, config: FormatValidatorNodeSchema) -> None:
@@ -30,7 +31,9 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
     def put_data(self, _source: str, data: FrameContainer) -> None:
         with self._lock:
-            self._buffer = data.clone() if self._buffer is None else self._buffer.append(data)
+            self._buffer = (
+                data.clone() if self._buffer is None else self._buffer.append(data)
+            )
             self._incoming_frames += data.length_frames
 
     def get_data(self) -> FrameContainer | None:
@@ -56,7 +59,8 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         x = self._bytes_to_float(data.frame_data, in_fmt)
         if self._config.enforce_mono:
             x = self._to_mono_assume_interleaved(x, in_fmt, data)  # см. ниже
-        # если не enforce_mono, считаем, что уже моно (или interleaved — тогда оставьте приводить раньше)
+        # Если not enforce_mono, считаем, что сигнал уже моно.
+        # Иначе interleaved надо приводить на предыдущем шаге.
 
         # 2) float32 -> bytes в целевой формат
         raw = self._float_to_bytes(x, self._config.enforce_format)
@@ -64,7 +68,7 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         # 3) собираем новый контейнер (rate сохраняем/не трогаем)
         return FrameContainer(
             audio_format=self._config.enforce_format,
-            rate=rate if self._config.passthrough_rate else rate,
+            rate=rate,
             frame_data=raw,
         )
 
@@ -80,9 +84,11 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             if len(a) % 3 != 0:
                 a = a[: (len(a) // 3) * 3]
             a = a.reshape(-1, 3)
-            b = (a[:, 0].astype(np.uint32)
-                 | (a[:, 1].astype(np.uint32) << 8)
-                 | (a[:, 2].astype(np.uint32) << 16)).astype(np.int32)
+            b = (
+                a[:, 0].astype(np.uint32)
+                | (a[:, 1].astype(np.uint32) << 8)
+                | (a[:, 2].astype(np.uint32) << 16)
+            ).astype(np.int32)
             neg = (b & 0x800000) != 0
             b[neg] -= 1 << 24
             return b.astype(np.float32) / float(1 << 23)
@@ -90,7 +96,8 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             return np.frombuffer(raw, dtype="<i4").astype(np.float32) / 2147483648.0
         if fmt.format_type == AudioFormatType.FLOAT_32:
             return np.frombuffer(raw, dtype="<f4").astype(np.float32)
-        raise ValueError(f"Unsupported input format: {fmt.format_type}")
+        msg = f"Unsupported input format: {fmt.format_type}"
+        raise ValueError(msg)
 
     @staticmethod
     def _float_to_bytes(x: np.ndarray, out_fmt: AudioFormat) -> bytes:
@@ -113,13 +120,19 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             return (x * 2147483648.0).astype("<i4").tobytes()
         if out_fmt.format_type == AudioFormatType.FLOAT_32:
             return x.astype("<f4").tobytes()
-        raise ValueError(f"Unsupported output format: {out_fmt.format_type}")
+        msg = f"Unsupported output format: {out_fmt.format_type}"
+        raise ValueError(msg)
 
-    def _to_mono_assume_interleaved(self, x: np.ndarray, fmt: AudioFormat, data: FrameContainer) -> np.ndarray:
-        """
-        Сведение в моно. FrameContainer у вас не хранит явное количество каналов.
-        Валидация каналов сделана выше по графу (File/ChannelInput). Если сюда
-        всё же попадёт interleaved многоканал, можно расширить API и передавать hint.
-        Здесь считаем, что уже моно → просто возвращаем.
+    def _to_mono_assume_interleaved(
+        self,
+        x: np.ndarray,
+        _fmt: AudioFormat,
+        _data: FrameContainer,
+    ) -> np.ndarray:
+        """Mono conversion path.
+        FrameContainer does not carry explicit channel count, so channel validation
+        is expected to happen in upstream nodes (File/ChannelInput). If interleaved
+        multichannel data reaches this point, the API can be extended with a hint.
+        For now, this function assumes the signal is already mono.
         """
         return x.astype(np.float32)

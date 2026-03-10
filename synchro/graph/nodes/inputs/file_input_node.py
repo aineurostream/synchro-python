@@ -29,10 +29,12 @@ class FileInputNode(AbstractInputNode):
     def __enter__(self) -> Self:
         wavefile = wave.open(str(self._config.path), "r")
         if wavefile.getnchannels() != 1:
-            raise ValueError("Only mono files are supported")
+            msg = "Only mono files are supported"
+            raise ValueError(msg)
         supported_format = AudioFormat(format_type=AudioFormatType.INT_16)
         if wavefile.getsampwidth() != supported_format.sample_size:
-            raise ValueError("Only 16-bit audio files are supported")
+            msg = "Only 16-bit audio files are supported"
+            raise ValueError(msg)
         length = wavefile.getnframes()
         self._wavefile_data = FrameContainer(
             audio_format=supported_format,
@@ -87,7 +89,9 @@ class FileInputNode(AbstractInputNode):
             logger.info("No enough data to send - sending remaining data")
         data_frame = self._wavefile_data.with_new_data(data_to_send)
         logger.info(
-            f"File sending {len(data_to_send)} bytes "
-            f"({time_passed:.2f} seconds ({data_frame.length_secs:.2f})",
+            "File sending %d bytes (%.2f seconds (%.2f))",
+            len(data_to_send),
+            time_passed,
+            data_frame.length_secs,
         )
         return data_frame

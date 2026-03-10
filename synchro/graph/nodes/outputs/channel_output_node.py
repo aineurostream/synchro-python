@@ -1,6 +1,6 @@
 import logging
-import time
 import threading
+import time
 from types import TracebackType
 from typing import Literal, Self
 
@@ -22,8 +22,8 @@ JACK_DEVICE = "jack"
 
 class ChannelOutputNode(AbstractOutputNode):
     """
-    Узел вывода на устройство. 
-    
+    Узел вывода на устройство.
+
     Ключевые особенности:
       - Буфер потокобезопасен (lock),
       - Конвертация байтов ↔ numpy строго под dtype стрима,
@@ -46,10 +46,10 @@ class ChannelOutputNode(AbstractOutputNode):
 
     def __enter__(self) -> Self:
         def callback(
-            out_data: np.ndarray, 
-            frames: int, 
-            _time: int, 
-            status: str | None
+            out_data: np.ndarray,
+            frames: int,
+            _time: int,
+            status: str | None,
         ) -> None:
             if status:
                 logger.error("Error in audio stream: %s", status)
@@ -59,11 +59,10 @@ class ChannelOutputNode(AbstractOutputNode):
                 buf = self._out_buffer
                 self._out_buffer = b""
 
-            dtype = DEFAULT_AUDIO_FORMAT.numpy_format  # должен совпадать с dtype стрима!
+            dtype = DEFAULT_AUDIO_FORMAT.numpy_format  # Must match stream dtype.
             samples = np.frombuffer(buf, dtype=dtype)
 
-            # Мы считаем, что приходят МОНО-данные. Дублируем во все выходные каналы.
-            # out_data.shape = (frames, out_channels)
+            # Input is treated as mono and duplicated to every output channel.
             out_channels = 1 if out_data.ndim == 1 else out_data.shape[1]
             available = min(frames, samples.size)
 
@@ -82,7 +81,10 @@ class ChannelOutputNode(AbstractOutputNode):
 
         # Кол-во каналов вывода — не более 2 (стерео) и не более max_device_channels
         max_dev_ch = int(device_info.get("max_output_channels", 2))
-        out_channels = min(max(2, 1), max_dev_ch)  # минимум стерео, если устройство позволяет
+        out_channels = min(
+            max(2, 1),
+            max_dev_ch,
+        )  # минимум стерео, если устройство позволяет
 
         self._stream = sd.OutputStream(
             device=device,
@@ -96,11 +98,14 @@ class ChannelOutputNode(AbstractOutputNode):
         # Предзаполнение нулями, чтобы callback имел запас на первом цикле
         prefill_frames = int(self._sample_rate * PREFILL_SECONDS)
         with self._lock:
-            self._out_buffer += np.zeros((prefill_frames,), dtype=DEFAULT_AUDIO_FORMAT.numpy_format).tobytes()
+            self._out_buffer += np.zeros(
+                (prefill_frames,),
+                dtype=DEFAULT_AUDIO_FORMAT.numpy_format,
+            ).tobytes()
 
         return self
 
-    def _cleanup(self):
+    def _cleanup(self) -> bool:
         logger.info("Cleanup output node")
         if self._stream:
             try:
@@ -110,10 +115,16 @@ class ChannelOutputNode(AbstractOutputNode):
                 self._stream = None
         return False
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> Literal[False]:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
         self._cleanup()
+        return False
 
-    def __del__(self):
+    def __del__(self) -> None:
         self._cleanup()
 
     def put_data(self, _source: str, data: FrameContainer) -> None:
@@ -123,10 +134,15 @@ class ChannelOutputNode(AbstractOutputNode):
         (через FormatValidatorNode и/или ResampleNode).
         """
         if self._stream is None:
-            raise RuntimeError("Audio stream is not open")
+            msg = "Audio stream is not open"
+            raise RuntimeError(msg)
 
         if data.rate != self._sample_rate:
-            logger.warning("Data rate is %d, expected device rate %d", data.rate, self._sample_rate)
+            logger.warning(
+                "Data rate is %d, expected device rate %d",
+                data.rate,
+                self._sample_rate,
+            )
 
         # Копим байты атомарно (callback читает этот буфер)
         with self._lock:

@@ -1,30 +1,30 @@
 import logging
 import threading
-import sounddevice as sd
-import numpy as np
-
-from typing import Literal, Self, cast
 from types import TracebackType
+from typing import Literal, Self, cast
+
+import numpy as np
+import sounddevice as sd
 
 from synchro.audio.frame_container import FrameContainer
-from synchro.config.schemas import InputChannelStreamerNodeSchema
-from synchro.config.commons import StreamConfig
-from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
 from synchro.config.audio_format import DEFAULT_AUDIO_FORMAT
+from synchro.config.commons import StreamConfig
+from synchro.config.schemas import InputChannelStreamerNodeSchema
+from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
 
 logger = logging.getLogger(__name__)
 
 JACK_ENABLED = False
 JACK_DEVICE = "jack"
+MONO_DIMS = 2
 
 
 class ChannelInputNode(AbstractInputNode):
-    """
-    Узел живого входа. Делает:
-      - корректную выборку канала при JACK,
-      - микширование в моно при многоканале (без JACK),
-      - потокобезопасное накопление байтов в буфере,
-      - строгое соответствие dtype <-> FrameContainer.audio_format.
+    """Узел живого входа. Делает:
+    - корректную выборку канала при JACK,
+    - микширование в моно при многоканале (без JACK),
+    - потокобезопасное накопление байтов в буфере,
+    - строгое соответствие dtype <-> FrameContainer.audio_format.
     """
 
     def __init__(self, config: InputChannelStreamerNodeSchema) -> None:
@@ -35,28 +35,33 @@ class ChannelInputNode(AbstractInputNode):
         self._lock = threading.Lock()
 
     def __enter__(self) -> Self:
-        def callback(input_data: np.ndarray, _frames: int, _time: int, status: str | None) -> None:
+        def callback(
+            input_data: np.ndarray,
+            _frames: int,
+            _time: int,
+            status: str | None,
+        ) -> None:
             if status:
                 logger.error("Error in audio stream: %s", status)
             if self._incoming_buffer is None:
                 return
 
-            # Преобразуем поступивший блок к моно-буферу.
+            # Convert the incoming block to a mono buffer.
             if JACK_ENABLED:
-                # В режиме JACK берём канал из self._config.channel (индекс начинается с 1).
+                # In JACK mode, take channel from self._config.channel.
+                # Channel index starts at 1.
                 chan_idx = max(0, self._config.channel - 1)
                 if input_data.ndim == 1:
                     mono = input_data.astype(input_data.dtype)
                 else:
                     mono = input_data[:, chan_idx].astype(input_data.dtype)
+            # Without JACK: if N channels arrived, average to mono.
+            elif input_data.ndim == MONO_DIMS and input_data.shape[1] > 1:
+                mono = np.mean(input_data, axis=1).astype(input_data.dtype)
             else:
-                # Без JACK: если пришло N каналов — усредняем в моно.
-                if input_data.ndim == 2 and input_data.shape[1] > 1:
-                    mono = np.mean(input_data, axis=1).astype(input_data.dtype)
-                else:
-                    mono = input_data.astype(input_data.dtype)
+                mono = input_data.astype(input_data.dtype)
 
-            payload = cast(bytes, mono.tobytes())
+            payload = cast("bytes", mono.tobytes())
             with self._lock:
                 self._incoming_buffer.append_bytes_inp(payload)
 
@@ -64,9 +69,11 @@ class ChannelInputNode(AbstractInputNode):
         device_info = sd.query_devices(device, "input")
         sample_rate = int(device_info["default_samplerate"])
 
-        # ВНИМАНИЕ: dtype в стриме должен совпадать с DEFAULT_AUDIO_FORMAT.numpy_format!
+        # NOTE: stream dtype must match DEFAULT_AUDIO_FORMAT.numpy_format.
         dtype = DEFAULT_AUDIO_FORMAT.numpy_format  # например, np.int16
-        channels = self._config.channel if JACK_ENABLED else max(1, self._config.channel)
+        channels = (
+            self._config.channel if JACK_ENABLED else max(1, self._config.channel)
+        )
 
         self._incoming_buffer = FrameContainer.from_config(
             StreamConfig(audio_format=DEFAULT_AUDIO_FORMAT, rate=sample_rate),
@@ -81,7 +88,7 @@ class ChannelInputNode(AbstractInputNode):
         self._stream.start()
         return self
 
-    def _cleanup(self):
+    def _cleanup(self) -> bool:
         logger.info("Cleanup input node")
         if self._stream:
             try:
@@ -92,20 +99,28 @@ class ChannelInputNode(AbstractInputNode):
                 self._incoming_buffer = None
         return False
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> Literal[False]:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
         self._cleanup()
+        return False
 
-    def __del__(self):
+    def __del__(self) -> None:
         self._cleanup()
 
     def get_data(self) -> FrameContainer | None:
-        """
-        Забираем накопившийся блок как моно PCM с dtype, согласованным с DEFAULT_AUDIO_FORMAT.
+        """Return buffered data as mono PCM with dtype
+        matching DEFAULT_AUDIO_FORMAT.
         """
         if not self._stream:
-            raise RuntimeError("Audio stream is not open")
+            msg = "Audio stream is not open"
+            raise RuntimeError(msg)
         if self._incoming_buffer is None:
-            raise RuntimeError("Incoming buffer is not initialized")
+            msg = "Incoming buffer is not initialized"
+            raise RuntimeError(msg)
         with self._lock:
             read_bytes = self._incoming_buffer
             self._incoming_buffer = self._incoming_buffer.to_empty()

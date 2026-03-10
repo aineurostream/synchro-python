@@ -37,20 +37,20 @@ class ClientRunRegistry(
         super().__init__(db_connection, "client_runs", ClientRunSchema)
 
     def _row_to_model(self, row: dict[str, Any]) -> ClientRunSchema:
-        return cast(ClientRunSchema, ClientRunSchema.model_validate(row))
+        return cast("ClientRunSchema", ClientRunSchema.model_validate(row))
 
     def model_to_dict(self, model: ClientRunSchema) -> dict[str, Any]:
-        return cast(dict[str, Any], model.model_dump(mode="json"))
+        return cast("dict[str, Any]", model.model_dump(mode="json"))
 
     def model_create_to_dict(self, model: ClientRunCreate) -> dict[str, Any]:
         data = model.model_dump(mode="json", exclude_unset=True)
         data["started_at"] = data.get("started_at") or get_datetime_iso()
 
-        return cast(dict[str, Any], data)
+        return cast("dict[str, Any]", data)
 
     def model_update_to_dict(self, model: ClientRunUpdate) -> dict[str, Any]:
         return cast(
-            dict[str, Any],
+            "dict[str, Any]",
             model.model_dump(mode="json", exclude_unset=True, exclude_none=True),
         )
 
@@ -73,7 +73,7 @@ class ClientRunRegistry(
             UPDATE {self.table_name}
             SET {set_clause}
             WHERE id = ?
-        """
+        """  # noqa: S608
 
         self.db.execute(query, values)
         return self.get_by_id(run_id)
@@ -83,7 +83,7 @@ class ClientRunRegistry(
             SELECT * FROM {self.table_name}
             WHERE status = ?
             ORDER BY started_at DESC
-        """
+        """  # noqa: S608
         results = self.db.execute(query, (RunStatus.RUNNING.value,))
         return [self._row_to_model(row) for row in results]
 
@@ -92,11 +92,12 @@ class ClientRunRegistry(
         client_id: int,
         limit: int = 10,
     ) -> list[ClientRunSchema]:
+        safe_limit = max(1, limit)
         query = f"""
             SELECT * FROM {self.table_name}
             WHERE client_id = ?
             ORDER BY started_at DESC
-            LIMIT {limit}
-        """
-        results = self.db.execute(query, (client_id,))
+            LIMIT ?
+        """  # noqa: S608
+        results = self.db.execute(query, (client_id, safe_limit))
         return [self._row_to_model(row) for row in results]

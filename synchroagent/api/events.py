@@ -14,14 +14,15 @@ logger = logging.getLogger(__name__)
 
 @router.get("/stream")
 async def stream_events(request: Request) -> EventSourceResponse:
-    async def event_generator() -> (
-        AsyncGenerator[dict[str, str | int | BaseEventSchema], None]
-    ):
+    async def event_generator() -> AsyncGenerator[
+        dict[str, str | int | BaseEventSchema],
+        None,
+    ]:
         yield {"event": "connected", "data": "connected"}
         queue: asyncio.Queue[BaseEventSchema] = asyncio.Queue()
 
         def on_event(data: BaseEventSchema) -> None:
-            logger.debug(f"Event received in API: {data.event_type}")
+            logger.debug("Event received in API: %s", data.event_type)
             queue.put_nowait(data)
 
         event_bus.subscribe("*", on_event)
@@ -34,7 +35,7 @@ async def stream_events(request: Request) -> EventSourceResponse:
                 try:
                     logger.debug("Waiting for event from queue")
                     event: BaseEventSchema = queue.get_nowait()
-                    logger.debug(f"Sending event to client: {event.event_type}")
+                    logger.debug("Sending event to client: %s", event.event_type)
                     yield {
                         "event": "message",
                         "data": event.model_dump_json(),

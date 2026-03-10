@@ -198,6 +198,7 @@ def test_get_client_run_logs(
     sample_client_run,
     sample_log,
 ):
+    assert mock_log_manager is not None
     mock_client_registry.get_by_id.return_value = sample_client
     sample_client_run.log_id = 1
     mock_client_run_registry.get_by_id.return_value = sample_client_run
@@ -244,6 +245,7 @@ def test_get_client_run_report(
     sample_client_run,
     sample_report,
 ):
+    assert mock_report_manager is not None
     mock_client_registry.get_by_id.return_value = sample_client
     sample_client_run.report_id = 1
     mock_client_run_registry.get_by_id.return_value = sample_client_run
@@ -269,6 +271,7 @@ def test_generate_client_run_report(
     sample_client_run,
     sample_report,
 ):
+    assert mock_report_manager is not None
     mock_client_registry.get_by_id.return_value = sample_client
 
     sample_client_run.status = RunStatus.STOPPED

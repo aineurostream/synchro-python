@@ -30,6 +30,7 @@ def test_validate_client_and_config_client_not_found(
     mock_client_registry,
     mock_config_registry,
 ):
+    assert mock_config_registry is not None
     mock_client_registry.get_by_id.return_value = None
 
     with pytest.raises(ValueError, match="Client not found: 1"):

@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-from typing import cast
-import os
+import argparse
 import asyncio
-from typing import Any
 import logging
+import os
 import time
-from threading import Thread, Event, RLock
+from contextlib import suppress
 from pathlib import Path
+from threading import Event, RLock, Thread
+from typing import TYPE_CHECKING, Any, ClassVar, NoReturn, cast
 
-from hydra import initialize_config_dir, compose
+from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 
-from synchro.logging import setup_logging, get_logs
+from synchro.logging import get_logs, setup_logging
 
 try:
     # Textual imports (optional at dev time)
@@ -25,38 +26,42 @@ try:
         Button,
         Footer,
         Header,
-        Input,
         Label,
         ListItem,
         ListView,
+        Log,
         RadioButton,
         RadioSet,
         Select,
         Static,
-        Log,
         TextArea,
     )
+
     try:
         from textual.screen import ModalScreen
-    except Exception:
+    except ImportError:
         from textual.screens import ModalScreen  # type: ignore[no-redef]
-except Exception as _e:  # pragma: no cover - textual may be missing
+except ImportError as _e:  # pragma: no cover - textual may be missing
+    msg = (
+        f"Textual import error: {type(_e).__name__}: {_e}. "
+        "Install with `uv pip install textual`."
+    )
     raise SystemExit(
-        f"Textual import error: {type(_e).__name__}: {_e}. Install with `uv pip install textual`.",
+        msg,
     ) from _e
-
-from . import providers
-from .settings import UISettings, load_settings
-from .providers import PipelineRunner
 
 from synchro.config.schemas import (
     ProcessingGraphConfig,
-    SeamlessConnectorNodeSchema,
 )
-from synchro.config.commons import NodeEventsCallback
 from synchro.config.settings import SettingsSchema
 from synchro.graph.graph_initializer import GraphInitializer
 from synchro.graph.graph_manager import GraphManager
+from synchro.ui import providers
+from synchro.ui.providers import PipelineRunner
+from synchro.ui.settings import UISettings, load_settings
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 THEME: str = "solarized-light"
 REFRESH_RATE: float = 1
@@ -71,9 +76,14 @@ DEFAULT_LANGS = [
     ("Японский", "jp"),
     ("Китайский", "ch"),
 ]
+_MAX_SYSTEM_LOG_LINES = 2000
+_TRIM_SYSTEM_LOG_LINES = 1000
+_WORKER_FAIL_AT = 10
+SelectOption = list[tuple[str, int]] | list[tuple[str, str]]
+
 
 def file_resolver(path: str) -> bytes:
-    with open(path, "rb") as fp:
+    with Path(path).open("rb") as fp:
         return fp.read()
 
 
@@ -87,20 +97,23 @@ def load_config_via_hydra(*, config_file: Path) -> DictConfig:
     and resolves groups (ai/pipeline/settings) via compose().
     """
     if not config_file.exists():
-        raise FileNotFoundError(f"Config not found: {config_file}")
+        msg = f"Config not found: {config_file}"
+        raise FileNotFoundError(msg)
 
     config_dir = config_file.parent.resolve()
     config_name = config_file.stem
     with initialize_config_dir(version_base=None, config_dir=str(config_dir)):
         cfg = compose(config_name=config_name)
 
-    return cast(DictConfig, cfg)
+    return cast("DictConfig", cfg)
 
 
-def initialize_configs(cfg: DictConfig) -> tuple[ProcessingGraphConfig, SettingsSchema, Any]:
-    pipeline_config = cast(DictConfig, cfg["pipeline"])
-    neural_config = cast(DictConfig, cfg["ai"])
-    settings_config = cast(DictConfig, cfg["settings"])
+def initialize_configs(
+    cfg: DictConfig,
+) -> tuple[ProcessingGraphConfig, SettingsSchema, Any]:
+    pipeline_config = cast("DictConfig", cfg["pipeline"])
+    neural_config = cast("DictConfig", cfg["ai"])
+    settings_config = cast("DictConfig", cfg["settings"])
 
     core_config = ProcessingGraphConfig.model_validate(pipeline_config)
     settings = SettingsSchema.model_validate(settings_config)
@@ -109,38 +122,45 @@ def initialize_configs(cfg: DictConfig) -> tuple[ProcessingGraphConfig, Settings
     return core_config, settings, neural_config_dict
 
 
-def replace_server_url(config, url: str = "http://127.0.0.1:50080", lang_from: str = "en", lang_to: str = "ru") -> None:
+def replace_server_url(
+    config: ProcessingGraphConfig,
+    url: str = "http://127.0.0.1:50080",
+    lang_from: str = "en",
+    lang_to: str = "ru",
+) -> None:
+    logger = logging.getLogger(__name__)
     for node in config.nodes:
         if node.node_type == "converter_seamless":
             node.server_url = url
             node.lang_from = lang_from
             node.lang_to = lang_to
-            print("Replace node", node.model_dump_json())
+            logger.info("Replace node %s", node.model_dump_json())
 
 
 class SystemInfoPanel(Static):
     """Simple system info block (uptime, node states, audio status)."""
 
-    def __init__(self, info_getter=None) -> None:
+    def __init__(
+        self,
+        info_getter: Callable[[], dict[str, Any]] | None = None,
+    ) -> None:
         super().__init__()
         self._info_getter = info_getter
 
-    def on_mount(self) -> None:  # noqa: D401
+    def on_mount(self) -> None:
         self.set_interval(1.0, self.refresh_info)
         self.refresh_info()
 
     def refresh_info(self) -> None:
         info = self._info_getter() if self._info_getter else providers.get_system_info()
-        nodes = ", ".join(f"{n['name']}:{n['state']}" for n in info["nodes"])
-        audio = "yes" if info.get("audio_active") else "no"
         self.update(
-            "\n".join([
-                f"Активно: {info['uptime']} сек.",
-                # f"Nodes: {nodes}",
-                # f"Audio: {audio}",
-                f"Обновлено: {info['uptime_iso']}",
-                f"Процесс: {info['worker'] and info['worker'].is_alive()}",
-            ]),
+            "\n".join(
+                [
+                    f"Активно: {info['uptime']} сек.",
+                    f"Обновлено: {info['uptime_iso']}",
+                    f"Процесс: {info['worker'] and info['worker'].is_alive()}",
+                ],
+            ),
         )
 
 
@@ -149,7 +169,13 @@ class LogsColumn(Vertical):
 
     active_filter: reactive[str] = reactive("all")
 
-    def __init__(self, title: str, with_filters: bool = False, fetcher=None) -> None:
+    def __init__(
+        self,
+        title: str,
+        *,
+        with_filters: bool = False,
+        fetcher: Callable[[str], list[str]] | None = None,
+    ) -> None:
         super().__init__()
         self.title = title
         self.with_filters = with_filters
@@ -157,11 +183,14 @@ class LogsColumn(Vertical):
         self.filter_set: RadioSet | None = None
         self._fetcher = fetcher
 
-    def compose(self) -> ComposeResult:  # noqa: D401
+    def compose(self) -> ComposeResult:
         yield Label(self.title, classes="title")
         if self.with_filters:
             self.filter_set = RadioSet(
-                *[RadioButton(lbl, value=lbl) for lbl in providers.get_preset_filters()],
+                *[
+                    RadioButton(lbl, value=lbl)
+                    for lbl in providers.get_preset_filters()
+                ],
                 id="model-log-filters",
             )
             yield self.filter_set
@@ -175,11 +204,7 @@ class LogsColumn(Vertical):
 
     def refresh_logs(self) -> None:
         self.list_view.clear()
-        
-        # if self.with_filters:
-        #     items = self._fetcher(self.active_filter) if self._fetcher else []
-        # else:
-        #     items = providers.get_system_logs()
+
         log_lines = get_logs(self.active_filter)
         self.app.notify(log_lines)
         for line in log_lines:
@@ -192,11 +217,16 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
     Returns selected config dict on Apply, or None on Cancel.
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("escape", "dismiss", "Отмена"),
     ]
 
-    def __init__(self, *args, defaults: dict[str, Any] | None = None, **kwargs) -> None:
+    def __init__(
+        self,
+        *args: object,
+        defaults: dict[str, Any] | None = None,
+        **kwargs: object,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._defaults = defaults or {}
         self.select_input: Select[int] | None = None
@@ -206,16 +236,14 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
         self.select_tts: Select[str] | None = None
         self.error_label = Label("")
 
-    def compose(self) -> ComposeResult:  # noqa: D401
+    def compose(self) -> ComposeResult:
         in_devs = providers.list_input_devices()
         out_devs = providers.list_output_devices()
         in_opts: list[tuple[str, int]] = [
-            (f"{d.device_id} — {d.name}", d.device_id) 
-            for d in in_devs
+            (f"{d.device_id} — {d.name}", d.device_id) for d in in_devs
         ] or [("0 — Default", 0)]
         out_opts: list[tuple[str, int]] = [
-            (f"{d.device_id} — {d.name}", d.device_id) 
-            for d in out_devs
+            (f"{d.device_id} — {d.name}", d.device_id) for d in out_devs
         ] or [("1 — Default", 1)]
         tts_opts: list[tuple[str, str]] = [
             ("xtts", "xtts"),
@@ -223,20 +251,45 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
             ("vosk", "vosk"),
         ]
 
-        def get_select(prompt: str, options, value, default = Select.BLANK) -> Select:
+        def get_select(
+            prompt: str,
+            options: SelectOption,
+            value: int | str | None,
+            default: int | str = Select.BLANK,
+        ) -> Select:
             valid_values = {x for _, x in options}
             value = value if value in valid_values else default
-            result = Select[int](options, value=value, prompt=prompt)
-            return result
+            return Select[int](options, value=value, prompt=prompt)
 
         with Container():
             with Vertical():
                 yield Label("Настройки", classes="title")
-                self.select_input = get_select("Устройство ввода", in_opts, self.app.settings.input_device)
-                self.select_output = get_select("Устройство вывода", out_opts, self.app.settings.output_device)
-                self.select_lang_from = get_select("Основной язык спикера", DEFAULT_LANGS, self.select_lang_from)
-                self.select_lang_to = get_select("Язык перевода", DEFAULT_LANGS, self.select_lang_to)
-                self.select_tts = get_select("Движок озвучания", tts_opts, self.select_tts, "xtts")
+                self.select_input = get_select(
+                    "Устройство ввода",
+                    in_opts,
+                    self.app.settings.input_device,
+                )
+                self.select_output = get_select(
+                    "Устройство вывода",
+                    out_opts,
+                    self.app.settings.output_device,
+                )
+                self.select_lang_from = get_select(
+                    "Основной язык спикера",
+                    DEFAULT_LANGS,
+                    self.select_lang_from,
+                )
+                self.select_lang_to = get_select(
+                    "Язык перевода",
+                    DEFAULT_LANGS,
+                    self.select_lang_to,
+                )
+                self.select_tts = get_select(
+                    "Движок озвучания",
+                    tts_opts,
+                    self.select_tts,
+                    "xtts",
+                )
                 yield self.select_input
                 yield Label(MICROPHONE_WARNING, variant="warning", expand=True)
                 yield self.select_output
@@ -260,12 +313,18 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
                 self.select_lang_to.value = str(self._defaults["lang_to"])  # type: ignore[assignment]
             if self._defaults.get("tts_engine") and self.select_tts:
                 self.select_tts.value = str(self._defaults["tts_engine"])  # type: ignore[assignment]
-        except Exception:
-            pass
+        except (TypeError, ValueError) as exc:
+            logging.getLogger(__name__).debug("SettingsModal defaults ignored: %s", exc)
 
     @on(Button.Pressed, "#apply")
     def on_apply(self) -> None:
-        if not (self.select_input and self.select_output and self.select_lang_from and self.select_lang_to and self.select_tts):
+        if not (
+            self.select_input
+            and self.select_output
+            and self.select_lang_from
+            and self.select_lang_to
+            and self.select_tts
+        ):
             return
         dev = self.select_input.value
         out_dev = self.select_output.value
@@ -275,13 +334,15 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
         if dev is None or out_dev is None or src is None or dst is None or tts is None:
             self.error_label.update("Please fill all fields")
             return
-        self.dismiss({
-            "input_device": dev,
-            "output_device": out_dev,
-            "lang_from": str(src),
-            "lang_to": str(dst),
-            "tts_engine": str(tts),
-        })
+        self.dismiss(
+            {
+                "input_device": dev,
+                "output_device": out_dev,
+                "lang_from": str(src),
+                "lang_to": str(dst),
+                "tts_engine": str(tts),
+            },
+        )
 
     @on(Button.Pressed, "#cancel")
     def on_cancel(self) -> None:
@@ -289,12 +350,17 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
 
 
 class ConfigModal(ModalScreen[dict[str, Any] | None]):
-
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("escape", "dismiss", "Отмена"),
     ]
 
-    def __init__(self, *args, config: str = "", defaults: dict[str, Any] | None = None, **kwargs) -> None:
+    def __init__(
+        self,
+        *args: object,
+        config: str = "",
+        defaults: dict[str, Any] | None = None,
+        **kwargs: object,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.config = config
         self._defaults = defaults or {}
@@ -305,13 +371,18 @@ class ConfigModal(ModalScreen[dict[str, Any] | None]):
         self.select_tts: Select[str] | None = None
         self.error_label = Label("")
 
-    def compose(self) -> ComposeResult:  # noqa: D401
+    def compose(self) -> ComposeResult:
         with Container():
             yield Label("Конфиг", classes="title")
             with Vertical():
-                yield TextArea.code_editor(self.config, language="yml", theme="vscode_dark", soft_wrap=True, read_only=True)
+                yield TextArea.code_editor(
+                    self.config,
+                    language="yml",
+                    theme="vscode_dark",
+                    soft_wrap=True,
+                    read_only=True,
+                )
             with Horizontal():
-                # yield Button("Применить", id="apply", variant="success")
                 yield Button("OK", id="cancel")
 
         # Apply defaults if provided
@@ -326,12 +397,18 @@ class ConfigModal(ModalScreen[dict[str, Any] | None]):
                 self.select_lang_to.value = str(self._defaults["lang_to"])  # type: ignore[assignment]
             if self._defaults.get("tts_engine") and self.select_tts:
                 self.select_tts.value = str(self._defaults["tts_engine"])  # type: ignore[assignment]
-        except Exception:
-            pass
+        except (TypeError, ValueError) as exc:
+            logging.getLogger(__name__).debug("ConfigModal defaults ignored: %s", exc)
 
     @on(Button.Pressed, "#apply")
     def on_apply(self) -> None:
-        if not (self.select_input and self.select_output and self.select_lang_from and self.select_lang_to and self.select_tts):
+        if not (
+            self.select_input
+            and self.select_output
+            and self.select_lang_from
+            and self.select_lang_to
+            and self.select_tts
+        ):
             return
         dev = self.select_input.value
         out_dev = self.select_output.value
@@ -341,13 +418,15 @@ class ConfigModal(ModalScreen[dict[str, Any] | None]):
         if dev is None or out_dev is None or src is None or dst is None or tts is None:
             self.error_label.update("Please fill all fields")
             return
-        self.dismiss({
-            "input_device": dev,
-            "output_device": out_dev,
-            "lang_from": str(src),
-            "lang_to": str(dst),
-            "tts_engine": str(tts),
-        })
+        self.dismiss(
+            {
+                "input_device": dev,
+                "output_device": out_dev,
+                "lang_from": str(src),
+                "lang_to": str(dst),
+                "tts_engine": str(tts),
+            },
+        )
 
     @on(Button.Pressed, "#cancel")
     def on_cancel(self) -> None:
@@ -358,7 +437,7 @@ class SynchroTextualApp(App[Any]):
     TITLE = "Клиент - Нейрострим. Перевод"
     CSS_PATH = "app.tcss"
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("r", "refresh", "Refresh", show=False),
         Binding("q", "quit", "Quit"),
         Binding("s", "push_screen('settings_modal')", "Настройки"),
@@ -366,13 +445,13 @@ class SynchroTextualApp(App[Any]):
     ]
 
     def __init__(
-            self, 
-            settings: UISettings | None = None,
-            config: str = "",
-            settings_pipeline = None,
-            settings_client = None,
-            settings_ai = None,
-        ) -> None:
+        self,
+        settings: UISettings | None = None,
+        config: str = "",
+        settings_pipeline: ProcessingGraphConfig | None = None,
+        settings_client: SettingsSchema | None = None,
+        settings_ai: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__()
         self.config = config
         self.settings_pipeline = settings_pipeline
@@ -390,12 +469,18 @@ class SynchroTextualApp(App[Any]):
         # App-level system log buffer and handler
         self._syslog_lines: list[str] = []
         self._syslog_handler: logging.Handler | None = None
-        self.model_logs = LogsColumn("События", with_filters=True, fetcher=self._get_model_logs)
-        self.system_logs = Log(auto_scroll=True) #LogsColumn("Системные логи", with_filters=False, fetcher=self._get_system_logs)
+        self.model_logs = LogsColumn(
+            "События",
+            with_filters=True,
+            fetcher=self._get_model_logs,
+        )
+        self.system_logs = Log(
+            auto_scroll=True,
+        )
         self.sys_info = SystemInfoPanel(info_getter=self._get_system_info)
         self.log_stream = None
 
-    def compose(self) -> ComposeResult:  # noqa: D401
+    def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         with Horizontal():
             with Vertical():
@@ -407,31 +492,30 @@ class SynchroTextualApp(App[Any]):
                 yield self.sys_info
         yield Footer()
 
-    def on_mount(self) -> None:  # noqa: D401
-        """
-        Set up callbacks after the app is mounted.
-        
+    def on_mount(self) -> None:
+        """Set up callbacks after the app is mounted.
+
         Initializes:
         1. TUI callback for updating the interface
         2. File logging callback for event tracking
-        
-        
+
+
         Timing:
         - on_mount is called after all widgets are created and mounted
         - It's safe to query and reference widgets here
         - Perfect place for post-initialization setup
-        
+
         Widget Access:
         - query_one("#message-container") works here because widgets exist
         - Would fail if called in __init__ (widgets don't exist yet)
-        
+
         Lifecycle Order:
         - Textual App Lifecycle
             1. __init__()           # Initial setup
             2. compose()           # Create widgets
             3. on_mount()         # Post-mount setup
             4. on_ready()        # App ready for user interaction
-        
+
         Best Practices:
         - Use __init__ for basic initialization
         - Use compose for widget creation
@@ -440,35 +524,40 @@ class SynchroTextualApp(App[Any]):
             - Event handlers setup
             - Callback registration
             - Post-initialization configuration
-        
-        This method is crucial for proper initialization timing in Textual applications, ensuring all components are properly set up after the UI is ready.
-        """
-        self.install_screen(SettingsModal(classes="screen_modal"), name="settings_modal")
-        self.install_screen(ConfigModal(config=self.config, classes="screen_modal"), name="config_modal")
 
-        # Attach root handler that writes to in-memory buffer and worker.log
-        # self._attach_system_log_handler()
-        # Show any early logs immediately
-        # self.system_logs.write_lines(get_logs())
-            
-        # Start background worker that will start client when configured
-        # self._start_worker()
+        This method is crucial for proper initialization timing in Textual
+        applications, ensuring all components are set up after the UI is ready.
+        """
+        self.install_screen(
+            SettingsModal(classes="screen_modal"),
+            name="settings_modal",
+        )
+        self.install_screen(
+            ConfigModal(config=self.config, classes="screen_modal"),
+            name="config_modal",
+        )
 
         # Do not start periodic refresh until config is confirmed
 
-    def on_ready(self):
+    def on_ready(self) -> None:
         if not self.settings.is_complete():
-            self.app.notify("Не сконфигурировано — открою настройки")
+            self.app.notify("Configuration is missing. Opening settings.")
             # Run directly in UI thread; no need for call_from_thread here
             self._maybe_show_config()
         else:
             self.logger.info("Call worker")
             self.run_worker(self.process(), exclusive=True)
 
-    async def process(self):
+    async def process(self) -> None:
         try:
             self.logger.info("Get started")
             counter = 0
+            if (
+                self.settings_client is None
+                or self.settings_pipeline is None
+                or self.settings_ai is None
+            ):
+                self._raise_incomplete_pipeline_config()
 
             nodes, edges = GraphInitializer(
                 self.settings_client,
@@ -478,23 +567,28 @@ class SynchroTextualApp(App[Any]):
                 self.working_dir,
             ).build()
             full_graph = GraphManager(
-                nodes, 
-                edges, 
-                self.settings_client, 
+                nodes,
+                edges,
+                self.settings_client,
                 self.working_dir,
             )
             full_graph.execute()
 
             while True:
-                self.logger.info(f"Work... %s", counter)
+                self.logger.info("Work... %s", counter)
                 self.system_logs.write_lines(get_logs())
                 counter += 1
                 await asyncio.sleep(REFRESH_RATE)
 
             self.logger.info("Worker shutdown")
-        except Exception as exc:
-            self.logger.info(f"Worker error: %s", exc)
+        except (RuntimeError, OSError, ValueError) as exc:
+            self.logger.info("Worker error: %s", exc)
             self.system_logs.write_lines(get_logs())
+
+    @staticmethod
+    def _raise_incomplete_pipeline_config() -> NoReturn:
+        msg = "Pipeline configuration is incomplete"
+        raise RuntimeError(msg)
 
     def _maybe_show_config(self) -> None:
         # Always confirm configuration via modal, then start pipeline
@@ -507,7 +601,7 @@ class SynchroTextualApp(App[Any]):
     def _on_config_done(self, result: dict[str, Any] | None) -> None:
         if not result:
             return
-        
+
         # Persist to settings and environment for downstream tools
         self.settings.input_device = int(result["input_device"])  # type: ignore[assignment]
         self.settings.lang_from = str(result["lang_from"])  # type: ignore[assignment]
@@ -521,7 +615,7 @@ class SynchroTextualApp(App[Any]):
         os.environ["LANG_FROM"] = str(self.settings.lang_from)
         os.environ["LANG_TO"] = str(self.settings.lang_to)
         os.environ["TTS_ENGINE"] = str(self.settings.tts_engine or "")
-        
+
         self._ensure_pipeline_started()
         # Now start periodic refresh and do an initial tick
         self.refresh_tick()
@@ -563,11 +657,13 @@ class SynchroTextualApp(App[Any]):
         self.model_logs.write_line("Test")
         self.system_logs.write_lines(get_logs())
 
-    def _get_system_logs(self, _unused: Any = None) -> list[str]:
+    def _get_system_logs(self, _unused: object | None = None) -> list[str]:
         # Combine app-level root logs with providers' logs
         combined: list[str] = []
         combined.extend(self._syslog_lines[-500:])
-        combined.extend(providers.get_system_log_lines(self.log_stream, self.pipeline_runner))
+        combined.extend(
+            providers.get_system_log_lines(self.log_stream, self.pipeline_runner),
+        )
         # Keep order and drop duplicates
         seen: set[str] = set()
         result: list[str] = []
@@ -579,6 +675,11 @@ class SynchroTextualApp(App[Any]):
         return result[-500:]
 
     # --- Background worker ---
+    @staticmethod
+    def _raise_worker_failure() -> None:
+        msg = "Worker test failure"
+        raise RuntimeError(msg)
+
     def _start_worker(self) -> None:
         if self._worker_thread and self._worker_thread.is_alive():
             return
@@ -587,24 +688,16 @@ class SynchroTextualApp(App[Any]):
             counter = 0
             self.logger.info("Get started")
             while not self._worker_stop.is_set():
-                # try:
-                #     if self.settings.is_complete():
-                #         # Start pipeline if not running yet
-                #         if self.pipeline_runner is None or not self.pipeline_runner.is_running:
-                #             self._ensure_pipeline_started()
-                            
-                #     time.sleep(0.5)
-                # except Exception:
-                #     time.sleep(0.5)
                 try:
                     self.logger.info("Work loop...")
                     self.app.notify(f"Worker... {counter}")
-                    if counter == 10: 1/0
-                except Exception as exc:
+                    if counter == _WORKER_FAIL_AT:
+                        self._raise_worker_failure()
+                except (RuntimeError, OSError, ValueError) as exc:
                     self.logger.info("Oops! %s", exc)
                     self.app.notify(f"Error: {exc}")
                     return
-                
+
                 time.sleep(1)
                 counter += 1
                 self.system_logs.write_lines(get_logs())
@@ -621,33 +714,33 @@ class SynchroTextualApp(App[Any]):
         self._worker_thread = None
         # Detach system log handler
         if hasattr(self, "_syslog_handler") and self._syslog_handler is not None:
-            try:
+            with suppress(RuntimeError, OSError, ValueError):
                 logging.getLogger().removeHandler(self._syslog_handler)
-            except Exception:
-                pass
             self._syslog_handler = None
-    
+
     def _attach_system_log_handler(self) -> None:
         if hasattr(self, "_syslog_handler") and self._syslog_handler is not None:
             return
+
         class _UIBufferedFileHandler(logging.Handler):
             def __init__(self, sink: list[str], file_path: str) -> None:
                 super().__init__()
                 self._sink = sink
                 self._file_path = file_path
-                fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+                fmt = logging.Formatter(
+                    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                )
                 self.setFormatter(fmt)
                 self.setLevel(logging.INFO)
-            def emit(self, record: logging.LogRecord) -> None:  # noqa: D401
-                try:
-                    msg = self.format(record)
-                    self._sink.append(msg)
-                    if len(self._sink) > 2000:
-                        del self._sink[:1000]
-                    with open(self._file_path, "a", encoding="utf-8") as f:
-                        f.write(msg + "\n")
-                except Exception:
-                    pass
+
+            def emit(self, record: logging.LogRecord) -> None:
+                msg = self.format(record)
+                self._sink.append(msg)
+                if len(self._sink) > _MAX_SYSTEM_LOG_LINES:
+                    del self._sink[:_TRIM_SYSTEM_LOG_LINES]
+                with Path(self._file_path).open("a", encoding="utf-8") as f:
+                    f.write(msg + "\n")
+
         handler = _UIBufferedFileHandler(self._syslog_lines, "worker.log")
         self._syslog_handler = handler
         root = logging.getLogger()
@@ -660,8 +753,6 @@ class SynchroTextualApp(App[Any]):
 
 
 def main() -> None:
-    import argparse
-
     parser = argparse.ArgumentParser(description="Synchro Textual UI")
     parser.add_argument("--input-device", type=int, default=None)
     parser.add_argument("--output-device", type=int, default=None)
@@ -693,16 +784,15 @@ def main() -> None:
     }
 
     app_settings = load_settings(overrides)
-    print(app_settings)
+    logging.getLogger(__name__).info("Loaded app settings: %s", app_settings)
     fp = app_settings.config.resolve()
-    print(fp)
+    logging.getLogger(__name__).info("Resolved config path: %s", fp)
     cfg = load_config_via_hydra(config_file=fp)
     config = OmegaConf.to_yaml(cfg, resolve=True)
-    print(config)
+    logging.getLogger(__name__).debug("Config:\n%s", config)
     core_config, settings, neural_config_dict = initialize_configs(cfg)
     replace_server_url(config=core_config)
-
-    print(core_config)
+    logging.getLogger(__name__).debug("Core config: %s", core_config)
 
     nodes, edges = GraphInitializer(
         settings,
@@ -712,9 +802,9 @@ def main() -> None:
         None,
     ).build()
     full_graph = GraphManager(
-        nodes, 
-        edges, 
-        settings, 
+        nodes,
+        edges,
+        settings,
         None,
     )
     full_graph.execute()

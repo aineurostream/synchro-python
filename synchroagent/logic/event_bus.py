@@ -18,7 +18,7 @@ class EventBus:
     def subscribe(self, event_type: str, handler: EventHandler) -> None:
         with self._lock:
             self._subscribers[event_type].append(handler)
-            logger.debug(f"Subscribed to event type: {event_type}")
+            logger.debug("Subscribed to event type: %s", event_type)
 
     def unsubscribe(self, event_type: str, handler: EventHandler) -> None:
         with self._lock:
@@ -27,7 +27,7 @@ class EventBus:
                 and handler in self._subscribers[event_type]
             ):
                 self._subscribers[event_type].remove(handler)
-                logger.debug(f"Unsubscribed from event type: {event_type}")
+                logger.debug("Unsubscribed from event type: %s", event_type)
 
     def emit(self, data: BaseEventSchema) -> None:
         handlers = []
@@ -41,7 +41,7 @@ class EventBus:
             try:
                 handler(data)
             except Exception:
-                logger.exception(f"Error in event handler for {data.event_type}")
+                logger.exception("Error in event handler for %s", data.event_type)
 
 
 event_bus = EventBus()

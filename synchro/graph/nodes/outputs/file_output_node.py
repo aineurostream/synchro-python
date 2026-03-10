@@ -1,5 +1,5 @@
-import wave
 import logging
+import wave
 from pathlib import Path
 from types import TracebackType
 from typing import Literal, Self
@@ -7,7 +7,6 @@ from typing import Literal, Self
 from synchro.audio.frame_container import FrameContainer
 from synchro.config.schemas import OutputFileNodeSchema
 from synchro.graph.nodes.outputs.abstract_output_node import AbstractOutputNode
-
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +44,10 @@ class FileOutputNode(AbstractOutputNode):
     def put_data(self, _source: str, data: FrameContainer) -> None:
         if self._wave_file is None:
             logger.info("Save audio to file %s", self._file_path)
-            self._wave_file = wave.open(str(self._file_path), "w")
+            # Wave writer should remain open until node context exits.
+            self._wave_file = wave.open(str(self._file_path), "w")  # noqa: SIM115
             self._wave_file.setnchannels(1)
             self._wave_file.setsampwidth(data.audio_format.sample_size)
             self._wave_file.setframerate(data.rate)
-            
+
         self._wave_file.writeframes(data.frame_data)

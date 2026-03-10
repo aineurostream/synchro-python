@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 import numpy as np
 
@@ -6,7 +6,7 @@ from synchro.audio.frame_container import FrameContainer
 from synchro.config.commons import StreamConfig
 
 
-class VoiceActivityDetectorResult(str, Enum):
+class VoiceActivityDetectorResult(StrEnum):
     SPEECH = "speech"
     NON_SPEECH = "non_speech"
     NOT_ENOUGH_INFO = "not_enough_info"
@@ -26,9 +26,11 @@ class VoiceActivityDetector:
 
     def detect_voice(self, audio_data: FrameContainer) -> VoiceActivityDetectorResult:
         if self._buffer.rate != audio_data.rate:
-            raise ValueError("Audio data rate does not match the buffer")
+            msg = "Audio data rate does not match the buffer"
+            raise ValueError(msg)
         if self._buffer.audio_format != audio_data.audio_format:
-            raise ValueError("Audio data format does not match the buffer")
+            msg = "Audio data format does not match the buffer"
+            raise ValueError(msg)
 
         self._buffer.append_inp(audio_data)
         if self._buffer.length_secs < self._buffer_size_sec:

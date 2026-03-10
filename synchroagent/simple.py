@@ -1,54 +1,132 @@
 #!/usr/bin/env python3
-import json
 import fcntl
+import json
+import logging
 import os
+import shlex
+import signal
+import subprocess
 import sys
+import tempfile
 import threading
 import time
-import signal
-import shlex
-import logging
-import subprocess
+from dataclasses import dataclass, field
+from enum import StrEnum
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from enum import Enum
-from typing import Literal
+from types import FrameType
+from typing import TextIO
 
 import psutil
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-
 BIN = "hydra_run.py"
 NAME = "synchro-agent"
-LOCKFILE_PATH = f"/tmp/{NAME}.lock"
+LOCKFILE_PATH = str(Path(tempfile.gettempdir()) / f"{NAME}.lock")
 
 # faster whisper input languages
 LANGUAGES = [
-    "af", "am", "ar", "as", "az", 
-    "ba", "be", "bg", "bn", "bo", "br", "bs", 
-    "ca", "cs", "cy", 
-    "da", "de", 
-    "el", "en", "es", "et", "eu", 
-    "fa", "fi", "fo", "fr", 
-    "gl", "gu", 
-    "ha", "haw", "he", "hi", "hr", "ht", "hu", "hy", "id", 
-    "is", "it", 
-    "ja", "jw", 
-    "ka", "kk", "km", "kn", "ko", 
-    "la", "lb", "ln", "lo", "lt", "lv", 
-    "mg", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", 
-    "ne", "nl", "nn", "no", 
-    "oc", 
-    "pa", "pl", "ps", "pt", 
-    "ro", "ru", 
-    "sa", "sd", "si", "sk", "sl", "sn", "so", "sq", "sr", "su", "sv", "sw", 
-    "ta", "te", "tg", "th", "tk", "tl", "tr", "tt", 
-    "uk", "ur", "uz", 
-    "vi", 
-    "yi", "yo", 
-    "zh", 
+    "af",
+    "am",
+    "ar",
+    "as",
+    "az",
+    "ba",
+    "be",
+    "bg",
+    "bn",
+    "bo",
+    "br",
+    "bs",
+    "ca",
+    "cs",
+    "cy",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "et",
+    "eu",
+    "fa",
+    "fi",
+    "fo",
+    "fr",
+    "gl",
+    "gu",
+    "ha",
+    "haw",
+    "he",
+    "hi",
+    "hr",
+    "ht",
+    "hu",
+    "hy",
+    "id",
+    "is",
+    "it",
+    "ja",
+    "jw",
+    "ka",
+    "kk",
+    "km",
+    "kn",
+    "ko",
+    "la",
+    "lb",
+    "ln",
+    "lo",
+    "lt",
+    "lv",
+    "mg",
+    "mi",
+    "mk",
+    "ml",
+    "mn",
+    "mr",
+    "ms",
+    "mt",
+    "my",
+    "ne",
+    "nl",
+    "nn",
+    "no",
+    "oc",
+    "pa",
+    "pl",
+    "ps",
+    "pt",
+    "ro",
+    "ru",
+    "sa",
+    "sd",
+    "si",
+    "sk",
+    "sl",
+    "sn",
+    "so",
+    "sq",
+    "sr",
+    "su",
+    "sv",
+    "sw",
+    "ta",
+    "te",
+    "tg",
+    "th",
+    "tk",
+    "tl",
+    "tr",
+    "tt",
+    "uk",
+    "ur",
+    "uz",
+    "vi",
+    "yi",
+    "yo",
+    "zh",
     "yue",
 ]
 
@@ -83,22 +161,26 @@ logger.handlers.clear()
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
+AGENT_HOST = os.environ.get("SYNCHRO_AGENT_HOST", "127.0.0.1")
+AGENT_PORT = int(os.environ.get("SYNCHRO_AGENT_PORT", "50081"))
+
 
 # --- защита от второго запуска процесса ---
-def ensure_single_instance():
-    lockfile = open(LOCKFILE_PATH, "w")
+def ensure_single_instance() -> TextIO:
+    # Keep descriptor open for process lifetime to hold the file lock.
+    lockfile = Path(LOCKFILE_PATH).open("w")  # noqa: SIM115
     try:
         fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        logger.warning("Daemon is already running", file=sys.stderr)
+        logger.warning("Daemon is already running")
         sys.exit(1)
-        
+
     # не закрываем lockfile, иначе лок снимется
     return lockfile
 
 
 # --- состояние воркера ---
-class WorkerState(str, Enum):
+class WorkerState(StrEnum):
     IDLE = "idle"
     RUNNING = "running"
     STOPPING = "stopping"
@@ -120,16 +202,13 @@ class SettingsParmas(BaseModel):
     server: str = "http://127.0.0.1:50080"
 
     config: str = "config"  # config
-    ai: str = "bioprom"  # config/ai
-    # pipeline: str = "2510_postbioprom_sample"  # config/pipeline
-<<<<<<< HEAD
-    pipeline: str = "december_sample"
-=======
+    ai: str = "default"  # config/ai
     pipeline: str = "default_file"
->>>>>>> f283b64 (Updates)
     name: str = "sample"
 
-    audio_path: Path | None = "/home/gof/Projects/volumes/samples/long/disabled_support_conference.wav"
+    audio_path: Path | None = Path(
+        "/home/gof/Projects/volumes/samples/long/disabled_support_conference.wav",
+    )
     run_time: int = 100
 
     playlist_path: str | None = None
@@ -139,19 +218,26 @@ class HydraParams(BaseModel):
     speakers: list[SpeakerParams]
     translations: list[TranlationParams]
     settings: SettingsParmas
-    
 
-class StopRequested(Exception):
+
+class StopRequestedError(Exception):
     pass
 
 
 app = FastAPI()
 
-_worker_thread: threading.Thread | None = None
-_stop_event = threading.Event()
-_state = WorkerState.IDLE
-_last_error: str | None = None
 _task_lock = threading.Lock()  # один инстанс задачи
+
+
+@dataclass
+class AgentRuntime:
+    worker_thread: threading.Thread | None = None
+    stop_event: threading.Event = field(default_factory=threading.Event)
+    state: WorkerState = WorkerState.IDLE
+    last_error: str | None = None
+
+
+_runtime = AgentRuntime()
 
 
 def log_subprocess_line(raw_line: bytes | str, level: int = logging.INFO) -> None:
@@ -167,20 +253,20 @@ def log_subprocess_line(raw_line: bytes | str, level: int = logging.INFO) -> Non
         data = json.loads(text)
         logger.log(
             level,
-            "[subprocess] %s", 
+            "[subprocess] %s",
             json.dumps(data, indent=2, ensure_ascii=False),
         )
     except json.JSONDecodeError:
         # если это не JSON — просто пишем как есть
         logger.log(
-            level, 
-            "[subprocess] %s", 
+            level,
+            "[subprocess] %s",
             text,
         )
         return
-    
 
-def find_process_by_name(name):
+
+def find_process_by_name(name: str) -> list[int]:
     """Find processes by name using psutil (cross-platform)."""
     pids = []
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
@@ -194,48 +280,45 @@ def find_process_by_name(name):
     return pids
 
 
-def stop_worker(name):
+def stop_worker(name: str) -> None:
     logger.info("Trying to find and kill workers")
     pids = find_process_by_name(name)
     if pids:
-        [os.kill(x, signal.SIGTERM) for x in pids] 
+        for pid in pids:
+            os.kill(pid, signal.SIGTERM)
         logger.info("Send signal TERM to worker PIDS=%s", pids)
     else:
         logger.info("Running workers '%s' not found.", name)
 
 
-def signal_handler(signum, frame):
-    logger.info(f"Received signal {signum}; exiting")
+def signal_handler(signum: int, _frame: FrameType | None) -> None:
+    logger.info("Received signal %s; exiting", signum)
     stop_worker(BIN)
-    
+
     logger.info("Terminate")
-    exit(0)
+    sys.exit(0)
 
 
-def worker(stop_event, params: HydraParams):
-    global _state, _last_error
-    _state = WorkerState.RUNNING
-    _last_error = None
+def _raise_stop_requested() -> None:
+    raise StopRequestedError
 
-    logger.info("Worker started with params %s", params.model_dump())
-    process = None
-    
-    try:
-        stop_worker(BIN)
 
-        voice_param = (
-            f"{{{params.speakers[0].language}: ['xtts', '{params.speakers[0].voice}']}}" 
-            if params.speakers else 
-            None
-        )
-
-        cmd = [x for x in [
-            "uv", "run", "python", BIN,
+def _build_worker_cmd(params: HydraParams) -> list[str]:
+    voice_param = (
+        f"{{{params.speakers[0].language}: ['xtts', '{params.speakers[0].voice}']}}"
+        if params.speakers
+        else None
+    )
+    return [
+        x
+        for x in [
+            "uv",
+            "run",
+            "python",
+            BIN,
             f"--config-name={params.settings.config}",
             f"ai={params.settings.ai}",
             f"ai.tts.voice_map={voice_param}",
-            # f"stt.buffer_min_words_size={params.settings}",
-            # f"stt.buffer_timeout_seconds={params.settings}",
             f"pipeline={params.settings.pipeline}",
             f"pipeline.nodes.0.path={params.settings.audio_path}",
             f"pipeline.nodes.3.lang_from={params.speakers[0].language}",
@@ -243,9 +326,81 @@ def worker(stop_event, params: HydraParams):
             f"pipeline.nodes.3.server_url={params.settings.server}",
             f"settings.name={params.settings.name}",
             f"settings.limits.run_time_seconds={params.settings.run_time}",
-        ] if x is not None]
+        ]
+        if x is not None
+    ]
 
-        process = subprocess.Popen(
+
+def _pump_worker_output(process: subprocess.Popen[bytes]) -> None:
+    if process.stdout:
+        line = process.stdout.readline()
+        if line:
+            log_subprocess_line(line, logging.INFO)
+            return
+    if not process.stdout and not process.stderr:
+        time.sleep(0.1)
+        return
+    time.sleep(0.1)
+
+
+def _run_worker_loop(
+    process: subprocess.Popen[bytes],
+    stop_event: threading.Event,
+) -> None:
+    while True:
+        if stop_event.is_set():
+            _raise_stop_requested()
+
+        return_code = process.poll()
+        if return_code is not None:
+            logger.info(
+                "Subprocess exited with code %s",
+                return_code,
+            )
+            return
+
+        _pump_worker_output(process)
+
+
+def _stop_child_process(process: subprocess.Popen[bytes] | None) -> None:
+    logger.info("Stop requested, sending SIGTERM to child...")
+    if not process or process.poll() is not None:
+        return
+    try:
+        process.send_signal(signal.SIGTERM)
+        try:
+            process.wait(timeout=10.0)
+            logger.info(
+                "Subprocess terminated gracefully with code %s",
+                process.returncode,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning("Subprocess did not exit, sending SIGKILL")
+            process.kill()
+            process.wait()
+            logger.info(
+                "Subprocess killed, returncode=%s",
+                process.returncode,
+            )
+    except Exception:
+        logger.exception(
+            "Error while stopping subprocess %s",
+            process,
+        )
+
+
+def worker(stop_event: threading.Event, params: HydraParams) -> None:
+    _runtime.state = WorkerState.RUNNING
+    _runtime.last_error = None
+
+    logger.info("Worker started with params %s", params.model_dump())
+    process: subprocess.Popen[bytes] | None = None
+
+    try:
+        stop_worker(BIN)
+        cmd = _build_worker_cmd(params)
+
+        process = subprocess.Popen(  # noqa: S603
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -255,65 +410,17 @@ def worker(stop_event, params: HydraParams):
         )
 
         logger.info(
-            "Subprocess started, cmd=%s, pid=%s", 
-            shlex.join(cmd), process.pid,
+            "Subprocess started, cmd=%s, pid=%s",
+            shlex.join(cmd),
+            process.pid,
         )
-
-        while True:
-            # 1) проверка на запрос остановки
-            if stop_event.is_set():
-                raise StopRequested()
-
-            # 2) проверка, не завершился ли процесс сам
-            return_code = process.poll()
-            if return_code is not None:
-                logger.info(
-                    "Subprocess exited with code %s", 
-                    return_code,
-                )
-                break
-
-            # 3) опционально читаем строки из stdout
-            if process.stdout:
-                line = process.stdout.readline()
-                if line:
-                    log_subprocess_line(line, logging.INFO)
-                else:
-                    # если ничего нет — маленький sleep, чтобы не крутить CPU
-                    time.sleep(0.1)
-            
-            if not process.stdout and not process.stderr:
-                time.sleep(0.1)
-
-        _state = WorkerState.FINISHED
-    except StopRequested:
-        logger.info("Stop requested, sending SIGTERM to child...")
-        if process and process.poll() is None:
-            try:
-                process.send_signal(signal.SIGTERM)
-                # ждём аккуратного завершения
-                try:
-                    process.wait(timeout=10.0)
-                    logger.info(
-                        "Subprocess terminated gracefully with code %s",
-                        process.returncode,
-                    )
-                except subprocess.TimeoutExpired:
-                    logger.warning("Subprocess did not exit, sending SIGKILL")
-                    process.kill()
-                    process.wait()
-                    logger.info(
-                        "Subprocess killed, returncode=%s", 
-                        process.returncode
-                    )
-            except Exception:
-                logger.exception(
-                    "Error while stopping subprocess %s", 
-                    process,
-                )
+        _run_worker_loop(process, stop_event)
+        _runtime.state = WorkerState.FINISHED
+    except StopRequestedError:
+        _stop_child_process(process)
     except Exception as exc:
-        _last_error = str(exc)
-        _state = WorkerState.ERROR
+        _runtime.last_error = str(exc)
+        _runtime.state = WorkerState.ERROR
         logger.exception("Worker crashed with unexpected error")
     finally:
         logger.info("Worker cleanup")
@@ -323,24 +430,22 @@ def worker(stop_event, params: HydraParams):
 
 
 @app.post("/start")
-def start(params: HydraParams):
-    global _worker_thread, _stop_event, _state
-
+def start(params: HydraParams) -> dict[str, str]:
     # не даём запустить вторую задачу
     if not _task_lock.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="Task already running")
 
-    if _worker_thread and _worker_thread.is_alive():
+    if _runtime.worker_thread and _runtime.worker_thread.is_alive():
         # на всякий случай (вообще до сюда не дойдём, если лок занят)
         raise HTTPException(status_code=409, detail="Worker already running")
 
-    _stop_event = threading.Event()
-    _worker_thread = threading.Thread(
+    _runtime.stop_event = threading.Event()
+    _runtime.worker_thread = threading.Thread(
         target=worker,
-        args=(_stop_event, params),
+        args=(_runtime.stop_event, params),
         daemon=True,
     )
-    _worker_thread.start()
+    _runtime.worker_thread.start()
     logger.info("Task started with %s", params.model_dump())
 
     return {
@@ -349,53 +454,51 @@ def start(params: HydraParams):
 
 
 @app.post("/stop")
-def stop():
-    global _worker_thread, _stop_event, _state
-
-    if not _worker_thread or not _worker_thread.is_alive():
+def stop() -> dict[str, str | WorkerState]:
+    if not _runtime.worker_thread or not _runtime.worker_thread.is_alive():
         raise HTTPException(status_code=409, detail="Worker not running")
 
-    _state = WorkerState.STOPPING
-    _stop_event.set()
-    _worker_thread.join(timeout=10)
+    _runtime.state = WorkerState.STOPPING
+    _runtime.stop_event.set()
+    _runtime.worker_thread.join(timeout=10)
     logger.info("Task stopped")
 
     return {
-        "status": "stop_requested", 
-        "state": _state,
+        "status": "stop_requested",
+        "state": _runtime.state,
     }
 
 
 @app.get("/status")
-def status():
-    running = _worker_thread.is_alive() if _worker_thread else False
+def status() -> dict[str, WorkerState | bool | str | None]:
+    running = _runtime.worker_thread.is_alive() if _runtime.worker_thread else False
     logger.info("Task is %s", "running" if running else "stopped")
 
     return {
-        "state": _state,
+        "state": _runtime.state,
         "running": running,
-        "error": _last_error,
+        "error": _runtime.last_error,
     }
 
 
 @app.post("/terminate")
-def terminate():
+def terminate() -> None:
     pid = os.getpid()
     logger.info("Agent PID=%s", pid)
 
     os.kill(pid, signal.SIGTERM)
 
 
-def main():
+def main() -> None:
     logger.info("Initialization")
 
     # гарантируем один инстанс демона
     ensure_single_instance()
 
     uvicorn.run(
-        f"synchroagent.simple:app",
-        host="0.0.0.0",
-        port=50081,
+        "synchroagent.simple:app",
+        host=AGENT_HOST,
+        port=AGENT_PORT,
         reload=False,
     )
 

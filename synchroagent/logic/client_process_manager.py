@@ -3,7 +3,9 @@ import os
 import subprocess
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
+from typing import NoReturn
 
 import yaml
 
@@ -31,21 +33,30 @@ logger = logging.getLogger(__name__)
 WAIT_TIMEOUT_SECONDS = 10
 
 
+def _raise_runtime(message: str) -> NoReturn:
+    raise RuntimeError(message)
+
+
+@dataclass(frozen=True)
+class ProcessManagers:
+    log_manager: LogManager
+    report_manager: ReportManager
+
+
 class ClientProcessManager:
     def __init__(
         self,
         client_registry: ClientRegistry,
         client_run_registry: ClientRunRegistry,
         config_registry: ConfigRegistry,
-        log_manager: LogManager,
-        report_manager: ReportManager,
+        process_managers: ProcessManagers,
         outputs_dir: str | None = None,
     ) -> None:
         self.client_registry = client_registry
         self.client_run_registry = client_run_registry
         self.config_registry = config_registry
-        self.log_manager = log_manager
-        self.report_manager = report_manager
+        self.log_manager = process_managers.log_manager
+        self.report_manager = process_managers.report_manager
         self.outputs_dir = outputs_dir or default_config.outputs_dir
         self.hydra_script = default_config.hydra_script
 
@@ -62,11 +73,13 @@ class ClientProcessManager:
     ) -> tuple[ClientSchema, ConfigSchema]:
         client = self.client_registry.get_by_id(client_id)
         if not client:
-            raise ValueError(f"Client not found: {client_id}")
+            msg = f"Client not found: {client_id}"
+            raise ValueError(msg)
 
         config = self.config_registry.get_by_id(config_id)
         if not config:
-            raise ValueError(f"Configuration not found: {config_id}")
+            msg = f"Configuration not found: {config_id}"
+            raise ValueError(msg)
 
         return client, config
 
@@ -83,7 +96,8 @@ class ClientProcessManager:
 
         client_run = self.client_run_registry.create(client_run_create)
         if not client_run:
-            raise RuntimeError("Failed to create client run record")
+            msg = "Failed to create client run record"
+            raise RuntimeError(msg)
 
         return client_run.id
 
@@ -100,15 +114,21 @@ class ClientProcessManager:
         config_filename = f"agent_{escaped_name}_{unique_id}.yaml"
         config_path = pipeline_dir / config_filename
 
-        with open(config_path, "w") as f:
+        with config_path.open("w", encoding="utf-8") as f:
             yaml.dump(config.content, f)
 
-        logger.info(f"Saved config to {config_path} for client run {client_run_id}")
+        logger.info(
+            "Saved config to %s for client run %s",
+            config_path,
+            client_run_id,
+        )
         return config_filename
 
     def _on_process_completed(self, run_id: int, exit_code: int) -> None:
         logger.info(
-            f"Process completed callback for run {run_id} with exit code {exit_code}",
+            "Process completed callback for run %s with exit code %s",
+            run_id,
+            exit_code,
         )
 
         try:
@@ -116,20 +136,26 @@ class ClientProcessManager:
 
             if not client_run:
                 logger.error(
-                    f"Client run {run_id} not found in process completed callback",
+                    "Client run %s not found in process completed callback",
+                    run_id,
                 )
                 return
 
             log_id = self.log_manager.collect_logs(run_id)
-            logger.info(f"Collected logs for run {run_id}, log_id={log_id}")
+            logger.info("Collected logs for run %s, log_id=%s", run_id, log_id)
 
             report = self.report_manager.generate_report(
                 run_id,
             )
-            logger.info(f"Generated report for run {run_id}, report_id={report.id}")
+            logger.info(
+                "Generated report for run %s, report_id=%s",
+                run_id,
+                report.id,
+            )
         except Exception:
             logger.exception(
-                f"Unexpected error in process completed callback for run {run_id}",
+                "Unexpected error in process completed callback for run %s",
+                run_id,
             )
 
     def _start_process(
@@ -139,7 +165,8 @@ class ClientProcessManager:
     ) -> ClientRunSchema:
         hydra_script_path = Path(self.hydra_script).resolve()
         if not hydra_script_path.is_file():
-            raise FileNotFoundError(f"Hydra script not found: {hydra_script_path}")
+            msg = f"Hydra script not found: {hydra_script_path}"
+            raise FileNotFoundError(msg)
 
         config_filename = self._save_config_to_file(config, client_run_id)
         config_name = config_filename.split(".")[0]
@@ -158,7 +185,7 @@ class ClientProcessManager:
         ]
 
         try:
-            process = subprocess.Popen(
+            process = subprocess.Popen(  # noqa: S603
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -177,15 +204,21 @@ class ClientProcessManager:
             client_run = self.client_run_registry.get_by_id(client_run_id)
 
             if not client_run:
-                raise RuntimeError(f"Failed to retrieve client run: {client_run_id}")  # noqa: TRY301
+                msg = f"Failed to retrieve client run: {client_run_id}"
+                _raise_runtime(msg)
 
             self.process_monitor.register_process(client_run_id, process)
 
-            logger.info(f"Started client run {client_run_id} with PID {process.pid}")
+            logger.info(
+                "Started client run %s with PID %s",
+                client_run_id,
+                process.pid,
+            )
         except Exception as e:
             self.client_run_registry.update_status(client_run_id, RunStatus.FAILED)
-            logger.exception(f"Failed to start process for run {client_run_id}")
-            raise RuntimeError(f"Failed to start client process: {e}") from e
+            logger.exception("Failed to start process for run %s", client_run_id)
+            msg = f"Failed to start client process: {e}"
+            raise RuntimeError(msg) from e
         else:
             return client_run
 
@@ -195,63 +228,68 @@ class ClientProcessManager:
             client_run_id = self._create_client_run(client_id, config_id)
             return self._start_process(config, client_run_id)
         except Exception:
-            logger.exception(f"Failed to start client {client_id}")
+            logger.exception("Failed to start client %s", client_id)
             raise
 
-    def stop_client_run(self, run_id: int) -> ClientRunSchema:  # noqa: C901
+    def stop_client_run(self, run_id: int) -> ClientRunSchema:
+        client_run = self._get_running_run(run_id)
+        try:
+            self._create_stop_flag(client_run, run_id)
+            self._wait_for_run_stop(run_id)
+            self.client_run_registry.update_run_status(client_run, RunStatus.STOPPED)
+            return self._get_run_or_raise(run_id)
+        except ProcessLookupError:
+            logger.warning(
+                "Process %s not found, marking as stopped",
+                client_run.pid,
+            )
+            self.client_run_registry.update_run_status(client_run, RunStatus.STOPPED)
+            return self._get_run_or_raise(run_id)
+        except Exception as e:
+            logger.exception("Error stopping client run %s", run_id)
+            msg = f"Failed to stop client run: {e}"
+            raise RuntimeError(msg) from e
+
+    def _get_running_run(self, run_id: int) -> ClientRunSchema:
         client_run = self.client_run_registry.get_by_id(run_id)
         if not client_run:
-            raise ValueError(f"Client run not found: {run_id}")
-
+            msg = f"Client run not found: {run_id}"
+            raise ValueError(msg)
         if client_run.status != RunStatus.RUNNING:
-            raise ValueError(f"Client run is not running: {run_id}")
-
+            msg = f"Client run is not running: {run_id}"
+            raise ValueError(msg)
         if client_run.pid is None:
-            raise ValueError(f"Client run has no process ID: {run_id}")
+            msg = f"Client run has no process ID: {run_id}"
+            raise ValueError(msg)
+        return client_run
 
-        try:
-            stop_flag_file = (
-                Path(client_run.output_dir or "").resolve().joinpath("stop.flag")
-            )
-            stop_flag_file.touch()
-            logger.info(
-                f"Created stop flag file at {stop_flag_file.resolve().as_posix()} "
-                f"for client run {run_id}",
-            )
+    def _create_stop_flag(self, client_run: ClientRunSchema, run_id: int) -> None:
+        stop_flag_file = (
+            Path(client_run.output_dir or "").resolve().joinpath("stop.flag")
+        )
+        stop_flag_file.touch()
+        logger.info(
+            "Created stop flag file at %s for client run %s",
+            stop_flag_file.resolve().as_posix(),
+            run_id,
+        )
 
-            wait_time: float = 0
-            while self.check_process_status(run_id):
-                logger.info(f"Waiting for client run {run_id} to stop")
-                time.sleep(0.1)
-                wait_time += 0.1
-                if wait_time > WAIT_TIMEOUT_SECONDS:
-                    raise RuntimeError(  # noqa: TRY301
-                        f"Client run {run_id} did not stop after 10 seconds",
-                    )
+    def _wait_for_run_stop(self, run_id: int) -> None:
+        wait_time: float = 0
+        while self.check_process_status(run_id):
+            logger.info("Waiting for client run %s to stop", run_id)
+            time.sleep(0.1)
+            wait_time += 0.1
+            if wait_time > WAIT_TIMEOUT_SECONDS:
+                msg = f"Client run {run_id} did not stop after 10 seconds"
+                _raise_runtime(msg)
 
-            self.client_run_registry.update_run_status(client_run, RunStatus.STOPPED)
-            updated_run = self.client_run_registry.get_by_id(run_id)
-
-            if not updated_run:
-                raise RuntimeError(  # noqa: TRY301
-                    f"Failed to retrieve client run after stopping: {run_id}",
-                )
-
-        except ProcessLookupError as e:
-            logger.warning(f"Process {client_run.pid} not found, marking as stopped")
-            self.client_run_registry.update_run_status(client_run, RunStatus.STOPPED)
-
-            updated_run = self.client_run_registry.get_by_id(run_id)
-            if not updated_run:
-                raise RuntimeError(
-                    f"Failed to retrieve client run after stopping: {run_id}",
-                ) from e
-            return updated_run
-        except Exception as e:
-            logger.exception(f"Error stopping client run {run_id}")
-            raise RuntimeError(f"Failed to stop client run: {e}") from e
-        else:
-            return updated_run
+    def _get_run_or_raise(self, run_id: int) -> ClientRunSchema:
+        updated_run = self.client_run_registry.get_by_id(run_id)
+        if not updated_run:
+            msg = f"Failed to retrieve client run after stopping: {run_id}"
+            _raise_runtime(msg)
+        return updated_run
 
     def get_active_runs(self) -> list[ClientRunSchema]:
         return self.client_run_registry.get_active_runs()
@@ -274,7 +312,7 @@ class ClientProcessManager:
                 )
             return False
         except Exception:
-            logger.exception(f"Error checking process status for run {run_id}")
+            logger.exception("Error checking process status for run %s", run_id)
             return False
         else:
             return True

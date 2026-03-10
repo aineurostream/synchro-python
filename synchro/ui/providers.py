@@ -1,35 +1,41 @@
 from __future__ import annotations
 
+import logging
 import os
 import time
+from contextlib import suppress
 from dataclasses import dataclass
+from pathlib import Path
 from threading import Event, Lock, Thread
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any
 
-from synchroagent.utils import get_datetime_iso
-import logging
+from hydra import compose, initialize_config_dir
+
 from synchro.config.schemas import (
     ProcessingGraphConfig,
     SeamlessConnectorNodeSchema,
 )
-from synchro.config.commons import NodeEventsCallback
 from synchro.config.settings import SettingsSchema
+from synchro.core import CoreManager
 from synchro.graph.graph_initializer import GraphInitializer
 from synchro.graph.graph_manager import GraphManager
-from pathlib import Path
-from hydra import initialize_config_dir, compose
-from omegaconf import DictConfig, OmegaConf
+from synchroagent.utils import get_datetime_iso
 
-from .settings import UISettings
-from synchro.core import CoreManager
+if TYPE_CHECKING:
+    from omegaconf import DictConfig
+
+    from synchro.config.commons import NodeEventsCallback
+    from synchro.ui.settings import UISettings
 
 try:
-    import sounddevice as sd  # type: ignore
-except Exception:  # pragma: no cover - optional at runtime
-    sd = None  # type: ignore
+    import sounddevice as sd  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover - optional at runtime
+    sd = None
 
 
 _START_TS = time.time()
+_MAX_BUFFER_LINES = 2000
+_TRIM_TO_LINES = 1000
 
 
 @dataclass
@@ -56,8 +62,8 @@ def _enumerate_devices() -> list[DeviceInfo]:
                     device_id=i,
                 ),
             )
-    except Exception:
-        pass
+    except (AttributeError, OSError, RuntimeError):
+        logging.getLogger(__name__).exception("Failed to enumerate audio devices")
     return devices
 
 
@@ -80,7 +86,7 @@ def get_preset_filters() -> list[str]:
     ]
 
 
-def get_model_logs(active_filter: str) -> list[str]:
+def get_model_logs(_active_filter: str) -> list[str]:
     """Legacy shim; prefer using app-managed fetchers."""
     ts = get_datetime_iso()
     base: list[str] = [
@@ -145,14 +151,11 @@ class _BufferHandler(logging.Handler):
         self._lock = lock
 
     def emit(self, record: logging.LogRecord) -> None:
-        try:
-            msg = self.format(record)
-            with self._lock:
-                self._sink.append(msg)
-                if len(self._sink) > 2000:
-                    del self._sink[:1000]
-        except Exception:
-            pass
+        msg = self.format(record)
+        with self._lock:
+            self._sink.append(msg)
+            if len(self._sink) > _MAX_BUFFER_LINES:
+                del self._sink[:_TRIM_TO_LINES]
 
 
 class LogStream:
@@ -161,11 +164,11 @@ class LogStream:
         self.server_url = server_url
         self.lang_from = lang_from
         self.lang_to = lang_to
-        self._thread: Optional[Thread] = None
+        self._thread: Thread | None = None
         self._stop = Event()
         self._lock = Lock()
         self._lines: list[tuple[str, str]] = []  # (tag, line)
-        self._gm: Optional[GraphManager] = None
+        self._gm: GraphManager | None = None
         self._sys_lines: list[str] = []
         self._handler = _BufferHandler(self._sys_lines, self._lock)
         self._handler.setLevel(logging.INFO)
@@ -173,7 +176,7 @@ class LogStream:
         self._logger.setLevel(logging.INFO)
         self._ever_started = False
 
-    def _events_cb(self, _node_name: str, log: dict) -> None:  # noqa: ANN001
+    def _events_cb(self, _node_name: str, log: dict) -> None:
         try:
             ctx = log.get("context", {})
             action = str(ctx.get("action") or ctx.get("part") or "info")
@@ -197,15 +200,15 @@ class LogStream:
             level = logging.ERROR if tag == "errors" else logging.INFO
             self._logger.log(level, line)
             # Prevent unbounded growth
-            if len(self._lines) > 2000:
-                self._lines = self._lines[-1000:]
-        except Exception:
+            if len(self._lines) > _MAX_BUFFER_LINES:
+                self._lines = self._lines[-_TRIM_TO_LINES:]
+        except (AttributeError, KeyError, TypeError, ValueError):
             # Swallow logging exceptions to not break UI
-            pass
+            self._logger.exception("Failed to process event callback")
 
-    def start(self) -> None:
+    def start(self) -> bool:
         if (self._thread and self._thread.is_alive()) or self._ever_started:
-            return
+            return False
         # Build minimal graph with SeamlessConnectorNode only
         seam_cfg = SeamlessConnectorNodeSchema(
             name="ui_connector",
@@ -214,7 +217,11 @@ class LogStream:
             lang_to=self.lang_to,
         )
         proc_cfg = ProcessingGraphConfig(nodes=[seam_cfg], edges=[])
-        settings = SettingsSchema(name="ui", input_interval_secs=0.3, processor_interval_secs=0.05)
+        settings = SettingsSchema(
+            name="ui",
+            input_interval_secs=0.3,
+            processor_interval_secs=0.05,
+        )
         events_cb: NodeEventsCallback = self._events_cb  # type: ignore[assignment]
         self._stop.clear()
 
@@ -248,10 +255,8 @@ class LogStream:
     def stop(self) -> None:
         self._stop.set()
         if self._gm is not None:
-            try:
+            with suppress(RuntimeError, OSError):
                 self._gm.stop()
-            except Exception:
-                pass
 
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1.0)
@@ -273,20 +278,20 @@ class LogStream:
             return list(self._sys_lines[-500:])
 
 
-_LOG_STREAM: Optional[_LogStream] = None
+_LOG_STREAM: LogStream | None = None
 
 
 class PipelineRunner:
     def __init__(self, settings: UISettings) -> None:
         self._settings = settings
-        self._thread: Optional[Thread] = None
+        self._thread: Thread | None = None
         self._stop = Event()
         self._lock = Lock()
-        self._gm: Optional[GraphManager] = None
+        self._gm: GraphManager | None = None
         self._lines: list[tuple[str, str]] = []
         self._logger = logging.getLogger(__name__ + ".Pipeline")
 
-    def _events_cb(self, _node_name: str, log: dict) -> None:  # noqa: ANN001
+    def _events_cb(self, _node_name: str, log: dict) -> None:
         # Reuse same formatting as _LogStream
         try:
             ctx = log.get("context", {})
@@ -305,18 +310,25 @@ class PipelineRunner:
             line = f"{ts} | {tag} | {message}"
             with self._lock:
                 self._lines.append((tag, line))
-                if len(self._lines) > 2000:
-                    self._lines = self._lines[-1000:]
+                if len(self._lines) > _MAX_BUFFER_LINES:
+                    self._lines = self._lines[-_TRIM_TO_LINES:]
             level = logging.ERROR if tag == "errors" else logging.INFO
             self._logger.log(level, line)
-        except Exception:
-            pass
+        except (AttributeError, KeyError, TypeError, ValueError):
+            self._logger.exception("Failed to process pipeline event")
 
     def _mutate_cfg(self, cfg: DictConfig) -> DictConfig:
         # Override pipeline nodes and ai according to UI settings
         pipeline = cfg.get("pipeline")
         ai = cfg.get("ai")
         settings = cfg.get("settings")
+
+        self._apply_pipeline_overrides(pipeline)
+        self._apply_tts_override(cfg, ai)
+        self._ensure_unlimited_runtime(cfg, settings)
+        return cfg
+
+    def _apply_pipeline_overrides(self, pipeline: dict | None) -> None:
         # Override input/output devices
         nodes = pipeline.get("nodes", []) if pipeline else []
         for n in nodes:
@@ -332,6 +344,8 @@ class PipelineRunner:
                     n["lang_to"] = self._settings.lang_to
                 if self._settings.converter_server:
                     n["server_url"] = self._settings.converter_server
+
+    def _apply_tts_override(self, cfg: DictConfig, ai: dict | None) -> None:
         # Override TTS engine (if structure exists)
         if ai is None:
             cfg["ai"] = {}
@@ -342,6 +356,12 @@ class PipelineRunner:
             tts = ai["tts"]
         if self._settings.tts_engine:
             tts["engine"] = self._settings.tts_engine
+
+    def _ensure_unlimited_runtime(
+        self,
+        cfg: DictConfig,
+        settings: dict | None,
+    ) -> None:
         # Ensure unlimited run time inside UI
         if settings is None:
             cfg["settings"] = {}
@@ -351,7 +371,6 @@ class PipelineRunner:
             settings["limits"] = {}
             limits = settings["limits"]
         limits["run_time_seconds"] = 0
-        return cfg
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -366,13 +385,18 @@ class PipelineRunner:
                 # Resolve project root (directory that contains 'config/config.yaml')
                 config_dir = self._resolve_config_dir()
                 self._logger.info("Using config dir: %s", config_dir.as_posix())
-                with initialize_config_dir(version_base=None, config_dir=str(config_dir)):
+                with initialize_config_dir(
+                    version_base=None,
+                    config_dir=str(config_dir),
+                ):
                     cfg = compose(config_name=self._settings.base_config_name)
                 cfg = self._mutate_cfg(cfg)
                 # Convert to Pydantic models as in hydra_run
-                from hydra_run import initialize_configs  # local import to avoid cycles
+                from hydra_run import initialize_configs  # noqa: PLC0415
 
-                core_config, settings_model, neural_config_dict = initialize_configs(cfg)
+                core_config, settings_model, neural_config_dict = initialize_configs(
+                    cfg,
+                )
                 core = CoreManager(
                     pipeline_config=core_config,
                     neuro_config=neural_config_dict,
@@ -395,8 +419,8 @@ class PipelineRunner:
         if self._gm is not None:
             try:
                 self._gm.stop()
-            except Exception:
-                pass
+            except (RuntimeError, OSError):
+                self._logger.exception("Failed to stop graph manager")
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1.0)
         self._thread = None
@@ -420,7 +444,7 @@ class PipelineRunner:
         joined with 'config'.
         """
         here = Path(__file__).resolve()
-        for parent in [here] + list(here.parents):
+        for parent in [here, *list(here.parents)]:
             candidate = parent / ".."  # bias towards project root above 'synchro'
             for base in [parent, candidate.resolve()]:
                 cfg = base / "config" / "config.yaml"
@@ -430,7 +454,6 @@ class PipelineRunner:
         return cwd_candidate.resolve()
 
 
-
 def start_log_stream(server_url: str, lang_from: str, lang_to: str) -> LogStream:
     """Factory for app-managed log stream (no globals)."""
     stream = LogStream(server_url, lang_from, lang_to)
@@ -438,12 +461,27 @@ def start_log_stream(server_url: str, lang_from: str, lang_to: str) -> LogStream
     return stream
 
 
-def stop_log_stream(stream: Optional[LogStream]) -> None:
+def stop_log_stream(stream: LogStream | None) -> None:
     if stream is not None:
         stream.stop()
 
 
-def get_model_logs_fallback(active_filter: str, stream: Optional[LogStream] = None) -> list[str]:
+def get_system_log_lines(
+    stream: LogStream | None = None,
+    pipeline_runner: PipelineRunner | None = None,
+) -> list[str]:
+    lines = get_system_logs()
+    if stream is not None:
+        lines.extend(stream.get_system_log_lines())
+    if pipeline_runner is not None and pipeline_runner.is_running:
+        lines.append(f"{get_datetime_iso()} | INFO | pipeline running")
+    return lines[-500:]
+
+
+def get_model_logs_fallback(
+    active_filter: str,
+    stream: LogStream | None = None,
+) -> list[str]:
     """Fallback logs when no app-managed pipeline runner is available."""
     if stream is not None and stream.is_running:
         return stream.get_logs_filtered(active_filter)
@@ -458,5 +496,5 @@ def get_model_logs_fallback(active_filter: str, stream: Optional[LogStream] = No
     if active_filter == "all":
         return base
     if active_filter == "errors":
-        return [l for l in base if "| error |" in l]
-    return [l for l in base if f"| {active_filter} |" in l]
+        return [line for line in base if "| error |" in line]
+    return [line for line in base if f"| {active_filter} |" in line]

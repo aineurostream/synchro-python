@@ -1,3 +1,5 @@
+import pytest
+
 from synchroagent.database.db import DatabaseConnection, get_db_connection
 
 
@@ -46,15 +48,17 @@ def test_database_transaction_commit(db_connection):
 
 
 def test_database_transaction_rollback(db_connection):
-    try:
+    def _insert_then_raise() -> None:
         with db_connection.transaction() as conn:
             conn.execute(
                 "INSERT INTO clients (name, description) VALUES (?, ?)",
                 ("rollback_client", "Rollback test"),
             )
-            raise ValueError("Test exception to trigger rollback")
-    except ValueError:
-        pass
+            msg = "Test exception to trigger rollback"
+            raise ValueError(msg)
+
+    with pytest.raises(ValueError, match="Test exception to trigger rollback"):
+        _insert_then_raise()
     results = db_connection.execute(
         "SELECT * FROM clients WHERE name = ?",
         ("rollback_client",),

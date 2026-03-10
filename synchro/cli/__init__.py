@@ -7,9 +7,7 @@ from synchro.cli.setup.setup import manager as setup_manager
 
 @click.group()
 def manager() -> None:
-    """
-    Primary CLI for instance management - entry point
-    """
+    """Primary CLI for instance management - entry point."""
 
 
 manager.add_command(instance_manager, "instance")

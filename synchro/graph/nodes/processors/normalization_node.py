@@ -45,5 +45,5 @@ class NormalizerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         audio_segment = effects.normalize(audio_segment, headroom=self._config.headroom)
         return FrameContainer.from_config(
             buffer,
-            cast(bytes, audio_segment.raw_data),
+            cast("bytes", audio_segment.raw_data),
         )

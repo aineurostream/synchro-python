@@ -63,45 +63,90 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._output_buffer = self._output_buffer.to_empty()
         return returning_frame
 
-    def mix_frames(self) -> bytes:  # noqa: C901
+    def mix_frames(self) -> bytes:
         if self._output_buffer is None:
-            raise ValueError("Config is not set")
+            msg = "Config is not set"
+            raise ValueError(msg)
         if self._last_update_time == 0.0:
             self._last_update_time = time.time()
         if self._inputs_count == 0:
             return b""
 
+        stream_start_frames, stream_end_frames, batch_length_frames = (
+            self._get_frame_thresholds()
+        )
+        current_time = time.time()
+        delta = current_time - self._last_update_time
+        sample_size = self._output_buffer.audio_format.sample_size
+
+        self._append_silence_for_waiting_streams(
+            delta,
+            sample_size,
+            stream_start_frames,
+        )
+        self._last_update_time = current_time
+
+        self._update_streaming_flags(stream_start_frames, stream_end_frames)
+        selected_frame_containers = self._select_streaming_frames()
+
+        if len(selected_frame_containers) == 0:
+            return b""
+
+        audio_matrix = self._build_audio_matrix(
+            selected_frame_containers,
+            batch_length_frames,
+        )
+        self._consume_streamed_frames(batch_length_frames)
+        audio_matrix = np.divide(audio_matrix, self._inputs_count)
+        audio_matrix = np.sum(audio_matrix, axis=0)
+
+        return cast(
+            "bytes",
+            audio_matrix.astype(
+                self._output_buffer.audio_format.numpy_format,
+            ).tobytes(),
+        )
+
+    def _get_frame_thresholds(self) -> tuple[int, int, int]:
+        if self._output_buffer is None:
+            msg = "Config is not set"
+            raise ValueError(msg)
         stream_start_frames = int(
             self._config.min_working_step_length_secs
             * MAX_MIXING_LENGTH_MULT
             * self._output_buffer.rate,
         )
-
         stream_end_frames = int(
             self._config.min_working_step_length_secs
             * MIN_MIXING_LENGTH_MULT
             * self._output_buffer.rate,
         )
-
         batch_length_frames = int(
             self._config.min_working_step_length_secs * self._output_buffer.rate,
         )
+        return stream_start_frames, stream_end_frames, batch_length_frames
 
-        current_time = time.time()
-        delta = current_time - self._last_update_time
-        sample_size = self._output_buffer.audio_format.sample_size
-
+    def _append_silence_for_waiting_streams(
+        self,
+        delta: float,
+        sample_size: int,
+        stream_start_frames: int,
+    ) -> None:
+        if self._output_buffer is None:
+            return
         for incoming_frame in self._incoming_buffers.values():
             incoming_length = incoming_frame.frame.length_frames
             if incoming_length < stream_start_frames and not incoming_frame.streaming:
                 delta_bytes = (
                     b"\00" * int(delta * self._output_buffer.rate) * sample_size
                 )
-                incoming_frame.frame.append_bytes_inp(
-                    delta_bytes,
-                )
-        self._last_update_time = current_time
+                incoming_frame.frame.append_bytes_inp(delta_bytes)
 
+    def _update_streaming_flags(
+        self,
+        stream_start_frames: int,
+        stream_end_frames: int,
+    ) -> None:
         for incoming_frame in self._incoming_buffers.values():
             current_frame_length = incoming_frame.frame.length_frames
             if current_frame_length > stream_start_frames:
@@ -109,15 +154,21 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             elif current_frame_length < stream_end_frames:
                 incoming_frame.streaming = False
 
-        selected_frame_containers: list[FrameContainer] = [
+    def _select_streaming_frames(self) -> list[FrameContainer]:
+        return [
             incoming_frame.frame
             for incoming_frame in self._incoming_buffers.values()
             if incoming_frame.streaming
         ]
 
-        if len(selected_frame_containers) == 0:
-            return b""
-
+    def _build_audio_matrix(
+        self,
+        selected_frame_containers: list[FrameContainer],
+        batch_length_frames: int,
+    ) -> np.ndarray:
+        if self._output_buffer is None:
+            msg = "Config is not set"
+            raise ValueError(msg)
         audio_matrix = np.zeros(
             (
                 len(selected_frame_containers),
@@ -130,19 +181,11 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                 selected_frame.get_begin_frames(batch_length_frames).frame_data,
                 dtype=self._output_buffer.audio_format.numpy_format,
             )
+        return audio_matrix
 
+    def _consume_streamed_frames(self, batch_length_frames: int) -> None:
         for ibuffer in self._incoming_buffers.values():
             if ibuffer.streaming:
                 ibuffer.frame = ibuffer.frame.get_end_frames(
                     ibuffer.frame.length_frames - batch_length_frames,
                 )
-
-        audio_matrix = np.divide(audio_matrix, self._inputs_count)
-        audio_matrix = np.sum(audio_matrix, axis=0)
-
-        return cast(
-            bytes,
-            audio_matrix.astype(
-                self._output_buffer.audio_format.numpy_format,
-            ).tobytes(),
-        )

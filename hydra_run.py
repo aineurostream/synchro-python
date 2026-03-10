@@ -1,8 +1,9 @@
+#!/usr/bin/env python3
 import json
-import os
 import shutil
 from collections import defaultdict
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 import hydra
@@ -26,7 +27,7 @@ KEY_CHANNEL_NAME = "channel"
 
 
 def file_resolver(path: str) -> bytes:
-    with open(path, "rb") as fp:
+    with Path(path).open("rb") as fp:
         return fp.read()
 
 
@@ -49,12 +50,13 @@ def split_string_bleu(text: str) -> list[str]:
 
 
 def persist_files(pipeline: ProcessingGraphConfig, hydra_dir: str) -> None:
+    hydra_dir_path = Path(hydra_dir)
     for node in pipeline.nodes:
         node_name: str = node.name
         file_path: str = ""
 
         if isinstance(node, InputFileStreamerNodeSchema):
-            file_path = cast(str, node.path)
+            file_path = cast("str", node.path)
         elif isinstance(node, OutputFileNodeSchema):
             node_path = str(node.path)
             if "$WORKING_DIR" in node_path:
@@ -64,19 +66,19 @@ def persist_files(pipeline: ProcessingGraphConfig, hydra_dir: str) -> None:
         if file_path:
             shutil.copy(
                 file_path,
-                os.path.join(hydra_dir, f"{node_name}_{os.path.basename(file_path)}"),
+                hydra_dir_path / f"{node_name}_{Path(file_path).name}",
             )
 
 
 def provide_bleu_for_text(base: str, resulted: str) -> tuple[float, float]:
-    from jiwer import wer
-    from nltk.translate.bleu_score import sentence_bleu
+    from jiwer import wer  # noqa: PLC0415
+    from nltk.translate.bleu_score import sentence_bleu  # noqa: PLC0415
 
     base_split = split_string_bleu(base)
     result_split = split_string_bleu(resulted)
     result = sentence_bleu([base_split], result_split)
     wer_result = wer(" ".join(base), " ".join(resulted))
-    return cast(float, result), wer_result
+    return cast("float", result), wer_result
 
 
 def generate_report_on_bleu(
@@ -95,9 +97,9 @@ def generate_report_on_bleu(
 def initialize_configs(
     cfg: DictConfig,
 ) -> tuple[ProcessingGraphConfig, SettingsSchema, Any]:
-    pipeline_config = cast(DictConfig, cfg["pipeline"])
-    neural_config = cast(DictConfig, cfg["ai"])
-    settings_config = cast(DictConfig, cfg["settings"])
+    pipeline_config = cast("DictConfig", cfg["pipeline"])
+    neural_config = cast("DictConfig", cfg["ai"])
+    settings_config = cast("DictConfig", cfg["settings"])
 
     core_config = ProcessingGraphConfig.model_validate(pipeline_config)
     settings = SettingsSchema.model_validate(settings_config)
@@ -140,6 +142,7 @@ def calculate_quality_metrics(
     settings: SettingsSchema,
     hydra_dir: str,
 ) -> float:
+    hydra_dir_path = Path(hydra_dir)
     total_bleu_score = 0.0
     quality_store: dict[str, dict[str, str | dict[str, str | float]]] = defaultdict(
         dict,
@@ -156,8 +159,7 @@ def calculate_quality_metrics(
             score = resulting_part["bleu_score"]
             total_bleu_score += float(score) * quality_info.weight
 
-    with open(
-        os.path.join(hydra_dir, "meta_store.json"),
+    with (hydra_dir_path / "meta_store.json").open(
         "w",
         encoding="utf-8",
     ) as meta_file:
@@ -212,9 +214,12 @@ def append_value(
 
     if node not in generated_texts:
         available_nodes = ", ".join(list(generated_texts.keys()))
-        raise ValueError(
+        msg = (
             f"Node '{node}' not found in generated_texts. "
-            f"Available nodes: [{available_nodes}]",
+            f"Available nodes: [{available_nodes}]"
+        )
+        raise ValueError(
+            msg,
         )
 
     node_texts = generated_texts[node]
@@ -227,9 +232,9 @@ def append_value(
             node_texts[mode],
         )
     except Exception as e:
+        msg = f"Failed to calculate BLEU score for node '{node}', mode '{mode}': {e!s}"
         raise RuntimeError(
-            "Failed to calculate BLEU score for "
-            f"node '{node}', mode '{mode}': {e!s}",
+            msg,
         ) from e
 
 
@@ -241,7 +246,7 @@ def hydra_app(cfg: DictConfig) -> float:
     generated_texts: dict[str, dict[str, str]] = {}
     node_event_callback = create_node_event_callback(generated_texts)
 
-    from synchro.core import CoreManager
+    from synchro.core import CoreManager  # noqa: PLC0415
 
     core = CoreManager(
         pipeline_config=core_config,

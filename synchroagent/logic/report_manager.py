@@ -29,25 +29,29 @@ class ReportManager:
     def generate_report(self, client_run_id: int) -> ReportSchema:
         client_run = self.client_run_registry.get_by_id(client_run_id)
         if not client_run:
-            raise ValueError(f"Client run not found: {client_run_id}")
+            msg = f"Client run not found: {client_run_id}"
+            raise ValueError(msg)
 
         if not client_run.output_dir:
-            raise ValueError(f"Client run has no output directory: {client_run_id}")
+            msg = f"Client run has no output directory: {client_run_id}"
+            raise ValueError(msg)
 
         report_path = self._generate_report_file(
             client_run_id,
             Path(client_run.output_dir).resolve(),
         )
         if not report_path:
+            msg = f"Failed to generate report file for client run: {client_run_id}"
             raise ValueError(
-                f"Failed to generate report file for client run: {client_run_id}",
+                msg,
             )
 
         try:
-            with open(report_path, encoding="utf-8") as f:
+            with Path(report_path).open(encoding="utf-8") as f:
                 report_content = f.read()
         except Exception as e:
-            raise ValueError(f"Failed to read report file: {report_path}") from e
+            msg = f"Failed to read report file: {report_path}"
+            raise ValueError(msg) from e
 
         report_create = ReportCreate(
             client_id=client_run.client_id,
@@ -56,21 +60,23 @@ class ReportManager:
 
         report = self.report_registry.create(report_create)
         if not report:
-            raise ValueError("Failed to create report record in database")
+            msg = "Failed to create report record in database"
+            raise ValueError(msg)
 
         client_run_update = ClientRunUpdate(report_id=report.id)
         self.client_run_registry.update(client_run_id, client_run_update)
 
         final_report = self.report_registry.get_by_id(report.id)
         if not final_report:
-            raise ValueError("Failed to get report from database")
+            msg = "Failed to get report from database"
+            raise ValueError(msg)
 
         return final_report
 
     def _generate_report_file(self, client_run_id: int, output_dir: Path) -> str | None:
         report_generator_path = Path(self.synchro_report)
         if not report_generator_path.is_dir():
-            logger.error(f"Report generator not found: {report_generator_path}")
+            logger.error("Report generator not found: %s", report_generator_path)
             return None
 
         report_filename = f"report_{client_run_id}_.html"
@@ -88,11 +94,11 @@ class ReportManager:
                 str(report_path),
             ]
             logger.info(
-                "Running report generation command: "
-                f"{' '.join(report_generation_command)}",
+                "Running report generation command: %s",
+                " ".join(report_generation_command),
             )
 
-            subprocess.run(
+            subprocess.run(  # noqa: S603
                 report_generation_command,
                 cwd=Path(report_generator_path),
                 check=True,
@@ -101,7 +107,7 @@ class ReportManager:
             )
 
             if not report_path.exists():
-                logger.error(f"Report file was not created: {report_path}")
+                logger.error("Report file was not created: %s", report_path)
                 return None
 
             return str(report_path)

@@ -87,20 +87,22 @@ class DatabaseConnection:
                 check_same_thread=False,
             )
             if self.connection is None:
-                raise ValueError("Failed to create database connection")
+                msg = "Failed to create database connection"
+                raise ValueError(msg)
 
             self.connection.row_factory = sqlite3.Row
             self.connection.execute("PRAGMA foreign_keys = ON")
             self.connection.execute("PRAGMA journal_mode = WAL")
             self.connection.execute("PRAGMA synchronous = NORMAL")
-            logger.info(f"Connected to database at {self.db_path}")
+            logger.info("Connected to database at %s", self.db_path)
         except sqlite3.Error:
             logger.exception("Error connecting to database")
             raise
 
     def create_tables(self) -> None:
         if self.connection is None:
-            raise ValueError("Database connection not initialized")
+            msg = "Database connection not initialized"
+            raise ValueError(msg)
 
         try:
             with self.transaction():
@@ -117,7 +119,8 @@ class DatabaseConnection:
     @contextlib.contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
         if self.connection is None:
-            raise ValueError("Database connection not initialized")
+            msg = "Database connection not initialized"
+            raise ValueError(msg)
 
         try:
             yield self.connection
@@ -130,7 +133,8 @@ class DatabaseConnection:
 
     def execute(self, query: str, params: tuple = ()) -> list[dict[str, Any]]:
         if self.connection is None:
-            raise ValueError("Database connection not initialized")
+            msg = "Database connection not initialized"
+            raise ValueError(msg)
 
         try:
             cursor = self.connection.cursor()
@@ -150,9 +154,10 @@ class DatabaseConnection:
 
     def get_last_row_id(self) -> int:
         if self.connection is None:
-            raise ValueError("Database connection not initialized")
+            msg = "Database connection not initialized"
+            raise ValueError(msg)
         return cast(
-            int,
+            "int",
             self.connection.execute(
                 "SELECT last_insert_rowid()",
             ).fetchone()[0],

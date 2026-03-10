@@ -11,6 +11,7 @@ def test_save_config_to_file(
     sample_config,
     tmp_path,
 ):
+    assert tmp_path.exists()
     mock_uuid4.return_value = uuid.UUID("12345678-1234-1234-1234-123456789abc")
 
     with patch("synchroagent.logic.client_process_manager.Path") as mock_path:

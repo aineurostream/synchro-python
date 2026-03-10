@@ -5,7 +5,7 @@ from synchro.cli.utils.formatting import cli_echo_title
 
 @click.group(help="Setup graph helpers")
 def manager() -> None:
-    """System information and management"""
+    """System information and management."""
 
 
 @manager.command(help="""Generate graph configuration from the setup""")
@@ -24,7 +24,7 @@ def manager() -> None:
     help="Configuration file output",
 )
 def generate(setup: str, config: str) -> None:
-    """Display system information"""
+    """Display system information."""
     cli_echo_title(
         f"Generate graph configuration from the setup {setup} with config {config}",
     )

@@ -73,7 +73,7 @@ async def create_config(
 
     created_config = config_registry.create(config)
     return cast(
-        ConfigResponse,
+        "ConfigResponse",
         ConfigResponse.model_validate(created_config.model_dump()),
     )
 
@@ -85,9 +85,10 @@ async def get_config(
 ) -> ConfigResponse:
     config = config_registry.get_by_id(config_id)
     if not config:
-        raise NotFoundError("Configuration not found")
+        msg = "Configuration not found"
+        raise NotFoundError(msg)
 
-    return cast(ConfigResponse, ConfigResponse.model_validate(config.model_dump()))
+    return cast("ConfigResponse", ConfigResponse.model_validate(config.model_dump()))
 
 
 @router.put("/{config_id}")
@@ -98,15 +99,17 @@ async def update_config(
 ) -> ConfigResponse:
     existing_config = config_registry.get_by_id(config_id)
     if not existing_config:
-        raise NotFoundError("Configuration not found")
+        msg = "Configuration not found"
+        raise NotFoundError(msg)
 
     updated_config = config_registry.update(config_id, update_data)
 
     if not updated_config:
-        raise BadRequestError("Failed to update configuration")
+        msg = "Failed to update configuration"
+        raise BadRequestError(msg)
 
     return cast(
-        ConfigResponse,
+        "ConfigResponse",
         ConfigResponse.model_validate(updated_config.model_dump()),
     )
 
@@ -119,7 +122,8 @@ async def delete_config(
 ) -> None:
     config = config_registry.get_by_id(config_id)
     if not config:
-        raise NotFoundError("Configuration not found")
+        msg = "Configuration not found"
+        raise NotFoundError(msg)
 
     clients_using_config = client_registry.get_clients_by_config_id(config_id)
     if clients_using_config:
@@ -129,9 +133,11 @@ async def delete_config(
                 for client in clients_using_config
             ],
         )
+        msg = (
+            f"Cannot delete configuration that is being used by clients: {client_names}"
+        )
         raise BadRequestError(
-            "Cannot delete configuration that "
-            f"is being used by clients: {client_names}",
+            msg,
         )
 
     config_registry.delete(config_id)
@@ -144,7 +150,8 @@ async def validate_config(
 ) -> ValidationResponse:
     config = config_registry.get_by_id(config_id)
     if not config:
-        raise NotFoundError("Configuration not found")
+        msg = "Configuration not found"
+        raise NotFoundError(msg)
     return ValidationResponse(message="Configuration is valid", config_id=config_id)
 
 

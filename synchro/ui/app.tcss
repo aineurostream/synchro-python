@@ -1,16 +1,16 @@
-Screen { 
-    layout: vertical; 
+Screen {
+    layout: vertical;
 }
-.title { 
-    content-align: center middle; 
-    height: 1; 
+.title {
+    content-align: center middle;
+    height: 1;
 }
-.dialog { 
-    width: 60; 
-    height: auto; 
-    padding: 1 2; 
-    border: round $accent; 
-    align: center middle; 
+.dialog {
+    width: 60;
+    height: auto;
+    padding: 1 2;
+    border: round $accent;
+    align: center middle;
 }
 
 .screen_modal {

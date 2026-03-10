@@ -173,14 +173,14 @@ translate:
         You receive every turn:
         • Source language: "{lang_from}"
         • Target language: "{lang_to}"
-        
+
         1) ORIGINAL‑CONTEXT (source, *already* spoken, may start mid-sentence): "{source_context}" ##
         2) TRANSLATED‑CONTEXT (target, *already* spoken, may start mid-sentence): "{translated_context}" ##
         3) INPUT (new source words to translate *only*): "{source_text}" ##
-        
+
         Your **task** is to translate **INPUT** from "{lang_from}" to "{lang_to}".
         Your translated sentence **MUST** attach seamlessly after TRANSLATED‑CONTEXT.
-        
+
         ▶︎ RULES – obey **every** point strictly.
         1. **Output:** exactly **one** line containing only the translation of INPUT into "{lang_to}" language. No extra line breaks, tags, or commentary.
         2. **Stay within INPUT** – **never** repeat or retranslate ORIGINAL‑CONTEXT and TRANSLATED‑CONTEXT.
@@ -295,17 +295,17 @@ translate:
         min_sentence_words: 8
         accumulation_timeout: 15
         strip_chars: [".", "…", "!", "?", "#", " ", "。"]
-    - name: sentence_formatter  
+    - name: sentence_formatter
       cls: llm_step.LLMStep
       is_enabled: false
       # ON / OFF
       template: |-
         You are **Sentence Formatter**, the final text preparation step before TTS.
         You receive text fragments that need to be formatted into proper sentences.
-        
+
         Input text: "{subtitles_text}" ##
         Target language: "{lang_to}"
-        
+
         Your task is to format this text into proper sentences by:
         1. Making the first letter of the first word uppercase
         2. Adding appropriate ending punctuation (period or exclamation mark)
@@ -324,7 +324,7 @@ translate:
         9. **No meta-talk**: no explanations, labels, or commentary - just the formatted text.
         10. **Preserve meaning**: maintain the exact meaning and tone of the original text.
         11. If you find "." or ";" use it as end of sentence. But separate sentences on lines.
-        
+
         Now, your formatted sentence is:
       params:
         action: subtitles

@@ -66,16 +66,20 @@ class FrameContainer(StreamConfig):
 
     def append(self, other: "FrameContainer") -> "FrameContainer":
         if self.audio_format != other.audio_format:
-            raise ValueError("Audio formats are different")
+            msg = "Audio formats are different"
+            raise ValueError(msg)
         if self.rate != other.rate:
-            raise ValueError("Rates are different")
+            msg = "Rates are different"
+            raise ValueError(msg)
         return FrameContainer.from_config(self, self.frame_data + other.frame_data)
 
     def append_inp(self, other: "FrameContainer") -> None:
         if self.audio_format != other.audio_format:
-            raise ValueError("Audio formats are different")
+            msg = "Audio formats are different"
+            raise ValueError(msg)
         if self.rate != other.rate:
-            raise ValueError("Rates are different")
+            msg = "Rates are different"
+            raise ValueError(msg)
         self.append_bytes_inp(other.frame_data)
 
     def append_bytes(self, frame_data: bytes) -> "FrameContainer":

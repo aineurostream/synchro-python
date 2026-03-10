@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Any
 
 from synchro.config.commons import NodeEventsCallback
@@ -29,7 +30,7 @@ class CoreManager:
     def preprocess_neuro_config(self) -> None:
         # Preprocess neuro config
         def load_from_file(file_path: str) -> str:
-            with open(file_path) as fp:
+            with Path(file_path).open(encoding="utf-8") as fp:
                 return fp.read()
 
         translate_map = self._neuro_config["translate"]

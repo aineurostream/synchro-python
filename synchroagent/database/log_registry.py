@@ -29,20 +29,20 @@ class LogRegistry(BaseRegistry[LogSchema, LogCreate, LogUpdate]):
         super().__init__(db_connection, "logs", LogSchema)
 
     def _row_to_model(self, row: dict[str, Any]) -> LogSchema:
-        return cast(LogSchema, LogSchema.model_validate(row))
+        return cast("LogSchema", LogSchema.model_validate(row))
 
     def model_to_dict(self, model: LogSchema) -> dict[str, Any]:
-        return cast(dict[str, Any], model.model_dump(mode="json"))
+        return cast("dict[str, Any]", model.model_dump(mode="json"))
 
     def model_create_to_dict(self, model: LogCreate) -> dict[str, Any]:
         data = model.model_dump(mode="json", exclude_unset=True)
         data["created_at"] = data.get("created_at") or get_datetime_iso()
 
-        return cast(dict[str, Any], data)
+        return cast("dict[str, Any]", data)
 
     def model_update_to_dict(self, model: LogUpdate) -> dict[str, Any]:
         return cast(
-            dict[str, Any],
+            "dict[str, Any]",
             model.model_dump(mode="json", exclude_unset=True, exclude_none=True),
         )
 

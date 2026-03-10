@@ -9,18 +9,21 @@ logger = logging.getLogger(__name__)
 
 def read_json_file(file_path: str) -> dict[str, Any] | None:
     if not Path(file_path).exists():
-        logger.warning(f"File not found: {file_path}")
+        logger.warning("File not found: %s", file_path)
         return None
 
     try:
-        with open(file_path) as f:
+        with Path(file_path).open() as f:
             data = json.load(f)
             if not isinstance(data, dict):
-                logger.warning(f"JSON file {file_path} does not contain a dictionary")
+                logger.warning(
+                    "JSON file %s does not contain a dictionary",
+                    file_path,
+                )
                 return None
             return data
     except Exception:
-        logger.exception(f"Error reading JSON file {file_path}")
+        logger.exception("Error reading JSON file %s", file_path)
         return None
 
 

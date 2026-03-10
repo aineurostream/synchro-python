@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from http.client import HTTPException
 from typing import Any, Generic, NoReturn, TypeVar, cast
@@ -11,7 +12,7 @@ ModelCreateT = TypeVar("ModelCreateT", bound=BaseModel)
 ModelUpdateT = TypeVar("ModelUpdateT", bound=BaseModel)
 
 
-class BaseRegistry(Generic[ModelT, ModelCreateT, ModelUpdateT], ABC):
+class BaseRegistry(ABC, Generic[ModelT, ModelCreateT, ModelUpdateT]):
     def __init__(
         self,
         db_connection: DatabaseConnection,
@@ -19,8 +20,15 @@ class BaseRegistry(Generic[ModelT, ModelCreateT, ModelUpdateT], ABC):
         model_class: type[ModelT],
     ) -> None:
         self.db = db_connection
-        self.table_name = table_name
+        self.table_name = self._validate_identifier(table_name, kind="table name")
         self.model_class = model_class
+
+    @staticmethod
+    def _validate_identifier(identifier: str, *, kind: str = "identifier") -> str:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", identifier):
+            msg = f"Invalid SQL {kind}: {identifier}"
+            raise ValueError(msg)
+        return identifier
 
     @abstractmethod
     def _row_to_model(self, row: dict[str, Any]) -> ModelT:
@@ -39,12 +47,12 @@ class BaseRegistry(Generic[ModelT, ModelCreateT, ModelUpdateT], ABC):
         pass
 
     def get_by_id(self, entity_id: int) -> ModelT | None:
-        query = f"SELECT * FROM {self.table_name} WHERE id = ?"
+        query = f"SELECT * FROM {self.table_name} WHERE id = ?"  # noqa: S608
         results = self.db.execute(query, (entity_id,))
         return self._row_to_model(results[0]) if results else None
 
     def get_all(self) -> list[ModelT]:
-        query = f"SELECT * FROM {self.table_name}"
+        query = f"SELECT * FROM {self.table_name}"  # noqa: S608
         results = self.db.execute(query)
         return [self._row_to_model(row) for row in results]
 
@@ -54,12 +62,14 @@ class BaseRegistry(Generic[ModelT, ModelCreateT, ModelUpdateT], ABC):
         if "id" in data:
             del data["id"]
 
-        fields = list(data.keys())
+        fields = [
+            self._validate_identifier(field, kind="column name") for field in data
+        ]
         placeholders = ", ".join(["?"] * len(fields))
 
         query = """
             INSERT INTO {} ({}) VALUES ({})
-        """.format(self.table_name, ", ".join(fields), placeholders)
+        """.format(self.table_name, ", ".join(fields), placeholders)  # noqa: S608
 
         values = tuple(data[field] for field in fields)
 
@@ -82,11 +92,12 @@ class BaseRegistry(Generic[ModelT, ModelCreateT, ModelUpdateT], ABC):
         if not data:
             return self.get_by_id(entity_id)
 
-        set_clause = ", ".join([f"{k} = ?" for k in data])
+        columns = [self._validate_identifier(key, kind="column name") for key in data]
+        set_clause = ", ".join([f"{column} = ?" for column in columns])
 
         query = f"""
             UPDATE {self.table_name} SET {set_clause} WHERE id = ?
-        """
+        """  # noqa: S608
 
         values = (*data.values(), entity_id)
 
@@ -97,28 +108,29 @@ class BaseRegistry(Generic[ModelT, ModelCreateT, ModelUpdateT], ABC):
         if not self.exists(entity_id):
             return False
 
-        query = f"DELETE FROM {self.table_name} WHERE id = ?"
+        query = f"DELETE FROM {self.table_name} WHERE id = ?"  # noqa: S608
         self.db.execute(query, (entity_id,))
         return not self.exists(entity_id)
 
     def exists(self, entity_id: int) -> bool:
-        query = f"SELECT 1 FROM {self.table_name} WHERE id = ? LIMIT 1"
+        query = f"SELECT 1 FROM {self.table_name} WHERE id = ? LIMIT 1"  # noqa: S608
         results = self.db.execute(query, (entity_id,))
         return len(results) > 0
 
     def count(self) -> int:
-        query = f"SELECT COUNT(*) as count FROM {self.table_name}"
+        query = f"SELECT COUNT(*) as count FROM {self.table_name}"  # noqa: S608
         results = self.db.execute(query)
-        return cast(int, results[0]["count"]) if results else 0
+        return cast("int", results[0]["count"]) if results else 0
 
     def filter(self, **kwargs: str | float | bool) -> list[ModelT]:
         if not kwargs:
             return self.get_all()
 
-        conditions = " AND ".join([f"{k} = ?" for k in kwargs])
+        columns = [self._validate_identifier(key, kind="column name") for key in kwargs]
+        conditions = " AND ".join([f"{column} = ?" for column in columns])
         values = tuple(kwargs.values())
 
-        query = f"SELECT * FROM {self.table_name} WHERE {conditions}"
+        query = f"SELECT * FROM {self.table_name} WHERE {conditions}"  # noqa: S608
 
         results = self.db.execute(query, values)
 

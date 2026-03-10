@@ -26,20 +26,20 @@ class ClientRegistry(BaseRegistry[ClientSchema, ClientCreate, ClientUpdate]):
         super().__init__(db_connection, "clients", ClientSchema)
 
     def _row_to_model(self, row: dict[str, Any]) -> ClientSchema:
-        return cast(ClientSchema, ClientSchema.model_validate(row))
+        return cast("ClientSchema", ClientSchema.model_validate(row))
 
     def model_to_dict(self, model: ClientSchema) -> dict[str, Any]:
-        return cast(dict[str, Any], model.model_dump(mode="json"))
+        return cast("dict[str, Any]", model.model_dump(mode="json"))
 
     def model_create_to_dict(self, model: ClientCreate) -> dict[str, Any]:
         return cast(
-            dict[str, Any],
+            "dict[str, Any]",
             model.model_dump(mode="json", exclude_unset=True),
         )
 
     def model_update_to_dict(self, model: ClientUpdate) -> dict[str, Any]:
         return cast(
-            dict[str, Any],
+            "dict[str, Any]",
             model.model_dump(mode="json", exclude_unset=True, exclude_none=True),
         )
 

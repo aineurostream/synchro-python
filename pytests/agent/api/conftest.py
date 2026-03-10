@@ -1,5 +1,5 @@
-import os
 import tempfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,13 +17,13 @@ from synchroagent.database.models import (
 from synchroagent.main import app
 
 
-@pytest.fixture()
+@pytest.fixture
 def client():
     with TestClient(app) as test_client:
         yield test_client
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_client_registry():
     with patch("synchroagent.api.deps.get_client_registry") as mock:
         mock_registry = MagicMock()
@@ -31,7 +31,7 @@ def mock_client_registry():
         yield mock_registry
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_config_registry():
     with patch("synchroagent.api.deps.get_config_registry") as mock:
         mock_registry = MagicMock()
@@ -39,7 +39,7 @@ def mock_config_registry():
         yield mock_registry
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_client_run_registry():
     with patch("synchroagent.api.deps.get_client_run_registry") as mock:
         mock_registry = MagicMock()
@@ -47,7 +47,7 @@ def mock_client_run_registry():
         yield mock_registry
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_log_registry():
     with patch("synchroagent.api.deps.get_log_registry") as mock:
         mock_registry = MagicMock()
@@ -55,7 +55,7 @@ def mock_log_registry():
         yield mock_registry
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_report_registry():
     with patch("synchroagent.api.deps.get_report_registry") as mock:
         mock_registry = MagicMock()
@@ -63,7 +63,7 @@ def mock_report_registry():
         yield mock_registry
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_client_process_manager():
     with patch("synchroagent.api.deps.get_client_process_manager") as mock:
         mock_manager = MagicMock()
@@ -71,7 +71,7 @@ def mock_client_process_manager():
         yield mock_manager
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_log_manager():
     with patch("synchroagent.api.deps.get_log_manager") as mock:
         mock_manager = MagicMock()
@@ -79,7 +79,7 @@ def mock_log_manager():
         yield mock_manager
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_report_manager():
     with patch("synchroagent.api.deps.get_report_manager") as mock:
         mock_manager = MagicMock()
@@ -87,7 +87,7 @@ def mock_report_manager():
         yield mock_manager
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_client():
     return ClientSchema(
         id=1,
@@ -97,7 +97,7 @@ def sample_client():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_client_run():
     return ClientRunSchema(
         id=1,
@@ -114,7 +114,7 @@ def sample_client_run():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_log():
     return LogSchema(
         id=1,
@@ -125,7 +125,7 @@ def sample_log():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_report():
     return ReportSchema(
         id=1,
@@ -136,7 +136,7 @@ def sample_report():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_config():
     return ConfigSchema(
         id=1,
@@ -148,24 +148,24 @@ def sample_config():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_db_path():
     return ":memory:"
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_outputs_dir():
     with tempfile.TemporaryDirectory() as tmpdirname:
         yield tmpdirname
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_reports_dir():
     with tempfile.TemporaryDirectory() as tmpdirname:
         yield tmpdirname
 
 
-@pytest.fixture()
+@pytest.fixture
 def test_app_config(temp_db_path, temp_outputs_dir, temp_reports_dir):
     return AppConfig(
         db_path=temp_db_path,
@@ -175,15 +175,17 @@ def test_app_config(temp_db_path, temp_outputs_dir, temp_reports_dir):
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def integration_client(test_app_config, monkeypatch):
     monkeypatch.setattr("synchroagent.api.deps.default_config", test_app_config)
 
-    db_path = test_app_config.db_path
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    db_path = Path(test_app_config.db_path)
+    if db_path.exists():
+        db_path.unlink()
 
-    from synchroagent.database import init_database as original_init_database
+    from synchroagent.database import (  # noqa: PLC0415
+        init_database as original_init_database,
+    )
 
     db = original_init_database.__wrapped__()
 

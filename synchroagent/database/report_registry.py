@@ -26,10 +26,10 @@ class ReportRegistry(BaseRegistry[ReportSchema, ReportCreate, ReportUpdate]):
         super().__init__(db_connection, "reports", ReportSchema)
 
     def _row_to_model(self, row: dict[str, Any]) -> ReportSchema:
-        return cast(ReportSchema, ReportSchema.model_validate(row))
+        return cast("ReportSchema", ReportSchema.model_validate(row))
 
     def model_to_dict(self, model: ReportSchema) -> dict[str, Any]:
-        return cast(dict[str, Any], model.model_dump(mode="json"))
+        return cast("dict[str, Any]", model.model_dump(mode="json"))
 
     def model_create_to_dict(self, model: ReportCreate) -> dict[str, Any]:
         data = model.model_dump(exclude_unset=True)
@@ -37,10 +37,11 @@ class ReportRegistry(BaseRegistry[ReportSchema, ReportCreate, ReportUpdate]):
             data["size"] = len(data["content"].encode("utf-8"))
         data["generated_at"] = data.get("generated_at") or get_datetime_iso()
 
-        return cast(dict[str, Any], data)
+        return cast("dict[str, Any]", data)
 
     def model_update_to_dict(self, model: ReportUpdate) -> dict[str, Any]:
-        raise NotImplementedError("Report updates are not supported")
+        msg = "Report updates are not supported"
+        raise NotImplementedError(msg)
 
     def get_reports_by_client_id(self, client_id: int) -> list[ReportSchema]:
         return self.filter(client_id=client_id)

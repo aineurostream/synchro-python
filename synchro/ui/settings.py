@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any
 from pathlib import Path
+from typing import Any, cast
 
 from pydantic import AliasChoices, BaseModel, Field
 
@@ -43,25 +43,24 @@ class UISettings(BaseModel):
     )
 
     def is_complete(self) -> bool:
-        return (
+        return bool(
             self.input_device is not None
             and self.output_device is not None
             and self.lang_from
             and self.lang_to
-            and self.tts_engine
+            and self.tts_engine,
         )
 
 
 def load_settings(cli_overrides: dict[str, Any] | None = None) -> UISettings:
     """Load settings from environment and apply CLI overrides (if provided)."""
-    settings = UISettings.model_validate(os.environ)
+    settings = cast("UISettings", UISettings.model_validate(os.environ))
     if cli_overrides:
         merged = {
-            **settings.model_dump(), **{
-                k: v 
-                for k, v in cli_overrides.items() 
-                if v is not None
-            }
+            **settings.model_dump(),
+            **{k: v for k, v in cli_overrides.items() if v is not None},
         }
-        return UISettings.model_validate(merged)
+        if "config" in merged:
+            merged["config"] = Path(merged["config"])
+        return cast("UISettings", UISettings.model_validate(merged))
     return settings

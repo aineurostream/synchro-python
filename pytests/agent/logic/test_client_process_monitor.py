@@ -9,12 +9,12 @@ from synchroagent.database.models import RunStatus
 from synchroagent.logic.client_process_monitor import ClientProcessMonitor, ProcessInfo
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_client_run_registry():
     return MagicMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def process_monitor(mock_client_run_registry):
     monitor = ClientProcessMonitor(
         client_run_registry=mock_client_run_registry,
@@ -282,6 +282,8 @@ def test_callback_invocation(
     process_monitor,
 ):
     """Test that the callback is invoked when a process completes."""
+    assert mock_handle_exit is not None
+    assert mock_store_outputs is not None
     callback = MagicMock()
     process_monitor.set_process_completed_callback(callback)
 

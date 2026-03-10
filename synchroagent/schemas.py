@@ -1,11 +1,11 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import UUID4, BaseModel, Field
 
 
-class ClientStatus(str, Enum):
+class ClientStatus(StrEnum):
     CREATED = "created"
     RUNNING = "running"
     STOPPED = "stopped"

@@ -16,46 +16,46 @@ from synchroagent.logic.log_manager import LogManager
 from synchroagent.logic.report_manager import ReportManager
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_client_registry():
     return MagicMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_client_run_registry():
     return MagicMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_config_registry():
     return MagicMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_log_registry():
     return MagicMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_report_registry():
     return MagicMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_log_manager():
     manager = MagicMock()
     manager.collect_logs.return_value = 123
     return manager
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_report_manager():
     manager = MagicMock()
     manager.generate_report.return_value = 456
     return manager
 
 
-@pytest.fixture()
+@pytest.fixture
 def client_process_manager(
     mock_client_registry,
     mock_client_run_registry,
@@ -73,7 +73,7 @@ def client_process_manager(
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def log_manager(mock_log_registry, mock_client_run_registry):
     return LogManager(
         log_registry=mock_log_registry,
@@ -81,7 +81,7 @@ def log_manager(mock_log_registry, mock_client_run_registry):
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def report_manager(
     mock_report_registry,
     mock_client_run_registry,
@@ -95,7 +95,7 @@ def report_manager(
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_client():
     return ClientSchema(
         id=1,
@@ -104,7 +104,7 @@ def sample_client():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_config():
     return ConfigSchema(
         id=1,
@@ -116,7 +116,7 @@ def sample_config():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_client_run():
     return ClientRunSchema(
         id=1,
@@ -131,7 +131,7 @@ def sample_client_run():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_client_run_stopped():
     return ClientRunSchema(
         id=1,
@@ -146,7 +146,7 @@ def sample_client_run_stopped():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_log():
     return LogSchema(
         id=1,
@@ -157,7 +157,7 @@ def sample_log():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_report():
     return ReportSchema(
         id=1,

@@ -44,7 +44,8 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
     def __enter__(self) -> Self:
         if self._client.connected:
-            raise RuntimeError("Client already connected")
+            msg = "Client already connected"
+            raise RuntimeError(msg)
 
         url = self._config.server_url
 
@@ -131,4 +132,4 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         )
 
     def is_active(self) -> bool:
-        return cast(bool, self._client.connected)
+        return cast("bool", self._client.connected)
