@@ -38,16 +38,34 @@ stt:
     ru:
       - ололо
     en: []
-  buffer_implementation: adaptive  # Стратегия буфера: adaptive режет поток на фразы по паузам.
-  buffer_min_words: 4  # Минимум слов для обычного эмита.
-  buffer_timeout_seconds: 3.0  # Основной timeout в steady-режиме.
-  buffer_long_pause_seconds: 0.75  # Длинная пауза между словами внутри фразы; может стать границей эмита.
-  buffer_max_words: 5  # Жесткий максимум слов в чанке: при достижении эмит без ожидания timeout.
-  buffer_cold_start_enabled: false  # Ускоренный первый чанк после старта или длинной тишины.
-  buffer_first_chunk_timeout_seconds: 1.2  # Короткий timeout первого чанка после старта/долгой тишины.
-  buffer_first_chunk_reset_silence_seconds: 10.0  # После такой тишины следующий эмит снова считается первым чанком.
-  buffer_short_numeric_tail_max_len: 2  # Длина короткого числового хвоста, который можно придержать.
-  buffer_short_numeric_tail_hold_seconds: 2.0  # Сколько максимум держать короткий числовой хвост перед эмитом.
+  # Стратегия буфера: adaptive режет поток на фразы по паузам/стабильности.
+  buffer_implementation: adaptive
+  # Минимум слов для обычного эмита (целевой размер чанков 3-5 слов).
+  buffer_min_words: 4
+  # Основной timeout в steady-режиме: по нему отправляются 1-4 слова при тишине.
+  buffer_timeout_seconds: 3.0
+  # Длинная пауза между словами внутри фразы; может стать границей эмита.
+  buffer_long_pause_seconds: 0.75
+  # Жесткий максимум слов в чанке: при достижении эмит без ожидания timeout.
+  buffer_max_words: 5
+  # ON/OFF холодного старта: ускоренный первый чанк после старта или длинной тишины.
+  buffer_cold_start_enabled: false
+  # Короткий timeout первого чанка после старта/долгой тишины (ускоряет старт).
+  buffer_first_chunk_timeout_seconds: 1.2
+  # После такой тишины следующий эмит снова считается "первым чанком".
+  buffer_first_chunk_reset_silence_seconds: 10.0
+  # Сколько ждать стабилизации нестабильного хвоста, прежде чем fallback-эмит. --- сейчас не работает
+  buffer_unstable_tail_timeout_ms: 900
+  # Минимальный confidence для fallback по unstable-хвосту. --- сейчас не работает
+  buffer_unstable_fallback_min_confidence: 0.60
+  # Абсолютный предел удержания куска в буфере при ожидании стабильности. --- сейчас не работает
+  buffer_max_hold_seconds: 1.8
+  # Если стабильный префикс >= этого порога, эмитим сразу (без timeout). --- сейчас не работает
+  buffer_stable_prefix_emit_min_words: 3
+  # Длина короткого числового хвоста (например, "30"), который можно придержать.
+  buffer_short_numeric_tail_max_len: 2
+  # Сколько максимум держать короткий числовой хвост перед принудительным эмитом.
+  buffer_short_numeric_tail_hold_seconds: 2.0
 translate:
   llm_call_timeout: 120
   context_window_words: 35
@@ -89,7 +107,7 @@ translate:
       steps:
         - name: add_punctuation_to_translated_context
           cls: llm_step.LLMStep
-          is_enabled: false
+          # is_enabled: false
           # ON / OFF
           template: |-
             You are an expert text editor.
@@ -111,7 +129,7 @@ translate:
         - name: gate_partial
           cls: gate_partial_step.PartialGateStep
           template: |-
-            You are **Partial Gate**, the text‑splitting assistant in a cascade ASR → LLM → TTS interpreter.
+            You are **Partial Gate**, the text‑splitting assistant in a cascade ASR → LLM → XTTS interpreter.
             You will receive:
             • 'Context'- the part of the speech that is **ALREADY translated and spoken** (may be empty).
             • 'Input' - the **NEW** chunk of original‑language speech (may start or end mid‑sentence).
@@ -133,7 +151,7 @@ translate:
             5. **Chunk length rule**: when Input has > 10 words you must place *some* part in Line 1 (do NOT send the whole chunk to Line 2).
             6. **Context accumulation**: you MAY put the entire Input in Line 2 only when it is ≤ 10 words *and* premature translation would harm quality. In that case Line 1 must be “.”.
             7. **Punctuation**: you MAY add punctuation INSIDE the LINES.
-            8. **Boundary check**: you **ABSOLUTELY MUST** put some words in Line 2 if Input ends with an auxiliary, modal, preposition, conjunction, honorific, an unfinished element (like 'Dr', 'Mr', 'for', 'and', 'will', 'have' 'been', "today's", etc.) or an unfinished idiom or fixed phrase. Don't end Line 1 with propositions. This rule is **VERY VERY IMPORTANT**. It is absolutely **OK** to put some words in Line 2.
+            8. **Boundary check**: you **ABSOLUTELY MUST** put some words in Line 2 if Input ends with an auxiliary, modal, preposition, conjunction, honorific, an unfinished element (like 'Dr', 'Mr', 'for', 'and', 'will', 'have' 'been', "today's", etc.) or an unfinished idiom or fixed phrase. This rule is **VERY VERY IMPORTANT**. It is absolutely **OK** to put some words in Line 2.
             9. **No duplicates**: do **NOT** repeat words in Line 1 that are already present at the very end of Context.
             10. **Formatting**: output ONLY the two lines — no bullets, labels, comments, or extra blank lines.
             11. **Keep** the language identical to Context and Input (target language).
@@ -170,10 +188,10 @@ translate:
         4. **Numbers & dates:** write them out in full words in {lang_to}, but DO NOT infer, expand, or reconstruct missing years, centuries or digits. If the year is incomplete, render it literally (e.g., “of the nineteenth year”), not as “nineteen nineteen” or “twenty nineteen”.
         5. **Idioms & set phrases:** translate **by meaning**, not word‑for‑word.
         6. **Fillers (“uh”, “you know”, …):** omit fillers. You MUST substitute ALL swear words with normal words but still keep the meaning.
-        7. **Fluency:** ensure correct grammar and a **smooth** continuation of TRANSLATED‑CONTEXT. Don't loose words in the beginning of INPUT that are important for meaning. Remember, this first word is a continuation of the ORIGINAL‑CONTEXT, so don't drop it.
+        7. **Fluency:** ensure correct grammar and a **smooth** continuation of TRANSLATED‑CONTEXT.
         8. **No meta‑talk** – no explanations, labels, or formatting.
         9. **DO NOT** repeat words already spoken at the very end of Context in your return.
-        10. **VERY IMPORTANT**: DO **NOT** add words in the end of your return that are absent at the end of the Input. The continuation will come at the next step.
+        10. VERY IMPORTANT: DO **NOT** add words in the end of your return that are absent at the end of the Input. The continuation will come at the next step.
 
         ▶︎ OUTPUT
         Return the translation as a **smooth** continuation of TRANSLATED‑CONTEXT now:
@@ -186,35 +204,30 @@ translate:
         - name: default_correction
           cls: correction_step.CorrectionStep
           template: |-
-            You are “Stream‑Editor”, the last quality pass in a real‑time ASR → LLM → TTS interpreter.
-            You receive every turn:
-            • CONTEXT (immutable, already vocalized, target‑language): "{translated_context}" ##
-            • DRAFT (new text to edit, same target‑language): "{translated_text}" ##
-            • TARGET LANGUAGE: "{lang_to}"
+            You are “Stream‑Editor”, the last quality pass in a real‑time ASR → LLM → XTTS interpreter.
+            You receive **each turn**:
+            • Context (immutable, already vocalized, target‑language): "{translated_context}" ##
+            • Draft (new text to edit, same target‑language): "{translated_text}" ##
+            • Target language: "{lang_to}"
             ###
-
-            YOUR TASK is to smoothly attach DRAFT to the end of CONTEXT, fixing only grammar, word choice and its form and ending, and basic punctuation **without altering meaning**.
+            YOUR TASK is to smoothly attach Draft to the end of Context, fixing only grammar, word choice and its form, and basic punctuation **without altering meaning**.
             ###
-
             STRICT OUTPUT RULES:
             1. Output **one single line**:
-            – the improved DRAFT, **or**
-            – DRAFT unchanged if no fixes are needed.
-            2. **Do NOT** repeat CONTEXT.
-            3. Keep the language identical to DRAFT ("{lang_to}").
+            – the corrected Draft, **or**
+            – Draft unchanged if no fixes are needed.
+            2. **Do NOT** repeat Context.
+            3. Keep the language identical to Draft (Target language).
             4. Use ONLY commas and periods; avoid quotes, dashes, brackets, ellipses, emojis.
             5. Add a final period **ONLY** when the line is unmistakably a complete sentence or accepted abbreviation.
-            6. No comments, labels, or extra whitespace — just the text itself.
-            7. **VERY IMPORTANT:** DO **NOT** add words in the end of your return that are absent at the end of the DRAFT. The continuation will come at the next step. Instead you can end with a dot.
-            8. Word form and its ending is very important for the smooth continuation.
-            ###
-
-            Now, your best take on the DRAFT in one line is:
+            6. No comments, labels, or extra whitespace—just the text itself.
+            7. VERY IMPORTANT: DO **NOT** add words in the end of your return that are absent at the end of the Draft. The continuation will come at the next step.
+            Now, your best take on the Draft in one line is:
           params:
             strip_chars: [".", "…", "!", "?", "#", " ", "。"]
         - name: add_punctuation_to_source_context
           cls: llm_step.LLMStep
-          is_enabled: false
+          # is_enabled: false
           # ON / OFF
           template: |-
             You are an expert text editor.
@@ -364,7 +377,7 @@ tts:
     - xtts
     - Kumar Dahl
   hints:
-    audio_speed: 75
+    audio_speed: 80
     audio_speed_by_language:
-      ru: 75
+      ru: 80
       en: 70
