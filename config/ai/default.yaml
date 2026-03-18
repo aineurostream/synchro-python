@@ -267,7 +267,7 @@ translate:
         4. **No duplication**: do **NOT** repeat text that appears at the end of Context.
         5. **Preserve meaning**: do **NOT** alter the actual words, only decide where to split.
         6. **Minimum length**: If Input has fewer than 5 words, you MAY put it all in Line 2 to wait for more context.
-        7. **Language consistency**: Keep the same language as Input ("ru").
+        7. **Language consistency**: Keep the same language as Input ("{lang_to}").
         8. **No punctuation changes**: do **NOT** add or remove punctuation - just split the text.
         9. **Formatting**: output ONLY the two lines — no bullets, labels, comments, or extra blank lines.
         ###
