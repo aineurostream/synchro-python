@@ -1,4 +1,5 @@
 import logging
+import threading
 from types import TracebackType
 from typing import Literal, Self, cast
 
@@ -13,20 +14,18 @@ from synchro.graph.nodes.inputs.abstract_input_node import AbstractInputNode
 
 logger = logging.getLogger(__name__)
 
-# Behringer 32 COMPACT with jackd2 qjackctl
 JACK_ENABLED = False
 JACK_DEVICE = "jack"
+MONO_DIMS = 2
 
 
 class ChannelInputNode(AbstractInputNode):
-    def __init__(
-        self,
-        config: InputChannelStreamerNodeSchema,
-    ) -> None:
+    def __init__(self, config: InputChannelStreamerNodeSchema) -> None:
         super().__init__(config.name)
         self._config = config
         self._stream: sd.InputStream | None = None
         self._incoming_buffer: FrameContainer | None = None
+        self._lock = threading.Lock()
 
     def __enter__(self) -> Self:
         def callback(
@@ -36,28 +35,41 @@ class ChannelInputNode(AbstractInputNode):
             status: str | None,
         ) -> None:
             if status:
-                self._logger.error("Error in audio stream: %s", status)
+                logger.error("Error in audio stream: %s", status)
             if self._incoming_buffer is None:
-                msg = "Incoming buffer is not initialized"
-                raise RuntimeError(msg)
+                return
 
             if JACK_ENABLED:
-                chunk = cast("bytes", input_data[:, self._config.device - 1].tobytes())
+                chan_idx = max(0, self._config.channel - 1)
+                if input_data.ndim == 1:
+                    mono = input_data.astype(input_data.dtype)
+                else:
+                    mono = input_data[:, chan_idx].astype(input_data.dtype)
+            elif input_data.ndim == MONO_DIMS and input_data.shape[1] > 1:
+                mono = np.mean(input_data, axis=1).astype(input_data.dtype)
             else:
-                chunk = cast("bytes", input_data.tobytes())
+                mono = input_data.astype(input_data.dtype)
 
-            self._incoming_buffer.append_bytes_inp(chunk)
+            payload = cast("bytes", mono.tobytes())
+            with self._lock:
+                self._incoming_buffer.append_bytes_inp(payload)
 
         device = JACK_DEVICE if JACK_ENABLED else self._config.device
         device_info = sd.query_devices(device, "input")
-        sample_rate = device_info["default_samplerate"]
+        sample_rate = int(device_info["default_samplerate"])
+
+        dtype = DEFAULT_AUDIO_FORMAT.numpy_format
+        channels = (
+            self._config.channel if JACK_ENABLED else max(1, self._config.channel)
+        )
+
         self._incoming_buffer = FrameContainer.from_config(
             StreamConfig(audio_format=DEFAULT_AUDIO_FORMAT, rate=sample_rate),
         )
         self._stream = sd.InputStream(
             device=device,
-            channels=self._config.channel,
-            dtype=DEFAULT_AUDIO_FORMAT.numpy_format,
+            channels=channels,
+            dtype=dtype,
             samplerate=sample_rate,
             callback=callback,
         )
@@ -73,7 +85,6 @@ class ChannelInputNode(AbstractInputNode):
             finally:
                 self._stream = None
                 self._incoming_buffer = None
-
         return False
 
     def __exit__(
@@ -95,6 +106,7 @@ class ChannelInputNode(AbstractInputNode):
         if self._incoming_buffer is None:
             msg = "Incoming buffer is not initialized"
             raise RuntimeError(msg)
-        read_bytes = self._incoming_buffer
-        self._incoming_buffer = self._incoming_buffer.to_empty()
+        with self._lock:
+            read_bytes = self._incoming_buffer
+            self._incoming_buffer = self._incoming_buffer.to_empty()
         return read_bytes

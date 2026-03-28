@@ -104,10 +104,13 @@ class GraphInitializer:
     def _create_denoiser_node(self, config: DenoiserNodeSchema) -> DenoiserNode:
         return DenoiserNode(config)
 
-    def _create_validator_node(self, config: DenoiserNodeSchema) -> FormatValidatorNode:
+    def _create_validator_node(
+        self,
+        config: FormatValidatorNodeSchema,
+    ) -> FormatValidatorNode:
         return FormatValidatorNode(config)
 
-    def _create_preparer_node(self, config: DenoiserNodeSchema) -> WhisperPrepNode:
+    def _create_preparer_node(self, config: WhisperPrepNodeSchema) -> WhisperPrepNode:
         return WhisperPrepNode(config)
 
     def _create_measurer_node(

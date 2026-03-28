@@ -20,10 +20,11 @@ async def stream_events(request: Request) -> EventSourceResponse:
     ]:
         yield {"event": "connected", "data": "connected"}
         queue: asyncio.Queue[BaseEventSchema] = asyncio.Queue()
+        loop = asyncio.get_running_loop()
 
         def on_event(data: BaseEventSchema) -> None:
             logger.debug("Event received in API: %s", data.event_type)
-            queue.put_nowait(data)
+            loop.call_soon_threadsafe(queue.put_nowait, data)
 
         event_bus.subscribe("*", on_event)
         logger.info("Subscribed to events for streaming")

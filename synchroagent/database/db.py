@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import sqlite3
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, cast
@@ -77,6 +78,7 @@ class DatabaseConnection:
     def __init__(self, config: AppConfig) -> None:
         self.db_path = Path(config.db_path)
         self.connection: sqlite3.Connection | None = None
+        self._lock = threading.Lock()
         self._connect()
 
     def _connect(self) -> None:
@@ -136,32 +138,36 @@ class DatabaseConnection:
             msg = "Database connection not initialized"
             raise ValueError(msg)
 
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(query, params)
+        with self._lock:
+            try:
+                cursor = self.connection.cursor()
+                cursor.execute(query, params)
 
-            if query.strip().upper().startswith("SELECT"):
-                return [dict(row) for row in cursor.fetchall()]
+                if query.strip().upper().startswith("SELECT"):
+                    return [dict(row) for row in cursor.fetchall()]
 
-            self.connection.commit()
-        except sqlite3.Error:
-            if self.connection is not None:
-                self.connection.rollback()
-            logger.exception("Error executing query\n%s\n%s", query, params)
-            raise
-        else:
-            return []
+                self.connection.commit()
+                if query.strip().upper().startswith("INSERT"):
+                    return [{"last_insert_rowid": cursor.lastrowid}]
+            except sqlite3.Error:
+                if self.connection is not None:
+                    self.connection.rollback()
+                logger.exception("Error executing query\n%s\n%s", query, params)
+                raise
+            else:
+                return []
 
     def get_last_row_id(self) -> int:
         if self.connection is None:
             msg = "Database connection not initialized"
             raise ValueError(msg)
-        return cast(
-            "int",
-            self.connection.execute(
-                "SELECT last_insert_rowid()",
-            ).fetchone()[0],
-        )
+        with self._lock:
+            return cast(
+                "int",
+                self.connection.execute(
+                    "SELECT last_insert_rowid()",
+                ).fetchone()[0],
+            )
 
     def close(self) -> None:
         if self.connection:
@@ -178,10 +184,3 @@ def get_db_connection(config: AppConfig | None = None) -> DatabaseConnection:
     if config is None:
         config = AppConfig()
     return DatabaseConnection(config)
-
-
-@contextlib.contextmanager
-def get_db_transaction() -> Iterator[DatabaseConnection]:
-    db = get_db_connection()
-    with db.transaction():
-        yield db

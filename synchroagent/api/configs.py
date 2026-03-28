@@ -2,7 +2,7 @@ from typing import Annotated, Any, cast
 
 import sounddevice as sd
 from fastapi import APIRouter, Depends, Path, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from synchroagent.api.deps import get_client_registry_dep, get_config_registry_dep
 from synchroagent.api.errors import BadRequestError, NotFoundError
@@ -76,6 +76,25 @@ async def create_config(
         "ConfigResponse",
         ConfigResponse.model_validate(created_config.model_dump()),
     )
+
+
+@router.get("/device/sound-devices", status_code=status.HTTP_200_OK)
+async def get_sound_devices() -> list[SoundDeviceInfo]:
+    devices = sd.query_devices()
+    result = []
+
+    for i, device in enumerate(devices):
+        result.append(
+            SoundDeviceInfo(
+                name=device["name"],
+                max_input_channels=device["max_input_channels"],
+                max_output_channels=device["max_output_channels"],
+                default_samplerate=device["default_samplerate"],
+                device_id=i,
+            ),
+        )
+
+    return result
 
 
 @router.get("/{config_id}")
@@ -157,25 +176,12 @@ async def validate_config(
 
 @router.post("/validate", status_code=status.HTTP_200_OK)
 async def validate_config_content(
-    _config_data: dict[str, Any],
+    config_data: dict[str, Any],
 ) -> ValidationResponse:
+    from synchro.config.schemas import ProcessingGraphConfig  # noqa: PLC0415
+
+    try:
+        ProcessingGraphConfig.model_validate(config_data)
+    except ValidationError as e:
+        return ValidationResponse(message=f"Invalid: {e}")
     return ValidationResponse(message="Configuration content is valid")
-
-
-@router.get("/device/sound-devices", status_code=status.HTTP_200_OK)
-async def get_sound_devices() -> list[SoundDeviceInfo]:
-    devices = sd.query_devices()
-    result = []
-
-    for i, device in enumerate(devices):
-        result.append(
-            SoundDeviceInfo(
-                name=device["name"],
-                max_input_channels=device["max_input_channels"],
-                max_output_channels=device["max_output_channels"],
-                default_samplerate=device["default_samplerate"],
-                device_id=i,
-            ),
-        )
-
-    return result

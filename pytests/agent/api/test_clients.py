@@ -54,7 +54,8 @@ def test_get_client_not_found(client, mock_client_registry):
 
 def test_update_client(client, mock_client_registry, sample_client):
     mock_client_registry.get_by_id.return_value = sample_client
-    mock_client_registry.update.return_value = sample_client
+    updated_client = ClientSchema(id=1, name="Updated Client")
+    mock_client_registry.update.return_value = updated_client
 
     response = client.put(
         "/api/clients/1",
@@ -62,7 +63,7 @@ def test_update_client(client, mock_client_registry, sample_client):
     )
 
     assert response.status_code == 200
-    assert response.json()["name"] == "Test Client"
+    assert response.json()["name"] == "Updated Client"
     mock_client_registry.get_by_id.assert_called_once_with(1)
     mock_client_registry.update.assert_called_once()
 
@@ -271,7 +272,6 @@ def test_generate_client_run_report(
     sample_client_run,
     sample_report,
 ):
-    assert mock_report_manager is not None
     mock_client_registry.get_by_id.return_value = sample_client
 
     sample_client_run.status = RunStatus.STOPPED
@@ -279,7 +279,7 @@ def test_generate_client_run_report(
     mock_report_registry.get_by_id.return_value = sample_report
 
     with patch(
-        "synchroagent.api.clients.ReportManager.generate_report",
+        "synchroagent.logic.report_manager.ReportManager.generate_report",
     ) as mock_generate:
         mock_generate.return_value = 1
 

@@ -16,8 +16,6 @@ from synchro.graph.graph_node import (
     ReceivingNodeMixin,
 )
 
-MS_IN_SEC = 1000.0
-
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +88,7 @@ class NodeExecutor(Thread):
             self._running = False
             self.local_exception = exc
             if self._on_fatal:
-                self._on_fatal(exc)  # ← попросить остановку всей системы
+                self._on_fatal(exc)  # ← request shutdown of the entire system
 
     def process_outputs(self) -> None:
         if isinstance(self.node, EmittingNodeMixin):
@@ -130,25 +128,9 @@ class GraphManager:
         self._executing: bool = False
         self._lock: Lock = Lock()
         self._active_threads: list[NodeExecutor] = []
-        self._exception_check_thread: Thread | None = None
         self._shutdown_evt = Event()
         self._first_exception: Exception | None = None
         self._working_dir: str | None = working_dir
-
-    def _check_for_exceptions(self) -> None:
-        while self._executing:
-            for thread in self._active_threads:
-                if thread.local_exception is not None:
-                    logger.error(
-                        "Exception detected in thread %s, stopping all execution",
-                        thread.name,
-                    )
-                    # Save and stop; do not raise from this thread.
-                    self._first_exception = thread.local_exception
-                    self.request_shutdown(None)
-                    return
-
-            time.sleep(0.1)
 
     def _reraise_worker_exception_if_any(self) -> None:
         if self._first_exception is not None:
@@ -186,13 +168,6 @@ class GraphManager:
             )
             for edge in self._edges
         }
-
-        self._exception_check_thread = Thread(
-            target=self._check_for_exceptions,
-            name="ExceptionChecker",
-        )
-        self._exception_check_thread.daemon = True
-        self._exception_check_thread.start()
 
         for node in self._nodes.values():
             incoming = [
@@ -239,22 +214,28 @@ class GraphManager:
             # ensure all workers are stopped when we leave the loop for any reason
             self.stop()
             logger.info("Synchro instance stopped")
-            # критично: после выхода проверим, не было ли исключений в воркерах
+            # critical: after exit, check if there were exceptions in workers
             self._reraise_worker_exception_if_any()
 
     def stop(self) -> None:
-        if not self._executing:
-            return
-
         with self._lock:
+            if not self._executing:
+                return
             logger.info("Synchro instance stopping")
             self._executing = False
             for thread in self._active_threads:
                 thread.stop()
-            for thread in self._active_threads:
-                if thread.is_alive():
-                    thread.join()  # без таймаута
 
+        for thread in self._active_threads:
+            if thread.is_alive():
+                thread.join(timeout=30)
+                if thread.is_alive():
+                    logger.warning(
+                        "Thread %s did not stop within timeout",
+                        thread.name,
+                    )
+
+        with self._lock:
             self._active_threads = []
 
-            logger.info("All threads completed - finishing instance execution")
+        logger.info("All threads completed - finishing instance execution")

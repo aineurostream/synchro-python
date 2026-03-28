@@ -1,8 +1,8 @@
 import re
 from abc import ABC, abstractmethod
-from http.client import HTTPException
 from typing import Any, Generic, NoReturn, TypeVar, cast
 
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 from synchroagent.database.db import DatabaseConnection
@@ -73,13 +73,17 @@ class BaseRegistry(ABC, Generic[ModelT, ModelCreateT, ModelUpdateT]):
 
         values = tuple(data[field] for field in fields)
 
-        self.db.execute(query, values)
-        entity_id = self.db.get_last_row_id()
+        insert_result = self.db.execute(query, values)
+        entity_id = (
+            insert_result[0]["last_insert_rowid"]
+            if insert_result
+            else self.db.get_last_row_id()
+        )
 
-        result = self.get_by_id(entity_id)
-        if result is None:
+        created = self.get_by_id(entity_id)
+        if created is None:
             self.raise_not_found(entity_id)
-        return result
+        return created
 
     def update(self, entity_id: int, entity: ModelUpdateT) -> ModelT | None:
         if not self.exists(entity_id):

@@ -128,4 +128,4 @@ Used linters:
 - mypy - static type checking
 
 
-### КТ. Собственность ООО «Нейрострим». Доступ ограничен.
+### CT. Property of Neurostream LLC. Access restricted.

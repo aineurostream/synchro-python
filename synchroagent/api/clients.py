@@ -160,9 +160,10 @@ async def delete_client(
         msg = "Client not found"
         raise NotFoundError(msg)
 
-    active_runs = client_run_registry.get_runs_by_client_id(client_id)
+    all_runs = client_run_registry.get_runs_by_client_id(client_id)
+    active_runs = [r for r in all_runs if r.status == RunStatus.RUNNING]
     if active_runs:
-        msg = "Cannot delete client with active runs. Remove all runs first."
+        msg = "Cannot delete client with active runs. Stop all runs first."
         raise BadRequestError(
             msg,
         )
@@ -432,6 +433,8 @@ async def generate_client_run_report(
             "ReportResponse",
             ReportResponse.model_validate(report.model_dump()),
         )
+    except (NotFoundError, BadRequestError):
+        raise
     except Exception as e:
         msg = "Failed to generate report"
         raise ServerError(msg) from e

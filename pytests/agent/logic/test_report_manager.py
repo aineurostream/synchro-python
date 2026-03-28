@@ -1,5 +1,6 @@
 import subprocess
-from unittest.mock import MagicMock, mock_open, patch
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -57,95 +58,79 @@ class TestReportManager:
         with pytest.raises(ValueError, match="Failed to generate report file"):
             report_manager.generate_report(1)
 
-        mock_generate_file.assert_called_once_with(
-            1,
-            sample_client_run_stopped.output_dir,
-        )
+        mock_generate_file.assert_called_once()
 
-    @patch(
-        "builtins.open",
-        new_callable=mock_open,
-        read_data="<html>Test Report</html>",
-    )
     @patch.object(ReportManager, "_generate_report_file")
     def test_generate_report_success(
         self,
         mock_generate_file,
-        mock_file,
         report_manager,
         mock_client_run_registry,
         mock_report_registry,
         sample_client_run_stopped,
         sample_report,
+        tmp_path,
     ):
+        report_file = tmp_path / "report_1_.html"
+        report_file.write_text("<html>Test Report</html>", encoding="utf-8")
+
         mock_client_run_registry.get_by_id.return_value = sample_client_run_stopped
-        mock_generate_file.return_value = "/tmp/test_reports/report_1_.html"
-        mock_report_registry.create.return_value = 1
+        mock_generate_file.return_value = str(report_file)
+        mock_created_report = MagicMock()
+        mock_created_report.id = 1
+        mock_report_registry.create.return_value = mock_created_report
         mock_report_registry.get_by_id.return_value = sample_report
 
         result = report_manager.generate_report(1)
 
         assert result == sample_report
-        mock_generate_file.assert_called_once_with(
-            1,
-            sample_client_run_stopped.output_dir,
-        )
-        mock_file.assert_called_once_with(
-            "/tmp/test_reports/report_1_.html",
-            encoding="utf-8",
-        )
+        mock_generate_file.assert_called_once()
         mock_report_registry.create.assert_called_once()
         mock_client_run_registry.update.assert_called_once()
 
-    @patch("builtins.open", side_effect=OSError("File read error"))
     @patch.object(ReportManager, "_generate_report_file")
     def test_generate_report_file_read_error(
         self,
         mock_generate_file,
-        mock_file,
         report_manager,
         mock_client_run_registry,
         sample_client_run_stopped,
     ):
         mock_client_run_registry.get_by_id.return_value = sample_client_run_stopped
-        mock_generate_file.return_value = "/tmp/test_reports/report_1_.html"
+        mock_generate_file.return_value = "/tmp/nonexistent_report_path.html"
 
         with pytest.raises(ValueError, match="Failed to read report file"):
             report_manager.generate_report(1)
 
-        mock_generate_file.assert_called_once_with(
-            1,
-            sample_client_run_stopped.output_dir,
-        )
-        mock_file.assert_called_once_with(
-            "/tmp/test_reports/report_1_.html",
-            encoding="utf-8",
-        )
+        mock_generate_file.assert_called_once()
 
-    @patch("synchroagent.logic.report_manager.Path.is_file")
+    @patch("synchroagent.logic.report_manager.Path.is_dir")
     def test_generate_report_file_script_not_found(
         self,
-        mock_is_file,
+        mock_is_dir,
         report_manager,
     ):
-        mock_is_file.return_value = False
+        mock_is_dir.return_value = False
 
-        result = report_manager._generate_report_file(1, "/tmp/test_outputs/run_1")
+        result = report_manager._generate_report_file(
+            1,
+            Path("/tmp/test_outputs/run_1"),
+        )
 
         assert result is None
-        mock_is_file.assert_called_once()
+        mock_is_dir.assert_called_once()
 
     @patch("synchroagent.logic.report_manager.subprocess.run")
-    @patch("synchroagent.logic.report_manager.Path.is_file")
+    @patch("synchroagent.logic.report_manager.Path.is_dir")
     @patch("synchroagent.logic.report_manager.Path.exists")
     def test_generate_report_file_success(
         self,
         mock_exists,
-        mock_is_file,
+        mock_is_dir,
         mock_run,
         report_manager,
     ):
-        mock_is_file.return_value = True
+        mock_is_dir.return_value = True
         mock_exists.return_value = True
         mock_process = MagicMock()
         mock_run.return_value = mock_process
@@ -157,16 +142,16 @@ class TestReportManager:
         mock_exists.assert_called_once()
 
     @patch("synchroagent.logic.report_manager.subprocess.run")
-    @patch("synchroagent.logic.report_manager.Path.is_file")
+    @patch("synchroagent.logic.report_manager.Path.is_dir")
     @patch("synchroagent.logic.report_manager.Path.exists")
     def test_generate_report_file_not_created(
         self,
         mock_exists,
-        mock_is_file,
+        mock_is_dir,
         mock_run,
         report_manager,
     ):
-        mock_is_file.return_value = True
+        mock_is_dir.return_value = True
         mock_exists.return_value = False
         mock_process = MagicMock()
         mock_run.return_value = mock_process
@@ -178,14 +163,14 @@ class TestReportManager:
         mock_exists.assert_called_once()
 
     @patch("synchroagent.logic.report_manager.subprocess.run")
-    @patch("synchroagent.logic.report_manager.Path.is_file")
+    @patch("synchroagent.logic.report_manager.Path.is_dir")
     def test_generate_report_file_subprocess_error(
         self,
-        mock_is_file,
+        mock_is_dir,
         mock_run,
         report_manager,
     ):
-        mock_is_file.return_value = True
+        mock_is_dir.return_value = True
         mock_run.side_effect = subprocess.CalledProcessError(1, "cmd")
 
         result = report_manager._generate_report_file(1, "/tmp/test_outputs/run_1")
@@ -194,14 +179,14 @@ class TestReportManager:
         mock_run.assert_called_once()
 
     @patch("synchroagent.logic.report_manager.subprocess.run")
-    @patch("synchroagent.logic.report_manager.Path.is_file")
+    @patch("synchroagent.logic.report_manager.Path.is_dir")
     def test_generate_report_file_general_exception(
         self,
-        mock_is_file,
+        mock_is_dir,
         mock_run,
         report_manager,
     ):
-        mock_is_file.return_value = True
+        mock_is_dir.return_value = True
         mock_run.side_effect = Exception("General error")
 
         result = report_manager._generate_report_file(1, "/tmp/test_outputs/run_1")

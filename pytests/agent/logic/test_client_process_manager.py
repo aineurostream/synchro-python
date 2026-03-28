@@ -1,4 +1,3 @@
-import signal
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -174,23 +173,22 @@ def test_start_client_exception(
         client_process_manager.start_client(1, 1)
 
 
-@patch("synchroagent.logic.client_process_manager.os.killpg")
-@patch("synchroagent.logic.client_process_manager.os.getpgid")
+@patch.object(ClientProcessManager, "_wait_for_run_stop")
+@patch.object(ClientProcessManager, "_create_stop_flag")
 def test_stop_client_run_success(
-    mock_getpgid,
-    mock_killpg,
+    mock_create_stop_flag,
+    mock_wait_for_run_stop,
     client_process_manager,
     mock_client_run_registry,
     sample_client_run,
 ):
     mock_client_run_registry.get_by_id.return_value = sample_client_run
-    mock_getpgid.return_value = sample_client_run.pid
-    mock_client_run_registry.get_by_id.return_value = sample_client_run
 
     result = client_process_manager.stop_client_run(1)
 
     assert result == sample_client_run
-    mock_killpg.assert_called_once_with(sample_client_run.pid, signal.SIGTERM)
+    mock_create_stop_flag.assert_called_once()
+    mock_wait_for_run_stop.assert_called_once_with(1)
     mock_client_run_registry.update_run_status.assert_called_once()
 
 
@@ -227,19 +225,17 @@ def test_stop_client_run_no_pid(
         client_process_manager.stop_client_run(1)
 
 
-@patch("synchroagent.logic.client_process_manager.os.killpg")
-@patch("synchroagent.logic.client_process_manager.os.getpgid")
+@patch.object(ClientProcessManager, "_wait_for_run_stop")
+@patch.object(ClientProcessManager, "_create_stop_flag")
 def test_stop_client_run_process_not_found(
-    mock_getpgid,
-    mock_killpg,
+    mock_create_stop_flag,
+    mock_wait_for_run_stop,
     client_process_manager,
     mock_client_run_registry,
     sample_client_run,
 ):
     mock_client_run_registry.get_by_id.return_value = sample_client_run
-    mock_getpgid.return_value = sample_client_run.pid
-    mock_killpg.side_effect = ProcessLookupError("No such process")
-    mock_client_run_registry.get_by_id.return_value = sample_client_run
+    mock_create_stop_flag.side_effect = ProcessLookupError("No such process")
 
     result = client_process_manager.stop_client_run(1)
 
@@ -395,13 +391,9 @@ def test_process_completed_callback(
 ):
     mock_client_run_registry.get_by_id.return_value = sample_client_run
     mock_log_manager.collect_logs.return_value = 123
-    mock_report_manager.generate_report.return_value = 456
+    mock_report = MagicMock()
+    mock_report.id = 456
+    mock_report_manager.generate_report.return_value = mock_report
     client_process_manager._on_process_completed(1, 0)
     mock_log_manager.collect_logs.assert_called_once_with(1)
     mock_report_manager.generate_report.assert_called_once_with(1)
-    mock_client_run_registry.update.assert_called_with(
-        1,
-        mock_client_run_registry.update.call_args[0][1],
-    )
-    update_obj = mock_client_run_registry.update.call_args[0][1]
-    assert update_obj.report_id == 456

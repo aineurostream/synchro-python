@@ -17,7 +17,7 @@ nodes:
   lang_to: en
 - name: validator_input_0
   node_type: validator
-# - name: preparer_input_0 # сейчас никак не подключен
+# - name: preparer_input_0 # currently not connected
 #   node_type: preparer
 - name: output_channel_1
   node_type: output_channel
@@ -38,5 +38,6 @@ edges:
 - [normalizer_input_0, resampler_input_0]
 - [resampler_input_0, converter_0]
 - [converter_0, resampler_output_1]
+- [resampler_output_1, output_channel_1]
 - [resampler_output_1, output_file_1]
 - [resampler_input_0, output_file_0]

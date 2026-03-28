@@ -38,61 +38,61 @@ stt:
     ru:
       - ололо
     en: []
-  # Стратегия буфера: adaptive режет поток на фразы по паузам/стабильности.
+  # Buffer strategy: adaptive splits the stream into phrases by pauses/stability.
   buffer_implementation: adaptive
-  # Минимум слов для обычного эмита (целевой размер чанков 3-5 слов).
+  # Minimum words for a regular emit (target chunk size 3-5 words).
   buffer_min_words: 4
-  # Основной timeout в steady-режиме: по нему отправляются 1-4 слова при тишине.
+  # Main timeout in steady mode: sends 1-4 words during silence.
   buffer_timeout_seconds: 3.0
-  # Длинная пауза между словами внутри фразы; может стать границей эмита.
+  # Long pause between words within a phrase; can become an emit boundary.
   buffer_long_pause_seconds: 0.75
-  # Жесткий максимум слов в чанке: при достижении эмит без ожидания timeout.
+  # Hard max words per chunk: emits immediately upon reaching without waiting for timeout.
   buffer_max_words: 5
-  # ON/OFF холодного старта: ускоренный первый чанк после старта или длинной тишины.
+  # ON/OFF cold start: accelerated first chunk after start or long silence.
   buffer_cold_start_enabled: false
-  # Короткий timeout первого чанка после старта/долгой тишины (ускоряет старт).
+  # Short timeout for the first chunk after start/long silence (speeds up start).
   buffer_first_chunk_timeout_seconds: 1.2
-  # После такой тишины следующий эмит снова считается "первым чанком".
+  # After this much silence, the next emit is again considered the "first chunk".
   buffer_first_chunk_reset_silence_seconds: 10.0
-  # Сколько ждать стабилизации нестабильного хвоста, прежде чем fallback-эмит. --- сейчас не работает
+  # How long to wait for unstable tail stabilization before fallback emit. --- currently disabled
   buffer_unstable_tail_timeout_ms: 900
-  # Минимальный confidence для fallback по unstable-хвосту. --- сейчас не работает
+  # Minimum confidence for unstable tail fallback. --- currently disabled
   buffer_unstable_fallback_min_confidence: 0.60
-  # Абсолютный предел удержания куска в буфере при ожидании стабильности. --- сейчас не работает
+  # Absolute limit for holding a chunk in buffer while waiting for stability. --- currently disabled
   buffer_max_hold_seconds: 1.8
-  # Если стабильный префикс >= этого порога, эмитим сразу (без timeout). --- сейчас не работает
+  # If stable prefix >= this threshold, emit immediately (no timeout). --- currently disabled
   buffer_stable_prefix_emit_min_words: 3
-  # Длина короткого числового хвоста (например, "30"), который можно придержать.
+  # Length of a short numeric tail (e.g. "30") that can be held back.
   buffer_short_numeric_tail_max_len: 2
-  # Сколько максимум держать короткий числовой хвост перед принудительным эмитом.
+  # Max time to hold a short numeric tail before forced emit.
   buffer_short_numeric_tail_hold_seconds: 2.0
 translate:
   llm_call_timeout: 120
   context_window_words: 35
   temperature: 0.2
   language_map:
-    ru: Русский
-    uk: Украинский
-    tt: Татарский
-    az: Азербайджанский
-    kk: Казахский
-    be: Белорусский
-    ka: Грузинский
-    tr: Турецкий
-    de: Немецкий
-    ro: Румынский
-    en: Английский
-    ja: Японский
-    fr: Французский
-    it: Итальянский
-    es: Испанский
-    hi: Хинди
-    pt: Португальский
-    zh: Китайский
-    ar: Арабский
-    uz: Узбекский
-    pl: Польский
-    fa: Фарси
+    ru: Russian
+    uk: Ukrainian
+    tt: Tatar
+    az: Azerbaijani
+    kk: Kazakh
+    be: Belarusian
+    ka: Georgian
+    tr: Turkish
+    de: German
+    ro: Romanian
+    en: English
+    ja: Japanese
+    fr: French
+    it: Italian
+    es: Spanish
+    hi: Hindi
+    pt: Portuguese
+    zh: Chinese
+    ar: Arabic
+    uz: Uzbek
+    pl: Polish
+    fa: Farsi
   pipeline:
     - name: remove_punctuation
       cls: prepare_step.RemovePunctuationStep
@@ -140,16 +140,16 @@ translate:
             Please return **exactly two plain text lines** (use a newline to separate them):
             **Line 1** – words from Input that **can be translated immediately ONLY with high fidelity**.
             **Line 2** – remaining words from Input that **still need more following words** to be translated with confidence.
-            If a line would be empty, write a single dot character “.”.
+            If a line would be empty, write a single dot character ".".
             ###
 
             ▶︎ RULES – OBEY **every** point strictly:
             1. **Leading‑overlap removal only**: If the *end* of Context and the *start* of Input contain the **same consecutive word(s)**, you **MUST** delete that overlapped fragment from Line 1. Do **NOT** delete repeated words that occur elsewhere inside the Context or Input.
             2. **No inventions – with a narrow exception**: do **NOT** add content words; you MAY correct obvious transcription errors in Line 1. You MAY insert **≤ 2 words** (articles, prepositions, auxiliaries, obviously missing words) **ONLY INSIDE** Line 1 when they are clearly missing and essential for grammar or meaning. **NEVER** insert words at the very end of Line 1.
-            3. **Keep meaning**: omit **ONLY** filler words (“uh”, “you know”, etc.). You MUST substitute **ALL** swear words with normal words but still keep the meaning.
+            3. **Keep meaning**: omit **ONLY** filler words ("uh", "you know", etc.). You MUST substitute **ALL** swear words with normal words but still keep the meaning.
             4. **Idioms intact**: do **NOT** split idioms or set phrases; if incomplete, you **MUST** place those words entirely in Line 2.
             5. **Chunk length rule**: when Input has > 10 words you must place *some* part in Line 1 (do NOT send the whole chunk to Line 2).
-            6. **Context accumulation**: you MAY put the entire Input in Line 2 only when it is ≤ 10 words *and* premature translation would harm quality. In that case Line 1 must be “.”.
+            6. **Context accumulation**: you MAY put the entire Input in Line 2 only when it is ≤ 10 words *and* premature translation would harm quality. In that case Line 1 must be ".".
             7. **Punctuation**: you MAY add punctuation INSIDE the LINES.
             8. **Boundary check**: you **ABSOLUTELY MUST** put some words in Line 2 if Input ends with an auxiliary, modal, preposition, conjunction, honorific, an unfinished element (like 'Dr', 'Mr', 'for', 'and', 'will', 'have' 'been', "today's", etc.) or an unfinished idiom or fixed phrase. This rule is **VERY VERY IMPORTANT**. It is absolutely **OK** to put some words in Line 2.
             9. **No duplicates**: do **NOT** repeat words in Line 1 that are already present at the very end of Context.
@@ -169,7 +169,7 @@ translate:
     - name: default_translation
       cls: translation_step.TranslationStep
       template: |-
-        You are “Stream‑Translator”, a real‑time interpreter.
+        You are "Stream‑Translator", a real‑time interpreter.
         You receive every turn:
         • Source language: "{lang_from}"
         • Target language: "{lang_to}"
@@ -185,9 +185,9 @@ translate:
         1. **Output:** exactly **one** line containing only the translation of INPUT into "{lang_to}" language. No extra line breaks, tags, or commentary.
         2. **Stay within INPUT** – **never** repeat or retranslate ORIGINAL‑CONTEXT and TRANSLATED‑CONTEXT.
         3. **Names / proper nouns:** **KEEP** in their original form.
-        4. **Numbers & dates:** write them out in full words in {lang_to}, but DO NOT infer, expand, or reconstruct missing years, centuries or digits. If the year is incomplete, render it literally (e.g., “of the nineteenth year”), not as “nineteen nineteen” or “twenty nineteen”.
+        4. **Numbers & dates:** write them out in full words in {lang_to}, but DO NOT infer, expand, or reconstruct missing years, centuries or digits. If the year is incomplete, render it literally (e.g., "of the nineteenth year"), not as "nineteen nineteen" or "twenty nineteen".
         5. **Idioms & set phrases:** translate **by meaning**, not word‑for‑word.
-        6. **Fillers (“uh”, “you know”, …):** omit fillers. You MUST substitute ALL swear words with normal words but still keep the meaning.
+        6. **Fillers ("uh", "you know", …):** omit fillers. You MUST substitute ALL swear words with normal words but still keep the meaning.
         7. **Fluency:** ensure correct grammar and a **smooth** continuation of TRANSLATED‑CONTEXT.
         8. **No meta‑talk** – no explanations, labels, or formatting.
         9. **DO NOT** repeat words already spoken at the very end of Context in your return.
@@ -204,7 +204,7 @@ translate:
         - name: default_correction
           cls: correction_step.CorrectionStep
           template: |-
-            You are “Stream‑Editor”, the last quality pass in a real‑time ASR → LLM → XTTS interpreter.
+            You are "Stream‑Editor", the last quality pass in a real‑time ASR → LLM → XTTS interpreter.
             You receive **each turn**:
             • Context (immutable, already vocalized, target‑language): "{translated_context}" ##
             • Draft (new text to edit, same target‑language): "{translated_text}" ##

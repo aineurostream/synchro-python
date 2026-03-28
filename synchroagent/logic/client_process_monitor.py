@@ -7,7 +7,7 @@ import subprocess
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import IO
 
 from synchroagent.database.client_run_registry import ClientRunRegistry, ClientRunUpdate
@@ -17,13 +17,15 @@ from synchroagent.schemas import LogEventSchema
 
 logger = logging.getLogger(__name__)
 
+MAX_COMPLETED_HISTORY = 100
+
 
 @dataclass
 class ProcessInfo:
     run_id: int
     process: subprocess.Popen
-    stdout_buffer: bytes = b""
-    stderr_buffer: bytes = b""
+    stdout_buffer: bytearray = field(default_factory=bytearray)
+    stderr_buffer: bytearray = field(default_factory=bytearray)
     last_check_time: float = 0
 
 
@@ -137,7 +139,7 @@ class ClientProcessMonitor(threading.Thread):
             try:
                 output_bytes = self._read_pipe_nonblocking(stdout_pipe)
                 if output_bytes:
-                    process_info.stdout_buffer += output_bytes
+                    process_info.stdout_buffer.extend(output_bytes)
                     logger.debug(
                         "Read %d bytes from STDOUT for run %d",
                         len(output_bytes),
@@ -154,7 +156,7 @@ class ClientProcessMonitor(threading.Thread):
             try:
                 output_bytes = self._read_pipe_nonblocking(stderr_pipe)
                 if output_bytes:
-                    process_info.stderr_buffer += output_bytes
+                    process_info.stderr_buffer.extend(output_bytes)
                     logger.debug(
                         "Read %d bytes from STDERR for run %d",
                         len(output_bytes),
@@ -238,9 +240,16 @@ class ClientProcessMonitor(threading.Thread):
         self._parse_and_emit_log_lines(process_info, "stdout")
         self._parse_and_emit_log_lines(process_info, "stderr")
         self.completed_outputs[run_id] = {
-            "stdout": process_info.stdout_buffer,
-            "stderr": process_info.stderr_buffer,
+            "stdout": bytes(process_info.stdout_buffer),
+            "stderr": bytes(process_info.stderr_buffer),
         }
+
+        if len(self.completed_outputs) > MAX_COMPLETED_HISTORY:
+            oldest_keys = sorted(self.completed_outputs.keys())[
+                : len(self.completed_outputs) - MAX_COMPLETED_HISTORY
+            ]
+            for k in oldest_keys:
+                del self.completed_outputs[k]
 
         logger.info("Stored byte outputs for run %d", run_id)
 

@@ -104,9 +104,11 @@ class FormatValidatorNodeSchema(BaseNodeSchema):
 
     enforce_mono: bool = True
     enforce_format: AudioFormat = (
-        DEFAULT_AUDIO_FORMAT  # во что приводить байты (например, int16 LE)
+        DEFAULT_AUDIO_FORMAT  # target byte format (e.g. int16 LE)
     )
-    passthrough_rate: bool = True  # частоту не трогаем (ресэмпл — отдельной нодой)
+    passthrough_rate: bool = (
+        True  # don't touch sample rate (resampling is a separate node)
+    )
 
 
 class WhisperPrepNodeSchema(BaseNodeSchema):
@@ -117,30 +119,31 @@ class WhisperPrepNodeSchema(BaseNodeSchema):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
+    node_type: Literal[NodeType.PREPARER] = NodeType.PREPARER
 
-    # Режимы под акустику/языки (влияют на HPF/WPE)
+    # Modes for acoustics/languages (affect HPF/WPE)
     mode: Literal["default", "universal", "tonal"] = "universal"
 
-    # Нормализация: peak-headroom (дефолт) или LUFS
+    # Normalization: peak-headroom (default) or LUFS  # noqa: ERA001
     normalization: Literal["peak", "lufs"] = "peak"
 
-    # Для peak-режима (аналог pydub.effects.normalize):
+    # For peak mode (analogous to pydub.effects.normalize):
     headroom_db: float = 10.0  # target peak = -headroom dBFS
 
-    # Для LUFS-режима:
+    # For LUFS mode:
     target_lufs: float = -16.0
-    lufs_block_sec: float = 0.10  # block_size для pyloudnorm (сек)
-    lufs_min_sec: float = 0.10  # не считаем LUFS на более коротких чанках
-    gain_smooth_alpha: float = 0.25  # сглаживание усиления (EWMA)
+    lufs_block_sec: float = 0.10  # block_size for pyloudnorm (sec)
+    lufs_min_sec: float = 0.10  # don't compute LUFS on shorter chunks
+    gain_smooth_alpha: float = 0.25  # gain smoothing (EWMA)
 
-    # Лимитер-потолок после нормализации
+    # Limiter ceiling after normalization
     true_peak_dbfs: float = -1.8
 
-    # Дереверберация
+    # Dereverberation
     use_wpe: bool = True
 
-    # Ресэмпл внутри НОДЫ не делаем (держим спектр до финала).
-    # Опция оставлена на случай отладки.
+    # No resampling inside this NODE (preserve spectrum until final stage).
+    # Option kept for debugging purposes.
     resample_to_target_sr: bool = False
     target_sr: int = 16000
 
@@ -148,24 +151,30 @@ class WhisperPrepNodeSchema(BaseNodeSchema):
 class TerminalMetricsDisplayNodeSchema(BaseNodeSchema):
     node_type: Literal[NodeType.MEASURER] = NodeType.MEASURER
 
-    # Куда печатаем TUI (обычно sys.stdout):
+    # TUI output destination (usually sys.stdout):
     sink: Literal["stdout", "stderr", "file"] = "stdout"
-    # Как часто перерисовывать терминал (Гц)
+    # Terminal refresh rate (Hz)
     refresh_hz: float = 10.0
-    # Длина окна агрегации метрик (сек)
+    # Metrics aggregation window length (sec)
     window_seconds: float = 4.0
-    # Минимальная длительность чанка, чтобы учитывать метрики (сек)
+    # Minimum chunk duration to include in metrics (sec)
     min_chunk_sec: float = 0.05
-    # Высота «столбиков» в строках (чем больше, тем выше)
+    # Bar height in rows (more = taller)
     bar_height: int = 10
-    # Порог клиппинга (для float-представления)
+    # Clipping threshold (for float representation)
     clip_threshold_float: float = 0.999
+
+    # File sink settings (only used when sink="file")
+    file_path: Path | None = None
+    append: bool = True
+    encoding: str = "utf-8"
+    newline: str | None = None
 
     # Runtime-only field with a live file object.
     # It is excluded from serialization and type validation.
     stream: TextIO = Field(default=None, exclude=True)
 
-    # pydantic v2: разрешаем произвольные типы (TextIO)
+    # pydantic v2: allow arbitrary types (TextIO)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_validator(mode="after")
@@ -176,7 +185,7 @@ class TerminalMetricsDisplayNodeSchema(BaseNodeSchema):
         Store it in self.stream (excluded from serialization).
         """
         if self.stream is not None:
-            # Пользователь уже положил готовый поток вручную (DI) — уважаем
+            # User already provided a ready stream manually (DI) — respect it
             return self
 
         if self.sink == "stdout":
@@ -185,10 +194,10 @@ class TerminalMetricsDisplayNodeSchema(BaseNodeSchema):
             self.stream = sys.stderr
         else:
             if not self.file_path:
-                msg = "sink='file' требует file_path"
+                msg = "sink='file' requires file_path"
                 raise ValueError(msg)
             mode = "a" if self.append else "w"
-            # ВАЖНО: ответственность за закрытие файла на стороне ноды/контекста
+            # IMPORTANT: responsibility for closing the file lies with the node/context
             self.stream = self.file_path.open(
                 mode,
                 encoding=self.encoding,
@@ -197,7 +206,7 @@ class TerminalMetricsDisplayNodeSchema(BaseNodeSchema):
 
         return self
 
-    # Красиво сериализуем модель (например, в логи/конфиги), пряча runtime-поле
+    # Pretty-serialize the model (e.g. for logs/configs), hiding the runtime field
     @field_serializer("file_path", check_fields=False)
     def _ser_path(self, v: Path | None, _info: SerializationInfo) -> str | None:
         return str(v) if v else None

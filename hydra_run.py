@@ -77,7 +77,7 @@ def provide_bleu_for_text(base: str, resulted: str) -> tuple[float, float]:
     base_split = split_string_bleu(base)
     result_split = split_string_bleu(resulted)
     result = sentence_bleu([base_split], result_split)
-    wer_result = wer(" ".join(base), " ".join(resulted))
+    wer_result = wer(base, resulted)
     return cast("float", result), wer_result
 
 

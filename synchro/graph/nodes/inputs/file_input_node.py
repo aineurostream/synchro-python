@@ -22,26 +22,29 @@ class FileInputNode(AbstractInputNode):
         self._wavefile_data: FrameContainer | None = None
         self._wavefile_index = 0
         self._delay_left = self._config.delay
-        self._last_query = time.time()
+        self._last_query = time.monotonic()
         # Minimum chunk size (10ms of audio)
         self._min_chunk_ms = 10
 
     def __enter__(self) -> Self:
         wavefile = wave.open(str(self._config.path), "r")
-        if wavefile.getnchannels() != 1:
-            msg = "Only mono files are supported"
-            raise ValueError(msg)
-        supported_format = AudioFormat(format_type=AudioFormatType.INT_16)
-        if wavefile.getsampwidth() != supported_format.sample_size:
-            msg = "Only 16-bit audio files are supported"
-            raise ValueError(msg)
-        length = wavefile.getnframes()
-        self._wavefile_data = FrameContainer(
-            audio_format=supported_format,
-            rate=wavefile.getframerate(),
-            frame_data=wavefile.readframes(length),
-        )
-        self._wavefile_index = 0
+        try:
+            if wavefile.getnchannels() != 1:
+                msg = "Only mono files are supported"
+                raise ValueError(msg)
+            supported_format = AudioFormat(format_type=AudioFormatType.INT_16)
+            if wavefile.getsampwidth() != supported_format.sample_size:
+                msg = "Only 16-bit audio files are supported"
+                raise ValueError(msg)
+            length = wavefile.getnframes()
+            self._wavefile_data = FrameContainer(
+                audio_format=supported_format,
+                rate=wavefile.getframerate(),
+                frame_data=wavefile.readframes(length),
+            )
+            self._wavefile_index = 0
+        finally:
+            wavefile.close()
         return self
 
     def __exit__(
@@ -58,21 +61,21 @@ class FileInputNode(AbstractInputNode):
             logger.info("No data to send - all sent and loop is not enabled")
             return None
 
-        time_passed = time.time() - self._last_query
+        time_passed = time.monotonic() - self._last_query
 
         if self._delay_left > 0:
             delay_duration = min(self._delay_left, time_passed)
             delay_samples = int(delay_duration * self._wavefile_data.rate)
             delay_bytes = delay_samples * self._wavefile_data.audio_format.sample_size
             self._delay_left -= delay_duration
-            self._last_query = time.time()
+            self._last_query = time.monotonic()
             return self._wavefile_data.with_new_data(b"\x00" * delay_bytes)
 
         time_passed_samples = int(time_passed * self._wavefile_data.rate)
         time_passed_bytes = (
             time_passed_samples * self._wavefile_data.audio_format.sample_size
         )
-        self._last_query = time.time()
+        self._last_query = time.monotonic()
 
         data_to_send = self._wavefile_data.frame_data[
             self._wavefile_index : self._wavefile_index + time_passed_bytes

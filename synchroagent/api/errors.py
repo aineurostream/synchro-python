@@ -11,11 +11,6 @@ class BadRequestError(HTTPException):
         super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
-class ConflictError(HTTPException):
-    def __init__(self, detail: str = "Resource conflict") -> None:
-        super().__init__(status_code=status.HTTP_409_CONFLICT, detail=detail)
-
-
 class ServerError(HTTPException):
     def __init__(self, detail: str = "Internal server error") -> None:
         super().__init__(

@@ -15,15 +15,27 @@ class AudioFormatType(StrEnum):
 
 class AudioFormat(BaseModel):
     _FORMAT_TO_SAMPLE_SIZE: ClassVar[dict[AudioFormatType, int]] = {
+        AudioFormatType.INT_8: 1,
         AudioFormatType.INT_16: 2,
+        AudioFormatType.INT_24: 3,
+        AudioFormatType.INT_32: 4,
+        AudioFormatType.FLOAT_32: 4,
     }
 
     _FORMAT_TO_PYAUDIO: ClassVar[dict[AudioFormatType, int]] = {
-        AudioFormatType.INT_16: 2,
+        AudioFormatType.INT_8: 16,
+        AudioFormatType.INT_16: 8,
+        AudioFormatType.INT_24: 4,
+        AudioFormatType.INT_32: 2,
+        AudioFormatType.FLOAT_32: 1,
     }
 
     _FORMAT_TO_NUMPY: ClassVar[dict[AudioFormatType, type]] = {
+        AudioFormatType.INT_8: np.int8,
         AudioFormatType.INT_16: np.int16,
+        AudioFormatType.INT_24: np.int32,
+        AudioFormatType.INT_32: np.int32,
+        AudioFormatType.FLOAT_32: np.float32,
     }
 
     format_type: AudioFormatType

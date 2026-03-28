@@ -1,7 +1,6 @@
 import contextlib
-import uuid
 from types import TracebackType
-from typing import Any, Literal, Self, cast
+from typing import Any, Literal, Self
 
 from socketio import SimpleClient
 from socketio.exceptions import TimeoutError as SioTimeoutError
@@ -16,9 +15,8 @@ from synchro.graph.graph_node import (
     ReceivingNodeMixin,
 )
 
-INT16_MAX = 32767
-DEFAULT_INPUT_RATE = 16000
 DEFAULT_OUTPUT_RATE = 22050
+MAX_BUFFER_BYTES = 1024 * 1024
 
 
 class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
@@ -33,8 +31,6 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._neuro_config = neuro_config
         self._client = SimpleClient()
         self._buffer_bytes = b""
-        self._user_id = str(uuid.uuid4())
-        self._room_id = str(uuid.uuid4())[:4]
         self._connected = False
         self._events_cb = events_cb
         self._stream_config = StreamConfig(
@@ -88,6 +84,13 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         if len(samples) > 0:
             self._buffer_bytes += samples
 
+        if len(self._buffer_bytes) > MAX_BUFFER_BYTES:
+            self._logger.warning(
+                "Buffer exceeded %d bytes, discarding oldest data",
+                MAX_BUFFER_BYTES,
+            )
+            self._buffer_bytes = self._buffer_bytes[-MAX_BUFFER_BYTES:]
+
         if len(self._buffer_bytes) > 0 and self._connected:
             self._client.emit(
                 "incoming_audio",
@@ -120,16 +123,14 @@ class SeamlessConnectorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
                             self.name,
                             log_body,
                         )
-        if len(audio_result) > 0:
-            self._logger.debug(
-                "Received %d bytes from %s",
-                len(audio_result),
-                self._client.sid,
-            )
+        if len(audio_result) == 0:
+            return None
+        self._logger.debug(
+            "Received %d bytes from %s",
+            len(audio_result),
+            self._client.sid,
+        )
         return FrameContainer.from_config(
             self._stream_config,
             audio_result,
         )
-
-    def is_active(self) -> bool:
-        return cast("bool", self._client.connected)

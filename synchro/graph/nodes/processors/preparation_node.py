@@ -19,9 +19,9 @@ WAV_FLOAT_THRESHOLD = 1.5
 INT_DETECTION_THRESHOLD = 0.5
 SIGNAL_PEAK_LIMIT = 0.999
 
-# ─────────────────────────────(опциональный WPE)──────────────────────────────
-# WPE = Weighted Prediction Error. Бережная «дереверберация».
-# Если pyroomacoustics не установлен — шаг тихо пропускаем.
+# ─────────────────────────────(optional WPE)──────────────────────────────
+# WPE = Weighted Prediction Error. Gentle dereverberation.
+# If pyroomacoustics is not installed — silently skip this step.
 try:
     import pyroomacoustics  # noqa: F401
 
@@ -30,14 +30,14 @@ except ImportError:  # pragma: no cover
     _HAS_PRA = False
 
 
-# ───────────────────────────── нода ─────────────────────────────
+# ───────────────────────────── node ─────────────────────────────
 class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
-    """1) bytes -> float32, сразу моно
-    2) нормализация: peak(headroom) [дефолт] или LUFS (безопасно для коротких чанков)
-    3) мягкий лимитер (true peak)
-    4) (опц.) WPE dereverb
+    """1) bytes -> float32, immediately mono
+    2) normalization: peak(headroom) [default] or LUFS (safe for short chunks)
+    3) soft limiter (true peak)
+    4) (opt.) WPE dereverb
     5) HPF/LPF (zero-phase)
-    6) float32 -> bytes (исходная разрядность), SR не меняем.
+    6) float32 -> bytes (original bit depth), SR unchanged.
     """
 
     def __init__(self, config: WhisperPrepNodeSchema) -> None:
@@ -45,7 +45,7 @@ class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._config = config
         self._buffer: FrameContainer | None = None
         self._incoming_frames = 0
-        self._last_gain_db: float | None = None  # для LUFS-сглаживания
+        self._last_gain_db: float | None = None  # for LUFS smoothing
 
         self._presets = {
             "default": {
@@ -77,7 +77,7 @@ class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             )
             self._config.mode = "universal"
 
-    # Контекстный менеджер (граф любит with node)
+    # Context manager (the graph likes 'with node')
     def __enter__(self) -> Self:
         return self
 
@@ -108,15 +108,15 @@ class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         self._incoming_frames = 0
         return processed
 
-    # ядро
+    # core
     def _process_buffer(self, buffer: FrameContainer) -> FrameContainer:
         sample_size = buffer.audio_format.sample_size
         rate_in = int(buffer.rate)
 
-        # 1) bytes -> float32 моно
+        # 1) bytes -> float32 mono
         x = _pcm_bytes_to_float32_mono(buffer.frame_data, sample_size)
 
-        # 2) SR — держим как есть (по умолчанию)
+        # 2) SR — keep as-is (by default)
         target_sr = (
             rate_in
             if not self._config.resample_to_target_sr
@@ -124,16 +124,16 @@ class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         )
         y = _resample_if_needed(x, rate_in, target_sr)
 
-        # 3) Нормализация (peak-headroom по умолчанию, как в pydub)
+        # 3) Normalization (peak-headroom by default, like pydub)
         if self._config.normalization == "peak":
             y = _normalize_peak_headroom(y, headroom_db=self._config.headroom_db)
         else:
             y, _ = self._safe_lufs_normalize(y, sr=target_sr)
 
-        # лимитер-потолок
+        # limiter ceiling
         y = _soft_limiter_tanh(y, self._config.true_peak_dbfs)
 
-        # 4) Dereverb (опционально)
+        # 4) Dereverb (optional)
         p = self._presets[self._config.mode]
         if self._config.use_wpe and _HAS_PRA:
             y = _wpe_dereverb(
@@ -146,15 +146,15 @@ class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             y = _soft_limiter_tanh(
                 y,
                 self._config.true_peak_dbfs,
-            )  # поджать возможный всплеск
+            )  # clamp possible spike
         elif self._config.use_wpe and not _HAS_PRA:
             logger.debug("pyroomacoustics not available, skipping WPE")
 
-        # 5) Фильтры HPF/LPF (zero-phase)
+        # 5) HPF/LPF filters (zero-phase)
         lpf_hz = _safe_lpf_hz(target_sr, p["lpf_ratio"])
         y = _butter_zero_phase(y, sr=target_sr, f_low=p["hpf"], f_high=lpf_hz, order=4)
 
-        # 6) Санитария + обратная конверсия
+        # 6) Sanitization + reverse conversion
         y = np.nan_to_num(y, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
         pk = float(np.max(np.abs(y)) + 1e-12)
         if pk > SIGNAL_PEAK_LIMIT:
@@ -164,24 +164,15 @@ class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         raw = _float32_to_pcm_bytes(y, sample_size)
 
         if self._config.resample_to_target_sr and out_rate != rate_in:
-            try:
-                return FrameContainer.from_params(  # type: ignore[attr-defined]
-                    rate=out_rate,
-                    audio_format=buffer.audio_format,
-                    channels=1,
-                    frame_data=cast("bytes", raw),
-                )
-            except (AttributeError, TypeError, ValueError) as e:
-                logger.warning(
-                    "Cannot build FrameContainer with new rate (%s). "
-                    "Fallback to original. Err: %s",
-                    out_rate,
-                    e,
-                )
+            return FrameContainer(
+                rate=out_rate,
+                audio_format=buffer.audio_format,
+                frame_data=cast("bytes", raw),
+            )
 
         return FrameContainer.from_config(buffer, cast("bytes", raw))
 
-    # безопасная LUFS-нормализация (не падает на коротких чанках)
+    # safe LUFS normalization (doesn't fail on short chunks)
     def _safe_lufs_normalize(
         self,
         x: np.ndarray,
@@ -202,7 +193,7 @@ class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         if n == 0 or sr <= 0:
             return x.astype(np.float32), 0.0
 
-        # Если нет pyloudnorm — fallback к RMS
+        # If pyloudnorm is missing — fallback to RMS
         if not have_pyloud:
             cur_rms_db = _rms_dbfs(x)
             gain_db = target_lufs - cur_rms_db
@@ -221,7 +212,7 @@ class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             except (RuntimeError, ValueError, FloatingPointError):
                 cur_rms_db = _rms_dbfs(x)
                 gain_db = target_lufs - cur_rms_db
-        # слишком коротко — используем прошлый гейн, либо RMS-оценку
+        # too short — use previous gain, or RMS estimate
         elif self._last_gain_db is not None:
             gain_db = self._last_gain_db
         else:
@@ -233,7 +224,7 @@ class WhisperPrepNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         return _apply_gain_db(x, g), g
 
 
-# ─────────────────────────── вспом. DSP ───────────────────────────
+# ─────────────────────────── helper DSP ───────────────────────────
 def _pcm_bytes_to_float32_mono(raw: bytes, sample_size: int) -> np.ndarray:
     """Interleaved PCM little-endian -> float32 [-1,1] (assume mono input)."""
     if sample_size == 1:
@@ -309,13 +300,13 @@ def _resample_if_needed(x: np.ndarray, sr_in: int, sr_out: int) -> np.ndarray:
 
 
 def _normalize_peak_headroom(x: np.ndarray, headroom_db: float) -> np.ndarray:
-    """Peak-нормализация «как в pydub.effects.normalize(headroom=H)»:
-    делаем так, чтобы абсолютный пик стал равен -H dBFS.
+    """Peak normalization like pydub.effects.normalize(headroom=H):
+    scale so that the absolute peak equals -H dBFS.
     """
     peak = float(np.max(np.abs(x)) + 1e-12)
     if peak == 0.0:
         return x.astype(np.float32)
-    target_peak = 10.0 ** (-headroom_db / 20.0)  # линейная цель
+    target_peak = 10.0 ** (-headroom_db / 20.0)  # linear target
     gain = target_peak / peak
     return (x * gain).astype(np.float32)
 
@@ -337,13 +328,13 @@ def _wpe_dereverb(
     delay: int,
     iterations: int,
 ) -> np.ndarray:
-    """Безопасный вызов WPE-дереверберации для любых версий pyroomacoustics.
-    При отсутствии модуля — возвращает входной сигнал без изменений.
+    """Safe WPE dereverberation call for any pyroomacoustics version.
+    If the module is missing — returns the input signal unchanged.
     """
     try:
         import pyroomacoustics as pra  # noqa: PLC0415
 
-        # 🔹 Новый API (>=0.7): функция в подмодуле
+        # 🔹 New API (>=0.7): function in submodule
         try:
             from pyroomacoustics.dereverberation import wpe as pra_wpe  # noqa: PLC0415
         except ImportError:
@@ -364,7 +355,7 @@ def _wpe_dereverb(
                 iterations=iterations,
             )
         elif hasattr(pra, "dereverberation") and hasattr(pra.dereverberation, "wpe"):
-            # старый API (<0.7)
+            # old API (<0.7)
             y_spectrum = pra.dereverberation.wpe(
                 x_spectrum_arr,
                 taps=taps,
@@ -372,7 +363,7 @@ def _wpe_dereverb(
                 iterations=iterations,
             )
         else:
-            # модуль недоступен
+            # module not available
             return x
 
         y_frames = y_spectrum[..., 0].T
@@ -428,7 +419,7 @@ def _apply_gain_db(x: np.ndarray, gain_db: float) -> np.ndarray:
 
 
 def _smooth_gain(prev_db: float | None, cur_db: float, alpha: float) -> float:
-    """EWMA по усилению (в dB), чтобы не «дышало»."""
+    """EWMA on gain (in dB) to prevent 'breathing' effect."""
     a = float(np.clip(alpha, 0.0, 1.0))
     if prev_db is None:
         return cur_db

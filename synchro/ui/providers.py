@@ -16,7 +16,6 @@ from synchro.config.schemas import (
     SeamlessConnectorNodeSchema,
 )
 from synchro.config.settings import SettingsSchema
-from synchro.core import CoreManager
 from synchro.graph.graph_initializer import GraphInitializer
 from synchro.graph.graph_manager import GraphManager
 from synchroagent.utils import get_datetime_iso
@@ -262,6 +261,7 @@ class LogStream:
             self._thread.join(timeout=1.0)
         self._thread = None
         self._gm = None
+        self._ever_started = False
 
     @property
     def is_running(self) -> bool:
@@ -397,15 +397,16 @@ class PipelineRunner:
                 core_config, settings_model, neural_config_dict = initialize_configs(
                     cfg,
                 )
-                core = CoreManager(
-                    pipeline_config=core_config,
-                    neuro_config=neural_config_dict,
-                    settings=settings_model,
-                    events_cb=self._events_cb,
-                    working_dir=None,
-                )
-                # CoreManager.run blocks until graph stops
-                core.run()
+                nodes, edges = GraphInitializer(
+                    settings_model,
+                    core_config,
+                    neural_config_dict,
+                    self._events_cb,
+                    None,
+                ).build()
+                gm = GraphManager(nodes, edges, settings_model)
+                self._gm = gm
+                gm.execute()
             except Exception as e:
                 # Log and store a human-friendly message
                 self._logger.exception("Pipeline terminated with error")
@@ -488,9 +489,9 @@ def get_model_logs_fallback(
     # placeholder
     ts = get_datetime_iso()
     base: list[str] = [
-        f"{ts} | translation | Hello → Привет",
+        f"{ts} | translation | Hello → Hola",
         f"{ts} | transcription | hello world",
-        f"{ts} | correction | Привет, мир",
+        f"{ts} | correction | Hello, world",
         f"{ts} | info | synthesis chunk: 24KB",
     ]
     if active_filter == "all":

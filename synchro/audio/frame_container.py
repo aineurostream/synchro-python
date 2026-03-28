@@ -34,14 +34,14 @@ class FrameContainer(StreamConfig):
         )
 
     @property
-    def length_ms(self) -> int:
+    def length_ms(self) -> float:
         return (
-            len(self.frame_data) * 1000 // (self.rate * self.audio_format.sample_size)
+            len(self.frame_data) * 1000.0 / (self.rate * self.audio_format.sample_size)
         )
 
     @property
     def length_secs(self) -> float:
-        return self.length_ms / 1000
+        return self.length_ms / 1000.0
 
     @property
     def length_frames(self) -> int:
@@ -99,10 +99,14 @@ class FrameContainer(StreamConfig):
         return FrameContainer.from_config(self, self.frame_data[:n])
 
     def get_end_frames(self, frames_count: int) -> "FrameContainer":
+        if frames_count <= 0:
+            return FrameContainer.from_config(self)
         n = frames_count * self.audio_format.sample_size
         return FrameContainer.from_config(self, self.frame_data[-n:])
 
     def get_end_seconds(self, seconds: float) -> "FrameContainer":
+        if seconds <= 0:
+            return FrameContainer.from_config(self)
         seconds_in_bytes = self._seconds_to_bytes(seconds)
         return FrameContainer.from_config(self, self.frame_data[-seconds_in_bytes:])
 

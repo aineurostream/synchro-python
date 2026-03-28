@@ -20,11 +20,11 @@ MONO_DIMS = 2
 
 
 class ChannelInputNode(AbstractInputNode):
-    """Узел живого входа. Делает:
-    - корректную выборку канала при JACK,
-    - микширование в моно при многоканале (без JACK),
-    - потокобезопасное накопление байтов в буфере,
-    - строгое соответствие dtype <-> FrameContainer.audio_format.
+    """Live input node. Handles:
+    - correct channel selection with JACK,
+    - downmixing to mono for multi-channel (without JACK),
+    - thread-safe byte accumulation in buffer,
+    - strict dtype <-> FrameContainer.audio_format correspondence.
     """
 
     def __init__(self, config: InputChannelStreamerNodeSchema) -> None:
@@ -70,7 +70,7 @@ class ChannelInputNode(AbstractInputNode):
         sample_rate = int(device_info["default_samplerate"])
 
         # NOTE: stream dtype must match DEFAULT_AUDIO_FORMAT.numpy_format.
-        dtype = DEFAULT_AUDIO_FORMAT.numpy_format  # например, np.int16
+        dtype = DEFAULT_AUDIO_FORMAT.numpy_format  # e.g., np.int16
         channels = (
             self._config.channel if JACK_ENABLED else max(1, self._config.channel)
         )

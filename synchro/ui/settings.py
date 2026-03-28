@@ -35,7 +35,7 @@ class UISettings(BaseModel):
     )
     server_url: str = Field(
         default="http://127.0.0.1:8000",
-        validation_alias=AliasChoices("SERVER_URL", "server)url"),
+        validation_alias=AliasChoices("SERVER_URL", "server_url"),
     )
     config: Path = Field(
         default="config",  # corresponds to config/config.yaml in Hydra

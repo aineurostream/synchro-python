@@ -264,9 +264,10 @@ class ClientProcessManager:
         return client_run
 
     def _create_stop_flag(self, client_run: ClientRunSchema, run_id: int) -> None:
-        stop_flag_file = (
-            Path(client_run.output_dir or "").resolve().joinpath("stop.flag")
-        )
+        if not client_run.output_dir:
+            msg = f"Client run {run_id} has no output directory"
+            raise ValueError(msg)
+        stop_flag_file = Path(client_run.output_dir).resolve().joinpath("stop.flag")
         stop_flag_file.touch()
         logger.info(
             "Created stop flag file at %s for client run %s",

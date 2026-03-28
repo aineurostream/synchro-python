@@ -11,7 +11,10 @@ from synchroagent.database.models import (
     ReportSchema,
     RunStatus,
 )
-from synchroagent.logic.client_process_manager import ClientProcessManager
+from synchroagent.logic.client_process_manager import (
+    ClientProcessManager,
+    ProcessManagers,
+)
 from synchroagent.logic.log_manager import LogManager
 from synchroagent.logic.report_manager import ReportManager
 
@@ -67,8 +70,10 @@ def client_process_manager(
         client_registry=mock_client_registry,
         client_run_registry=mock_client_run_registry,
         config_registry=mock_config_registry,
-        log_manager=mock_log_manager,
-        report_manager=mock_report_manager,
+        process_managers=ProcessManagers(
+            log_manager=mock_log_manager,
+            report_manager=mock_report_manager,
+        ),
         outputs_dir="/tmp/test_outputs",
     )
 

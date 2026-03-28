@@ -36,7 +36,10 @@ class VoiceActivityDetector:
         if self._buffer.length_secs < self._buffer_size_sec:
             return VoiceActivityDetectorResult.NOT_ENOUGH_INFO
         self._buffer = self._buffer.get_end_seconds(self._buffer_size_sec)
-        joined_buffer = np.frombuffer(self._buffer.frame_data, np.int16)
+        joined_buffer = np.frombuffer(
+            self._buffer.frame_data,
+            self._buffer.audio_format.numpy_format,
+        )
         has_speech = np.mean(np.abs(joined_buffer)) > self._threshold
         return (
             VoiceActivityDetectorResult.SPEECH

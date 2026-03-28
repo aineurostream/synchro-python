@@ -97,8 +97,8 @@ class MixerNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
             batch_length_frames,
         )
         self._consume_streamed_frames(batch_length_frames)
-        audio_matrix = np.divide(audio_matrix, self._inputs_count)
-        audio_matrix = np.sum(audio_matrix, axis=0)
+        audio_matrix = audio_matrix.astype(np.float32)
+        audio_matrix = np.sum(audio_matrix, axis=0) / len(selected_frame_containers)
 
         return cast(
             "bytes",

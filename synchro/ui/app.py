@@ -66,15 +66,15 @@ if TYPE_CHECKING:
 THEME: str = "solarized-light"
 REFRESH_RATE: float = 1
 MICROPHONE_WARNING = (
-    "[bold]Внимание![/bold] "
-    "Если звук из колонок попадёт в микрофон, "
-    "это может привести к нестабильной работе системы перевода."
+    "[bold]Warning![/bold] "
+    "If speaker audio is picked up by the microphone, "
+    "it may cause unstable behavior in the translation system."
 )
 DEFAULT_LANGS = [
-    ("Английский", "en"),
-    ("Русский", "ru"),
-    ("Японский", "jp"),
-    ("Китайский", "ch"),
+    ("English", "en"),
+    ("Russian", "ru"),
+    ("Japanese", "jp"),
+    ("Chinese", "ch"),
 ]
 _MAX_SYSTEM_LOG_LINES = 2000
 _TRIM_SYSTEM_LOG_LINES = 1000
@@ -156,9 +156,9 @@ class SystemInfoPanel(Static):
         self.update(
             "\n".join(
                 [
-                    f"Активно: {info['uptime']} сек.",
-                    f"Обновлено: {info['uptime_iso']}",
-                    f"Процесс: {info['worker'] and info['worker'].is_alive()}",
+                    f"Active: {info['uptime']} sec.",
+                    f"Updated: {info['uptime_iso']}",
+                    f"Process: {info['worker'] and info['worker'].is_alive()}",
                 ],
             ),
         )
@@ -218,7 +218,7 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
     """
 
     BINDINGS: ClassVar[list[Binding]] = [
-        Binding("escape", "dismiss", "Отмена"),
+        Binding("escape", "dismiss", "Cancel"),
     ]
 
     def __init__(
@@ -263,29 +263,29 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
 
         with Container():
             with Vertical():
-                yield Label("Настройки", classes="title")
+                yield Label("Settings", classes="title")
                 self.select_input = get_select(
-                    "Устройство ввода",
+                    "Input device",
                     in_opts,
                     self.app.settings.input_device,
                 )
                 self.select_output = get_select(
-                    "Устройство вывода",
+                    "Output device",
                     out_opts,
                     self.app.settings.output_device,
                 )
                 self.select_lang_from = get_select(
-                    "Основной язык спикера",
+                    "Speaker's primary language",
                     DEFAULT_LANGS,
                     self.select_lang_from,
                 )
                 self.select_lang_to = get_select(
-                    "Язык перевода",
+                    "Translation language",
                     DEFAULT_LANGS,
                     self.select_lang_to,
                 )
                 self.select_tts = get_select(
-                    "Движок озвучания",
+                    "TTS engine",
                     tts_opts,
                     self.select_tts,
                     "xtts",
@@ -298,8 +298,8 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
                 yield self.select_tts
                 yield self.error_label
             with Horizontal():
-                yield Button("Применить", id="apply", variant="success")
-                yield Button("Отмена", id="cancel", variant="error")
+                yield Button("Apply", id="apply", variant="success")
+                yield Button("Cancel", id="cancel", variant="error")
 
         # Apply defaults if provided
         try:
@@ -351,7 +351,7 @@ class SettingsModal(ModalScreen[dict[str, Any] | None]):
 
 class ConfigModal(ModalScreen[dict[str, Any] | None]):
     BINDINGS: ClassVar[list[Binding]] = [
-        Binding("escape", "dismiss", "Отмена"),
+        Binding("escape", "dismiss", "Cancel"),
     ]
 
     def __init__(
@@ -373,7 +373,7 @@ class ConfigModal(ModalScreen[dict[str, Any] | None]):
 
     def compose(self) -> ComposeResult:
         with Container():
-            yield Label("Конфиг", classes="title")
+            yield Label("Config", classes="title")
             with Vertical():
                 yield TextArea.code_editor(
                     self.config,
@@ -434,14 +434,14 @@ class ConfigModal(ModalScreen[dict[str, Any] | None]):
 
 
 class SynchroTextualApp(App[Any]):
-    TITLE = "Клиент - Нейрострим. Перевод"
+    TITLE = "Client - Neurostream. Translation"
     CSS_PATH = "app.tcss"
 
     BINDINGS: ClassVar[list[Binding]] = [
         Binding("r", "refresh", "Refresh", show=False),
         Binding("q", "quit", "Quit"),
-        Binding("s", "push_screen('settings_modal')", "Настройки"),
-        Binding("c", "push_screen('config_modal')", "Конфиг"),
+        Binding("s", "push_screen('settings_modal')", "Settings"),
+        Binding("c", "push_screen('config_modal')", "Config"),
     ]
 
     def __init__(
@@ -470,7 +470,7 @@ class SynchroTextualApp(App[Any]):
         self._syslog_lines: list[str] = []
         self._syslog_handler: logging.Handler | None = None
         self.model_logs = LogsColumn(
-            "События",
+            "Events",
             with_filters=True,
             fetcher=self._get_model_logs,
         )
@@ -488,7 +488,7 @@ class SynchroTextualApp(App[Any]):
             with Vertical():
                 yield self.system_logs
 
-                yield Label("Системная информация")
+                yield Label("System information")
                 yield self.sys_info
         yield Footer()
 
@@ -579,8 +579,6 @@ class SynchroTextualApp(App[Any]):
                 self.system_logs.write_lines(get_logs())
                 counter += 1
                 await asyncio.sleep(REFRESH_RATE)
-
-            self.logger.info("Worker shutdown")
         except (RuntimeError, OSError, ValueError) as exc:
             self.logger.info("Worker error: %s", exc)
             self.system_logs.write_lines(get_logs())
@@ -652,9 +650,7 @@ class SynchroTextualApp(App[Any]):
         }
 
     def refresh_tick(self) -> None:
-        # Only refresh lists; do not start any background connections here
-        self.app.notify(str(get_logs()))
-        self.model_logs.write_line("Test")
+        self.model_logs.refresh_logs()
         self.system_logs.write_lines(get_logs())
 
     def _get_system_logs(self, _unused: object | None = None) -> list[str]:

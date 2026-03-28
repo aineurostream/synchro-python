@@ -40,11 +40,11 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         with self._lock:
             if not self._buffer or self._incoming_frames == 0:
                 return None
-            # Берём хвост ровно на объём новых фреймов и валидируем
+            # Take exactly the tail matching the new frames volume and validate
             tail = self._buffer.get_end_frames(self._incoming_frames)
             out = self._validate_and_convert(tail)
 
-            # Подрезаем общий буфер (как в других узлах)
+            # Trim the shared buffer (as in other nodes)
             self._buffer = self._buffer.get_end_seconds(LONG_BUFFER_SIZE_SEC)
             self._incoming_frames = 0
 
@@ -55,17 +55,17 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         in_fmt = data.audio_format
         rate = int(data.rate)
 
-        # 1) bytes -> float32 (и → моно, если нужно)
+        # 1) bytes -> float32 (and -> mono if needed)
         x = self._bytes_to_float(data.frame_data, in_fmt)
         if self._config.enforce_mono:
-            x = self._to_mono_assume_interleaved(x, in_fmt, data)  # см. ниже
-        # Если not enforce_mono, считаем, что сигнал уже моно.
-        # Иначе interleaved надо приводить на предыдущем шаге.
+            x = self._to_mono_assume_interleaved(x, in_fmt, data)  # see below
+        # If not enforce_mono, assume the signal is already mono.
+        # Otherwise interleaved must be converted at the previous step.
 
-        # 2) float32 -> bytes в целевой формат
+        # 2) float32 -> bytes in target format
         raw = self._float_to_bytes(x, self._config.enforce_format)
 
-        # 3) собираем новый контейнер (rate сохраняем/не трогаем)
+        # 3) assemble new container (rate preserved/untouched)
         return FrameContainer(
             audio_format=self._config.enforce_format,
             rate=rate,
@@ -74,7 +74,7 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
     @staticmethod
     def _bytes_to_float(raw: bytes, fmt: AudioFormat) -> np.ndarray:
-        """Interleaved PCM little-endian → float32 [-1,1] (без сведения в моно)."""
+        """Interleaved PCM little-endian -> float32 [-1,1] (no mono downmix)."""
         if fmt.format_type == AudioFormatType.INT_8:
             return np.frombuffer(raw, dtype=np.int8).astype(np.float32) / 128.0
         if fmt.format_type == AudioFormatType.INT_16:
@@ -101,7 +101,7 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
 
     @staticmethod
     def _float_to_bytes(x: np.ndarray, out_fmt: AudioFormat) -> bytes:
-        """float32 [-1,1] → PCM little-endian заданного формата."""
+        """float32 [-1,1] -> PCM little-endian of the specified format."""
         x = np.clip(x.astype(np.float32), -1.0, 1.0)
         if out_fmt.format_type == AudioFormatType.INT_8:
             return (x * 128.0).astype(np.int8).tobytes()
@@ -123,16 +123,19 @@ class FormatValidatorNode(GraphNode, ReceivingNodeMixin, EmittingNodeMixin):
         msg = f"Unsupported output format: {out_fmt.format_type}"
         raise ValueError(msg)
 
+    @staticmethod
     def _to_mono_assume_interleaved(
-        self,
         x: np.ndarray,
         _fmt: AudioFormat,
         _data: FrameContainer,
     ) -> np.ndarray:
         """Mono conversion path.
-        FrameContainer does not carry explicit channel count, so channel validation
-        is expected to happen in upstream nodes (File/ChannelInput). If interleaved
-        multichannel data reaches this point, the API can be extended with a hint.
-        For now, this function assumes the signal is already mono.
+        FrameContainer does not carry explicit channel count. Upstream nodes
+        (File/ChannelInput) are expected to deliver mono. This is a safety net:
+        if data looks interleaved stereo (even length), average the two channels.
         """
+        if x.size > 0 and x.size % 2 == 0:
+            stereo = x.reshape(-1, 2)
+            if not np.array_equal(stereo[:, 0], stereo[:, 1]):
+                return stereo.mean(axis=1).astype(np.float32)
         return x.astype(np.float32)

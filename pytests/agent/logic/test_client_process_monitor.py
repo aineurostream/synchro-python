@@ -47,8 +47,8 @@ def test_register_process(process_monitor):
     process_info = process_monitor.process_queue.get()
     assert process_info.run_id == 1
     assert process_info.process == mock_process
-    assert process_info.stdout_buffer == ""
-    assert process_info.stderr_buffer == ""
+    assert process_info.stdout_buffer == bytearray()
+    assert process_info.stderr_buffer == bytearray()
     assert isinstance(process_info.last_check_time, float)
 
 
@@ -56,13 +56,13 @@ def test_register_process(process_monitor):
 def test_read_pipe_nonblocking_data_available(mock_select, process_monitor):
     """Test reading from a pipe when data is available."""
     mock_pipe = MagicMock()
-    mock_pipe.read.return_value = "Test output"
+    mock_pipe.fileno.return_value = 5
     mock_select.return_value = ([mock_pipe], [], [])
 
-    output = process_monitor._read_pipe_nonblocking(mock_pipe)
+    with patch("os.read", return_value=b"Test output"):
+        output = process_monitor._read_pipe_nonblocking(mock_pipe)
 
-    assert output == "Test output"
-    mock_pipe.read.assert_called_once()
+    assert output == b"Test output"
 
 
 @patch("synchroagent.logic.client_process_monitor.select.select")
@@ -71,10 +71,10 @@ def test_read_pipe_nonblocking_no_data(mock_select, process_monitor):
     mock_pipe = MagicMock()
     mock_select.return_value = ([], [], [])
 
+    mock_pipe.fileno.return_value = 5
     output = process_monitor._read_pipe_nonblocking(mock_pipe)
 
-    assert output == ""
-    mock_pipe.read.assert_not_called()
+    assert output == b""
 
 
 def test_store_process_outputs(process_monitor):
@@ -82,15 +82,15 @@ def test_store_process_outputs(process_monitor):
     process_info = ProcessInfo(
         run_id=1,
         process=MagicMock(),
-        stdout_buffer="Stdout content",
-        stderr_buffer="Stderr content",
+        stdout_buffer=bytearray(b"Stdout content"),
+        stderr_buffer=bytearray(b"Stderr content"),
     )
 
     process_monitor._store_process_outputs(process_info)
 
     assert 1 in process_monitor.completed_outputs
-    assert process_monitor.completed_outputs[1]["stdout"] == "Stdout content"
-    assert process_monitor.completed_outputs[1]["stderr"] == "Stderr content"
+    assert process_monitor.completed_outputs[1]["stdout"] == b"Stdout content"
+    assert process_monitor.completed_outputs[1]["stderr"] == b"Stderr content"
 
 
 def test_handle_process_exit_success(process_monitor, mock_client_run_registry):
@@ -209,8 +209,8 @@ def test_get_process_output_completed(process_monitor):
     """Test getting output for a completed process."""
 
     process_monitor.completed_outputs[1] = {
-        "stdout": "Completed stdout",
-        "stderr": "Completed stderr",
+        "stdout": b"Completed stdout",
+        "stderr": b"Completed stderr",
     }
 
     output = process_monitor.get_process_output(1)
@@ -226,8 +226,8 @@ def test_get_process_output_running(process_monitor):
     process_info = ProcessInfo(
         run_id=1,
         process=mock_process,
-        stdout_buffer="Running stdout",
-        stderr_buffer="Running stderr",
+        stdout_buffer=bytearray(b"Running stdout"),
+        stderr_buffer=bytearray(b"Running stderr"),
     )
 
     with process_monitor.lock:

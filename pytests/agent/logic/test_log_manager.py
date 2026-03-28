@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -79,7 +79,9 @@ def test_collect_logs_success(
     mock_client_run_registry.get_by_id.return_value = sample_client_run_stopped
     mock_exists.return_value = True
     mock_read_log.return_value = "Log content"
-    mock_log_registry.create.return_value = 1
+    mock_log = MagicMock()
+    mock_log.id = 1
+    mock_log_registry.create.return_value = mock_log
 
     log_id = log_manager.collect_logs(1)
 
@@ -116,24 +118,21 @@ def test_collect_logs_create_failed(
     mock_client_run_registry.update.assert_not_called()
 
 
-@patch("builtins.open", new_callable=mock_open, read_data="Log content")
-def test_read_log_file_success(mock_file, log_manager):
-    log_file = Path("/tmp/test_outputs/run_1/.hydra/hydra.log")
+def test_read_log_file_success(log_manager, tmp_path):
+    log_file = tmp_path / "hydra.log"
+    log_file.write_text("Log content", encoding="utf-8")
 
     result = log_manager._read_log_file(log_file)
 
     assert result == "Log content"
-    mock_file.assert_called_once_with(log_file, encoding="utf-8")
 
 
-@patch("builtins.open", side_effect=OSError("File read error"))
-def test_read_log_file_error(mock_file, log_manager):
+@patch.object(Path, "open", side_effect=OSError("File read error"))
+def test_read_log_file_error(mock_open_method, log_manager):
     log_file = Path("/tmp/test_outputs/run_1/.hydra/hydra.log")
 
     with pytest.raises(ValueError, match="Failed to read log file:"):
         log_manager._read_log_file(log_file)
-
-    mock_file.assert_called_once_with(log_file, encoding="utf-8")
 
 
 def test_get_log(log_manager, mock_log_registry, sample_log):

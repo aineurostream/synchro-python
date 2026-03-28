@@ -134,9 +134,9 @@ LANGUAGES = [
 LOG_LEVEL = logging.INFO
 logger = logging.getLogger(NAME)
 logger.setLevel(LOG_LEVEL)
-logger.propagate = False  # важно — иначе дублирование в корневой логгер
+logger.propagate = False  # important — otherwise duplication to root logger
 
-# --- формат ---
+# --- format ---
 fmt = logging.Formatter(
     "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
@@ -156,7 +156,7 @@ stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setLevel(LOG_LEVEL)
 stream_handler.setFormatter(fmt)
 
-# --- финальная сборка ---
+# --- final assembly ---
 logger.handlers.clear()
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
@@ -165,7 +165,7 @@ AGENT_HOST = os.environ.get("SYNCHRO_AGENT_HOST", "127.0.0.1")
 AGENT_PORT = int(os.environ.get("SYNCHRO_AGENT_PORT", "50081"))
 
 
-# --- защита от второго запуска процесса ---
+# --- guard against second process launch ---
 def ensure_single_instance() -> TextIO:
     # Keep descriptor open for process lifetime to hold the file lock.
     lockfile = Path(LOCKFILE_PATH).open("w")  # noqa: SIM115
@@ -175,11 +175,11 @@ def ensure_single_instance() -> TextIO:
         logger.warning("Daemon is already running")
         sys.exit(1)
 
-    # не закрываем lockfile, иначе лок снимется
+    # don't close lockfile, otherwise the lock will be released
     return lockfile
 
 
-# --- состояние воркера ---
+# --- worker state ---
 class WorkerState(StrEnum):
     IDLE = "idle"
     RUNNING = "running"
@@ -226,7 +226,7 @@ class StopRequestedError(Exception):
 
 app = FastAPI()
 
-_task_lock = threading.Lock()  # один инстанс задачи
+_task_lock = threading.Lock()  # single task instance
 
 
 @dataclass
@@ -241,14 +241,14 @@ _runtime = AgentRuntime()
 
 
 def log_subprocess_line(raw_line: bytes | str, level: int = logging.INFO) -> None:
-    # 1. Декодируем байты
+    # 1. Decode bytes
     if isinstance(raw_line, bytes):
         text = raw_line.decode("utf-8", errors="replace")
     else:
         text = raw_line
     text = text.rstrip("\r\n")
 
-    # 2. Пытаемся распарсить JSON
+    # 2. Try to parse JSON
     try:
         data = json.loads(text)
         logger.log(
@@ -257,7 +257,7 @@ def log_subprocess_line(raw_line: bytes | str, level: int = logging.INFO) -> Non
             json.dumps(data, indent=2, ensure_ascii=False),
         )
     except json.JSONDecodeError:
-        # если это не JSON — просто пишем как есть
+        # if it's not JSON — just write as-is
         logger.log(
             level,
             "[subprocess] %s",
@@ -273,7 +273,7 @@ def find_process_by_name(name: str) -> list[int]:
         cmd = proc.info.get("cmdline")
         if cmd and name in cmd:
             pids.append(proc.pid)
-        elif proc.status == "zombie":
+        elif proc.status() == "zombie":
             logger.info("Found zombie process=%s; trying to kill", proc)
             os.kill(proc.pid, signal.SIGKILL)
 
@@ -304,10 +304,15 @@ def _raise_stop_requested() -> None:
 
 
 def _build_worker_cmd(params: HydraParams) -> list[str]:
+    if not params.speakers:
+        msg = "At least one speaker is required"
+        raise ValueError(msg)
+    if not params.translations:
+        msg = "At least one translation is required"
+        raise ValueError(msg)
+
     voice_param = (
         f"{{{params.speakers[0].language}: ['xtts', '{params.speakers[0].voice}']}}"
-        if params.speakers
-        else None
     )
     return [
         x
@@ -424,19 +429,27 @@ def worker(stop_event: threading.Event, params: HydraParams) -> None:
         logger.exception("Worker crashed with unexpected error")
     finally:
         logger.info("Worker cleanup")
-        # отпускаем лок в любом случае
-        if _task_lock.locked():
-            _task_lock.release()
+        _runtime.state = (
+            _runtime.state
+            if _runtime.state == WorkerState.ERROR
+            else WorkerState.FINISHED
+        )
 
 
 @app.post("/start")
 def start(params: HydraParams) -> dict[str, str]:
-    # не даём запустить вторую задачу
+    # Release stale lock if previous worker finished
+    if _task_lock.locked() and (
+        not _runtime.worker_thread or not _runtime.worker_thread.is_alive()
+    ):
+        _task_lock.release()
+
+    # prevent launching a second task
     if not _task_lock.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="Task already running")
 
     if _runtime.worker_thread and _runtime.worker_thread.is_alive():
-        # на всякий случай (вообще до сюда не дойдём, если лок занят)
+        # just in case (we shouldn't reach here if the lock is held)
         raise HTTPException(status_code=409, detail="Worker already running")
 
     _runtime.stop_event = threading.Event()
@@ -461,6 +474,8 @@ def stop() -> dict[str, str | WorkerState]:
     _runtime.state = WorkerState.STOPPING
     _runtime.stop_event.set()
     _runtime.worker_thread.join(timeout=10)
+    if _task_lock.locked():
+        _task_lock.release()
     logger.info("Task stopped")
 
     return {
@@ -492,7 +507,7 @@ def terminate() -> None:
 def main() -> None:
     logger.info("Initialization")
 
-    # гарантируем один инстанс демона
+    # ensure single daemon instance
     ensure_single_instance()
 
     uvicorn.run(

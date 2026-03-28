@@ -63,17 +63,24 @@ class ChannelOutputNode(AbstractOutputNode):
             samples = np.frombuffer(buf, dtype=dtype)
 
             # Input is treated as mono and duplicated to every output channel.
-            out_channels = 1 if out_data.ndim == 1 else out_data.shape[1]
             available = min(frames, samples.size)
 
-            if available > 0:
-                # Заполняем каждую колонку одинаковыми моно-сэмплами
-                for ch in range(out_channels):
-                    out_data[:available, ch] = samples[:available]
-                if available < frames:
-                    out_data[available:, :] = 0
+            if out_data.ndim == 1:
+                if available > 0:
+                    out_data[:available] = samples[:available]
+                    if available < frames:
+                        out_data[available:] = 0
+                else:
+                    out_data[:] = 0
             else:
-                out_data[:, :] = 0
+                out_channels = out_data.shape[1]
+                if available > 0:
+                    for ch in range(out_channels):
+                        out_data[:available, ch] = samples[:available]
+                    if available < frames:
+                        out_data[available:, :] = 0
+                else:
+                    out_data[:, :] = 0
 
         device = JACK_DEVICE if JACK_ENABLED else self._config.device
         device_info = sd.query_devices(device, "output")
@@ -81,10 +88,7 @@ class ChannelOutputNode(AbstractOutputNode):
 
         # Кол-во каналов вывода — не более 2 (стерео) и не более max_device_channels
         max_dev_ch = int(device_info.get("max_output_channels", 2))
-        out_channels = min(
-            max(2, 1),
-            max_dev_ch,
-        )  # минимум стерео, если устройство позволяет
+        out_channels = min(max_dev_ch, max(1, self._config.channel))
 
         self._stream = sd.OutputStream(
             device=device,
